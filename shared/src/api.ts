@@ -5,6 +5,7 @@
  * Les corps sont des objets JSON extensibles : l'anti-triche (#8) ajoutera la
  * solution ALTCHA sans changer les champs existants.
  */
+import { estIndicePancarte } from './catalogues/pancartes';
 
 /** Entrée d'un avatar dans un cortège. */
 export const CHEMIN_API_ENTREE = '/api/entree';
@@ -14,7 +15,7 @@ export interface RequeteEntree {
   manif: string;
   /** Indice d'apparence (catalogue partagé). */
   apparence: number;
-  /** Indice de pancarte (catalogue partagé). */
+  /** Indice de pancarte (`encoderPancarte`, catalogue partagé). */
   pancarte: number;
   /**
    * SHA-256 (hex) du jeton de retrait généré par le client (ADR 0001) : seul ce
@@ -42,7 +43,7 @@ export interface ReponseErreur {
   erreur: CodeErreurEntree | CodeErreurRetrait;
 }
 
-/** Plus grand indice d'apparence ou de pancarte accepté (les catalogues #10, #11 resserreront). */
+/** Plus grand indice d'apparence accepté (le catalogue d'apparence #10 resserrera). */
 export const INDICE_MAX = 0xffff;
 
 const estIndice = (x: unknown): x is number => Number.isInteger(x) && (x as number) >= 0 && (x as number) <= INDICE_MAX;
@@ -52,7 +53,7 @@ export function lireRequeteEntree(json: unknown): RequeteEntree | null {
   if (typeof json !== 'object' || json === null) return null;
   const { manif, apparence, pancarte } = json as Record<string, unknown>;
   if (typeof manif !== 'string' || manif.length === 0 || manif.length > 200) return null;
-  if (!estIndice(apparence) || !estIndice(pancarte)) return null;
+  if (!estIndice(apparence) || !estIndicePancarte(pancarte)) return null;
   const { hachageRetrait } = json as Record<string, unknown>;
   if (hachageRetrait === undefined) return { manif, apparence, pancarte };
   if (typeof hachageRetrait !== 'string' || !HACHAGE_RETRAIT.test(hachageRetrait)) return null;
