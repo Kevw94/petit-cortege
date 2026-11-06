@@ -1,0 +1,78 @@
+:root {
+  --fond: #f4f1ea;
+  --texte: #222;
+  --accent: #c0392b;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--texte);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--fond);
+  overflow: hidden;
+  /* Gestes gérés par le jeu, pas de zoom accidentel de la page. */
+  touch-action: none;
+}
+
+#jeu {
+  position: fixed;
+  inset: 0;
+}
+
+#interface {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  padding: max(12px, env(safe-area-inset-top)) 12px 12px;
+}
+
+#interface > * {
+  pointer-events: auto;
+}
+
+.carte {
+  background: rgb(255 255 255 / 0.92);
+  border-radius: 10px;
+  padding: 10px 14px;
+  max-width: 28rem;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.15);
+}
+
+.carte h1 {
+  font-size: 1.1rem;
+  margin: 0 0 4px;
+}
+
+.carte p {
+  margin: 2px 0;
+  font-size: 0.9rem;
+}
+
+.liste {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+}
+
+.liste a {
+  display: block;
+  padding: 10px 0;
+  color: inherit;
+  text-decoration: none;
+  border-top: 1px solid #ddd;
+}
+
+.liste a strong {
+  display: block;
+}
+
+a.retour {
+  color: var(--accent);
+  font-size: 0.9rem;
+}
