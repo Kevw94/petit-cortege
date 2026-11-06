@@ -60,7 +60,8 @@ export function scenarioPerf(n: number): ScenarioPerf {
   const hasard = () => (graine = (graine * 1_664_525 + 1_013_904_223) >>> 0) / 2 ** 32;
   const parMinute = new Map<number, EntreePubliee[]>();
   for (let i = 0; i < n; i++) {
-    const t = DEPART / 1000 + ((i + 0.5) / n) * DUREE_ENTREES_S;
+    // Secondes entières, comme les heures publiées : les entrées d'une même seconde marchent de front.
+    const t = DEPART / 1000 + Math.floor((i / n) * DUREE_ENTREES_S);
     const minute = Math.floor(t / 60) * 60;
     const entree: EntreePubliee = { a: `av-${i}`, m: manif.id, t, ap: Math.floor(hasard() * 64), pa: Math.floor(hasard() * 16) };
     const liste = parMinute.get(minute);
