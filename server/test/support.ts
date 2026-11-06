@@ -47,6 +47,8 @@ export interface Banc {
   serveur: Serveur;
   dossierPublication: string;
   lire: <T = unknown>(chemin: string) => Promise<{ statut: number; corps: T }>;
+  /** POST JSON, comme le client (une chaîne est envoyée telle quelle). */
+  poster: <T = unknown>(chemin: string, corps: unknown) => Promise<{ statut: number; corps: T }>;
   arreter: () => Promise<void>;
 }
 
@@ -65,6 +67,21 @@ export async function demarrerBanc(instantInitial: string): Promise<Banc> {
       const reponse = await fetch(new URL(chemin, serveur.url));
       const texte = await reponse.text();
       return { statut: reponse.status, corps: (reponse.ok ? JSON.parse(texte) : texte) as never };
+    },
+    poster: async (chemin, corps) => {
+      const reponse = await fetch(new URL(chemin, serveur.url), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: typeof corps === 'string' ? corps : JSON.stringify(corps),
+      });
+      const texte = await reponse.text();
+      let corpsLu: unknown = texte;
+      try {
+        corpsLu = JSON.parse(texte);
+      } catch {
+        // corps non JSON (ex. 404 par défaut) : gardé en texte
+      }
+      return { statut: reponse.status, corps: corpsLu as never };
     },
     arreter: async () => {
       await serveur.fermer();
