@@ -3,3 +3,4 @@ export { horlogeSysteme, type Horloge } from './horloge';
 export { creerManif, preRemplirAvatars, type AvatarPreRempli, type ManifACreer } from './manifs';
 export { publier, type DependancesPublication } from './publication';
 export { creerApp, demarrerServeur, type OptionsServeur, type Serveur } from './serveur';
+export { antiTricheDepuisEnv, type OptionsAntiTriche } from './anti-triche';

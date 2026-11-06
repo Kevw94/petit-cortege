@@ -33,7 +33,7 @@ describe('rejoindre le cortège', () => {
 
   it("une entrée acceptée apparaît dans le fichier de sa minute, avec l'identifiant renvoyé", async () => {
     banc.horloge.regler('2026-06-01T09:10:20Z');
-    const reponse = await banc.poster<ReponseEntree>('/api/entree', { manif: 'manif-paris', apparence: 5, pancarte: 3 });
+    const reponse = await banc.entrer<ReponseEntree>({ manif: 'manif-paris', apparence: 5, pancarte: 3 });
     expect(reponse.statut).toBe(201);
 
     banc.horloge.regler('2026-06-01T09:11:00Z');
@@ -49,7 +49,7 @@ describe('rejoindre le cortège', () => {
     banc.horloge.regler('2026-06-01T09:20:45.500Z');
     const reponses = await Promise.all(
       Array.from({ length: 20 }, () =>
-        banc.poster<ReponseEntree>('/api/entree', { manif: 'manif-paris', apparence: 0, pancarte: 0 }),
+        banc.entrer<ReponseEntree>({ manif: 'manif-paris', apparence: 0, pancarte: 0 }),
       ),
     );
     banc.horloge.regler('2026-06-01T09:21:00Z');
@@ -70,8 +70,8 @@ describe('rejoindre le cortège', () => {
 
   it('chaque avatar reçoit un identifiant aléatoire distinct', async () => {
     banc.horloge.regler('2026-06-01T09:25:00Z');
-    const a = await banc.poster<ReponseEntree>('/api/entree', { manif: 'manif-paris', apparence: 1, pancarte: 1 });
-    const b = await banc.poster<ReponseEntree>('/api/entree', { manif: 'manif-paris', apparence: 1, pancarte: 1 });
+    const a = await banc.entrer<ReponseEntree>({ manif: 'manif-paris', apparence: 1, pancarte: 1 });
+    const b = await banc.entrer<ReponseEntree>({ manif: 'manif-paris', apparence: 1, pancarte: 1 });
 
     expect(a.corps.avatar).not.toBe(b.corps.avatar);
     // Au moins 96 bits d'aléa en base64url.
@@ -84,7 +84,7 @@ describe('rejoindre le cortège', () => {
     const avant = (await banc.lire<ListeManifs>('/publie/manifs.json')).corps.manifs[0]!.compteur;
 
     banc.horloge.regler('2026-06-01T09:30:30Z');
-    await banc.poster('/api/entree', { manif: 'manif-paris', apparence: 2, pancarte: 2 });
+    await banc.entrer({ manif: 'manif-paris', apparence: 2, pancarte: 2 });
     banc.horloge.regler('2026-06-01T09:31:00Z');
     await banc.serveur.publier();
 
@@ -94,7 +94,7 @@ describe('rejoindre le cortège', () => {
 
   it('entrée refusée pour une manif inconnue', async () => {
     banc.horloge.regler('2026-06-01T09:40:10Z');
-    const reponse = await banc.poster('/api/entree', { manif: 'manif-fantome', apparence: 0, pancarte: 0 });
+    const reponse = await banc.entrer({ manif: 'manif-fantome', apparence: 0, pancarte: 0 });
     banc.horloge.regler('2026-06-01T09:41:00Z');
     await banc.serveur.publier();
 
@@ -115,7 +115,7 @@ describe('rejoindre le cortège', () => {
     });
     banc.horloge.regler('2026-06-01T09:42:00Z');
 
-    const reponse = await banc.poster('/api/entree', { manif: 'manif-demain', apparence: 0, pancarte: 0 });
+    const reponse = await banc.entrer({ manif: 'manif-demain', apparence: 0, pancarte: 0 });
 
     expect(reponse).toEqual({ statut: 404, corps: { erreur: 'manif-inconnue' } });
   });
@@ -124,7 +124,7 @@ describe('rejoindre le cortège', () => {
     // Fin ≈ 10:00 + 30 min 1 s + 1 h = 11:30:01.
     banc.horloge.regler('2026-06-01T11:30:02Z');
 
-    const reponse = await banc.poster('/api/entree', { manif: 'manif-paris', apparence: 0, pancarte: 0 });
+    const reponse = await banc.entrer({ manif: 'manif-paris', apparence: 0, pancarte: 0 });
 
     expect(reponse).toEqual({ statut: 409, corps: { erreur: 'manif-terminee' } });
   });
@@ -146,7 +146,7 @@ describe('rejoindre le cortège', () => {
   it('les champs supplémentaires sont ignorés (place pour le jeton de retrait et la preuve de travail)', async () => {
     banc.horloge.regler('2026-06-01T09:46:00Z');
 
-    const reponse = await banc.poster('/api/entree', {
+    const reponse = await banc.entrer({
       manif: 'manif-paris',
       apparence: 0,
       pancarte: 0,

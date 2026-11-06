@@ -4,7 +4,7 @@
  * les 5 s) et client Vite (qui relaie /publie et /api vers le serveur).
  */
 import { spawn } from 'node:child_process';
-import { connecter, demarrerServeur, horlogeSysteme, migrer } from '@petit-cortege/server';
+import { antiTricheDepuisEnv, connecter, demarrerServeur, horlogeSysteme, migrer } from '@petit-cortege/server';
 import { assurerBase, DOSSIER_PUBLICATION_DEV, PORT_CLIENT, PORT_SERVEUR, RACINE, URL_BASE_DEV } from './config';
 import { ID_MANIF_DEMO, semerManifDemo } from './seed';
 
@@ -20,6 +20,7 @@ const serveur = await demarrerServeur({
   horloge: horlogeSysteme,
   dossierPublication: DOSSIER_PUBLICATION_DEV,
   port: PORT_SERVEUR,
+  antiTriche: antiTricheDepuisEnv(process.env),
 });
 await serveur.publier();
 const minuterie = setInterval(() => {

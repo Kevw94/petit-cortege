@@ -4,7 +4,14 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
-import { CHEMIN_API_ENTREE, lireRequeteEntree, PREFIXE_PUBLICATION, type ReponseErreur } from '@petit-cortege/shared';
+import {
+  CHEMIN_API_DEFI,
+  CHEMIN_API_ENTREE,
+  lireRequeteEntree,
+  PREFIXE_PUBLICATION,
+  type ReponseErreur,
+} from '@petit-cortege/shared';
+import { creerAntiTriche, type OptionsAntiTriche } from './anti-triche';
 import { migrer, type Sql } from './base';
 import { entrer } from './entree';
 import type { Horloge } from './horloge';
@@ -19,6 +26,8 @@ export interface OptionsServeur {
   port: number;
   /** Servir aussi le dossier de publication (dev et tests ; en prod c'est le CDN). */
   servirPublication?: boolean;
+  /** Preuve de travail, limites de débit, alerte (voir `antiTricheDepuisEnv`). */
+  antiTriche: OptionsAntiTriche;
 }
 
 export interface Serveur {
@@ -32,20 +41,34 @@ export interface Serveur {
 /** Taille maximale d'un corps POST : large pour la future solution ALTCHA (#8). */
 const TAILLE_MAX_CORPS = 8 * 1024;
 
-const STATUT_ERREUR = { 'requete-invalide': 400, 'manif-inconnue': 404, 'manif-terminee': 409 } as const;
+const STATUT_ERREUR = {
+  'requete-invalide': 400,
+  'preuve-invalide': 403,
+  'manif-inconnue': 404,
+  'manif-terminee': 409,
+  'trop-de-requetes': 429,
+} as const;
 
 export function creerApp(
-  options: Pick<OptionsServeur, 'sql' | 'horloge' | 'dossierPublication' | 'servirPublication'>,
+  options: Pick<OptionsServeur, 'sql' | 'horloge' | 'dossierPublication' | 'servirPublication' | 'antiTriche'>,
 ): Hono {
   const app = new Hono();
+  const antiTriche = creerAntiTriche(options.antiTriche);
   const erreur = (code: ReponseErreur['erreur']) => Response.json({ erreur: code }, { status: STATUT_ERREUR[code] });
 
   app.use('/api/*', bodyLimit({ maxSize: TAILLE_MAX_CORPS, onError: () => erreur('requete-invalide') }));
+
+  // Défi ALTCHA : le même pour tous, sans identifiant de manif (ADR 0002), jamais mis en cache.
+  app.get(CHEMIN_API_DEFI, async (c) => {
+    c.header('cache-control', 'no-store');
+    return c.json(await antiTriche.preuve.creerDefi());
+  });
 
   // Entrée dans un cortège : identifiant de manif dans le corps, jamais dans l'URL (ADR 0002).
   app.post(CHEMIN_API_ENTREE, async (c) => {
     const requete = lireRequeteEntree(await c.req.json().catch(() => null));
     if (!requete) return erreur('requete-invalide');
+    if (!(await antiTriche.preuve.verifierEtConsommer(requete.preuve))) return erreur('preuve-invalide');
     const resultat = await entrer(options.sql, options.horloge, requete);
     return resultat.ok ? c.json(resultat.reponse, 201) : erreur(resultat.erreur);
   });
