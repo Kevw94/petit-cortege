@@ -1,6 +1,8 @@
 import * as Phaser from 'phaser';
 import type { EntreesMinute } from '@petit-cortege/shared';
 import { avatarsPropres, memoriserAvatarPropre } from './avatars-propres';
+import { creerPanneauComposition, type PanneauComposition } from './composition/panneau';
+import { pancarteAuHasard, sectionPancarte } from './composition/section-pancarte';
 import type { Cortege } from './cortege/cortege';
 import { EntreeRefusee, rejoindreLeCortege } from './entree';
 import { Publication } from './publication';
@@ -86,29 +88,48 @@ async function afficherManif(id: string): Promise<void> {
     const n = cortege.avatars.length;
     const texte = `${cortege.etat === 'ouverte' ? 'Ouverte' : 'Terminée'} · ${n} ${n > 1 ? 'soutiens' : 'soutien'}`;
     if (texte !== dernierTexte) etatEl.textContent = dernierTexte = texte;
-    const peutRejoindre = cortege.etat === 'ouverte' && propres.length === 0 && !envoiEnCours;
+    const peutRejoindre = cortege.etat === 'ouverte' && propres.length === 0 && !envoiEnCours && !composition;
     if (boutonEl.hidden === peutRejoindre) boutonEl.hidden = !peutRejoindre;
     if (propres.length > 0 && !envoiEnCours && !messageEl.textContent) {
       messageEl.textContent = 'Tu marches avec le cortège. Tu peux fermer la page : ton avatar continue.';
     }
   };
 
-  boutonEl.addEventListener('click', async () => {
+  // Composition (pancarte ; l'apparence #10 ajoutera sa section) avant d'entrer.
+  let composition: PanneauComposition | null = null;
+  const fermerComposition = () => {
+    composition?.element.remove();
+    composition = null;
+  };
+  const entrer = async (pancarte: number) => {
     envoiEnCours = true;
-    boutonEl.disabled = true;
-    messageEl.textContent = 'Entrée dans le cortège…';
+    composition?.occupe(true);
+    composition?.annoncer('Entrée dans le cortège…');
     try {
-      // Apparence et pancarte tirées au hasard en attendant la composition (#10, #11).
-      const entree = await rejoindreLeCortege({ manif: id, apparence: auHasard(8), pancarte: auHasard(8) });
+      // Apparence tirée au hasard en attendant sa composition (#10).
+      const entree = await rejoindreLeCortege({ manif: id, apparence: auHasard(8), pancarte });
       memoriserAvatarPropre(entree, donnees.manif.fin);
       propres = [...propres, entree];
-      messageEl.textContent = '';
+      fermerComposition();
     } catch (erreur) {
-      messageEl.textContent = messageErreurEntree(erreur);
+      composition?.annoncer(messageErreurEntree(erreur));
+      composition?.occupe(false);
     } finally {
       envoiEnCours = false;
-      boutonEl.disabled = false;
     }
+  };
+  boutonEl.addEventListener('click', () => {
+    if (composition) return;
+    messageEl.textContent = '';
+    const pancarte = sectionPancarte(pancarteAuHasard());
+    composition = creerPanneauComposition({
+      sections: [pancarte.section],
+      libelleValider: 'Rejoindre le cortège',
+      surValider: () => void entrer(pancarte.indice()),
+      surAnnuler: fermerComposition,
+    });
+    interfaceEl.append(composition.element);
+    boutonEl.hidden = true;
   });
 
   const donnees: DonneesScene = { manif, entrees: () => entrees, propres: () => propres, surCortege };
