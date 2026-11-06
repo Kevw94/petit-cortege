@@ -70,6 +70,7 @@ export interface Banc {
 export const ANTI_TRICHE_DE_TEST: OptionsAntiTriche = {
   cleHmac: 'cle-hmac-de-test',
   difficulte: { cout: 1, compteurMin: 1, compteurMax: 20 },
+  limiteParIp: { requetes: 10_000, fenetreMs: 60_000 },
 };
 
 /** Démarre un vrai serveur HTTP sur une base jetable, avec une horloge contrôlée. */

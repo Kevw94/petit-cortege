@@ -3,6 +3,7 @@
  * et sans jamais écrire d'IP.
  */
 import { randomBytes } from 'node:crypto';
+import { creerLimiteur, type Limite, type Limiteur } from './limite-debit';
 import {
   creerPreuveTravail,
   DIFFICULTE_PAR_DEFAUT,
@@ -17,14 +18,27 @@ export interface OptionsAntiTriche {
   difficulte?: DifficultePreuve;
   /** Durée de validité d'un défi, et donc de la mémoire anti-rejeu. */
   dureeDefiMs?: number;
+  /**
+   * Requêtes d'entrée par IP et par fenêtre. Généreux : une IP peut être partagée
+   * (box familiale, réseau d'entreprise, CGNAT mobile). La route de défi a droit au double.
+   */
+  limiteParIp?: Limite;
 }
+
+export const LIMITE_PAR_IP_PAR_DEFAUT: Limite = { requetes: 60, fenetreMs: 60_000 };
 
 export interface AntiTriche {
   preuve: PreuveTravail;
+  /** Limites par IP des routes d'entrée et de défi (clé = IP, en mémoire seulement). */
+  limiteEntree: Limiteur;
+  limiteDefi: Limiteur;
 }
 
 export function creerAntiTriche(options: OptionsAntiTriche): AntiTriche {
+  const limite = options.limiteParIp ?? LIMITE_PAR_IP_PAR_DEFAUT;
   return {
+    limiteEntree: creerLimiteur(limite, Date.now),
+    limiteDefi: creerLimiteur({ ...limite, requetes: 2 * limite.requetes }, Date.now),
     preuve: creerPreuveTravail({
       cleHmac: options.cleHmac,
       difficulte: options.difficulte ?? DIFFICULTE_PAR_DEFAUT,

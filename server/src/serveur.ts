@@ -1,8 +1,9 @@
 import { mkdir } from 'node:fs/promises';
 import type { AddressInfo } from 'node:net';
 import { serve } from '@hono/node-server';
+import { getConnInfo } from '@hono/node-server/conninfo';
 import { serveStatic } from '@hono/node-server/serve-static';
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import {
   CHEMIN_API_DEFI,
@@ -12,6 +13,7 @@ import {
   type ReponseErreur,
 } from '@petit-cortege/shared';
 import { creerAntiTriche, type OptionsAntiTriche } from './anti-triche';
+import type { Limiteur } from './limite-debit';
 import { migrer, type Sql } from './base';
 import { entrer } from './entree';
 import type { Horloge } from './horloge';
@@ -56,6 +58,20 @@ export function creerApp(
   const antiTriche = creerAntiTriche(options.antiTriche);
   const erreur = (code: ReponseErreur['erreur']) => Response.json({ erreur: code }, { status: STATUT_ERREUR[code] });
 
+  /**
+   * Limite par IP, avant tout autre travail. L'IP ne sert que de clé en mémoire :
+   * jamais écrite, jamais journalisée (ADR 0001).
+   */
+  const limiter = (limiteur: Limiteur) => async (c: Context, suite: () => Promise<void>) => {
+    const ip = getConnInfo(c).remote.address ?? '';
+    const attente = limiteur.compter(ip);
+    if (attente === null) return suite();
+    const reponse = erreur('trop-de-requetes');
+    reponse.headers.set('retry-after', String(attente));
+    return reponse;
+  };
+  app.use(CHEMIN_API_DEFI, limiter(antiTriche.limiteDefi));
+  app.use(CHEMIN_API_ENTREE, limiter(antiTriche.limiteEntree));
   app.use('/api/*', bodyLimit({ maxSize: TAILLE_MAX_CORPS, onError: () => erreur('requete-invalide') }));
 
   // Défi ALTCHA : le même pour tous, sans identifiant de manif (ADR 0002), jamais mis en cache.
