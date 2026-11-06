@@ -15,7 +15,9 @@ import {
 } from '@petit-cortege/shared';
 
 /** À partir de ce zoom (pixels par mètre), le slogan est écrit sur les pancartes. */
-export const SEUIL_SLOGAN_PX_PAR_M = 36;
+export const SEUIL_SLOGAN_PX_PAR_M = 44;
+/** Sa propre pancarte est toujours dessinée au moins à cette échelle (slogan bien lisible). */
+const ECHELLE_PROPRE_PX_PAR_M = 60;
 /** De loin, une pancarte garde au moins cette échelle pour que couleur et forme restent visibles. */
 const ECHELLE_MIN_PX_PAR_M = 5;
 
@@ -67,7 +69,7 @@ export function pancartesAffichees(porteurs: readonly PorteurDePancarte[], vue: 
     const forme = FORMES_PANCARTE[composition.forme]!;
     // Sa propre pancarte est toujours dessinée au moins à la taille où le slogan se lit.
     const lisible = porteur.propre || vue.echelle >= SEUIL_SLOGAN_PX_PAR_M;
-    const echelle = Math.max(vue.echelle, porteur.propre ? SEUIL_SLOGAN_PX_PAR_M : ECHELLE_MIN_PX_PAR_M);
+    const echelle = Math.max(vue.echelle, porteur.propre ? ECHELLE_PROPRE_PX_PAR_M : ECHELLE_MIN_PX_PAR_M);
     const [l, h] = DIMENSIONS_M[forme];
     const largeur = l * echelle;
     const hauteur = h * echelle;
