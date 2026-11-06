@@ -1,4 +1,5 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { execFileSync } from 'node:child_process';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { creerManif } from '../src/index';
 import { demarrerBanc, type Banc } from './support';
 
@@ -226,6 +227,56 @@ describe('vraie IP dans X-Forwarded-For', () => {
     }
 
     expect(statuts).toEqual([201, 201, 429]);
+  });
+});
+
+describe("aucune IP n'est écrite (ADR 0001)", () => {
+  const IPS = ['203.0.113.77', '198.51.100.201', '192.0.2.150', '2001:db8:abcd:12::99'];
+  let banc: Banc;
+
+  beforeAll(async () => {
+    banc = await demarrerBanc('2026-06-01T09:10:00Z', {
+      limiteParIp: { requetes: 4, fenetreMs: 60_000 },
+      enteteIp: 'CDN-RequestClientIP',
+      proxysDeConfiance: ['127.0.0.1', '::1'],
+    });
+    await creerManifParis(banc);
+  });
+  afterAll(async () => {
+    await banc?.arreter();
+    vi.restoreAllMocks();
+  });
+
+  it("après une série d'entrées acceptées, refusées et limitées, aucune IP en base ni dans les journaux", async () => {
+    const journaux: string[] = [];
+    const capter = (...args: unknown[]) => {
+      journaux.push(args.map(String).join(' '));
+      return true;
+    };
+    for (const methode of ['log', 'info', 'warn', 'error', 'debug'] as const) {
+      vi.spyOn(console, methode).mockImplementation(capter);
+    }
+    vi.spyOn(process.stdout, 'write').mockImplementation(capter);
+    vi.spyOn(process.stderr, 'write').mockImplementation(capter);
+
+    const statuts = new Set<number>();
+    for (const ip of IPS) {
+      const entete = { 'CDN-RequestClientIP': ip };
+      statuts.add((await banc.poster('/api/entree', { ...ENTREE, preuve: 'faux' }, entete)).statut);
+      statuts.add((await banc.entrer({ ...ENTREE, manif: 'manif-fantome' }, entete)).statut);
+      for (let i = 0; i < 3; i++) statuts.add((await banc.entrer(ENTREE, entete)).statut);
+    }
+    banc.horloge.regler('2026-06-01T09:11:00Z');
+    await banc.serveur.publier();
+    vi.restoreAllMocks();
+
+    const dump = execFileSync('pg_dump', ['--data-only', '--inserts', banc.urlBase], { encoding: 'utf8' });
+    expect([...statuts].sort()).toEqual([201, 403, 404, 429]);
+    expect(dump).toContain("'manif-paris'");
+    for (const ip of [...IPS, '127.0.0.1', '::1', '2001:db8:abcd:12::']) {
+      expect(dump).not.toContain(ip);
+      expect(journaux.join('\n')).not.toContain(ip);
+    }
   });
 });
 
