@@ -76,6 +76,21 @@ export interface EntreesMinute {
 }
 
 /**
+ * Fichier « entrées d'une heure » (immuable) : les fichiers par minute d'une
+ * heure terminée, compactés en un seul, toutes manifs confondues. Mêmes
+ * entrées, dans le même ordre, que les fichiers par minute de cette heure.
+ */
+export interface EntreesHeure {
+  v: typeof VERSION_FORMAT;
+  /** Début de l'heure couverte. */
+  heure: Instant;
+  entrees: EntreePubliee[];
+}
+
+/** Un fichier d'entrées publié, par minute ou par heure : le Cortège lit les deux. */
+export type FichierEntrees = EntreesMinute | EntreesHeure;
+
+/**
  * Fichier « retraits » (cache court) : identifiants des avatars retirés, par le
  * soutien ou par modération, toutes manifs publiées confondues. Le client les
  * applique par-dessus les fichiers d'entrées, qui sont immuables.
@@ -107,6 +122,15 @@ export function cheminEntreesMinute(minute: Date): string {
   );
 }
 
+/** Chemin daté du fichier des entrées de l'heure qui commence à `heure` (`entrees/AAAA-MM-JJTHH.json`). */
+export function cheminEntreesHeure(heure: Date): string {
+  const d = heure;
+  return (
+    `entrees/${d.getUTCFullYear()}-${deuxChiffres(d.getUTCMonth() + 1)}-${deuxChiffres(d.getUTCDate())}` +
+    `T${deuxChiffres(d.getUTCHours())}.json`
+  );
+}
+
 function verifierVersion(json: unknown, quoi: string): void {
   if (typeof json !== 'object' || json === null || (json as { v?: unknown }).v !== VERSION_FORMAT) {
     throw new Error(`${quoi} : version de format inconnue (attendu v${VERSION_FORMAT})`);
@@ -121,6 +145,11 @@ export function lireListeManifs(json: unknown): ListeManifs {
 export function lireEntreesMinute(json: unknown): EntreesMinute {
   verifierVersion(json, 'Entrées par minute');
   return json as EntreesMinute;
+}
+
+export function lireEntreesHeure(json: unknown): EntreesHeure {
+  verifierVersion(json, 'Entrées par heure');
+  return json as EntreesHeure;
 }
 
 export function lireRetraits(json: unknown): Retraits {
