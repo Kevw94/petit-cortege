@@ -1,4 +1,4 @@
-import { access, mkdir, rename, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import {
@@ -6,11 +6,15 @@ import {
   VERSION_FORMAT,
   MINUTE_MS,
   calculerFin,
+  cheminEntreesHeure,
   cheminEntreesMinute,
   debutDeMinute,
+  fichiersPublies,
+  lireEntreesMinute,
   longueurParcours,
   minutesPubliees,
   type EntreePubliee,
+  type EntreesHeure,
   type EntreesMinute,
   type ListeManifs,
   type ManifPubliee,
@@ -59,6 +63,7 @@ const existe = (chemin: string) =>
  * Tâche de publication, idempotente :
  * - écrit le fichier de chaque minute écoulée pas encore publiée (toutes manifs
  *   confondues, immuable, y compris vide pour que le client n'attende pas) ;
+ * - compacte chaque heure terminée en un fichier horaire (immuable) ;
  * - réécrit la liste des manifs, avec le compteur des entrées publiées.
  */
 export async function publier({ sql, horloge, dossierPublication }: DependancesPublication): Promise<void> {
@@ -96,6 +101,7 @@ async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublic
   });
 
   await publierMinutes(sql, dossierPublication, manifs, maintenant);
+  await compacterHeures(dossierPublication, manifs, maintenant);
 
   const liste: ListeManifs = { v: VERSION_FORMAT, generee: maintenant.toISOString(), manifs };
   await ecrire(dossierPublication, CHEMIN_LISTE_MANIFS, liste);
@@ -131,5 +137,34 @@ async function publierMinutes(sql: Requeteur, dossier: string, manifs: ManifPubl
       entrees: parMinute.get(m) ?? [],
     };
     await ecrire(dossier, cheminEntreesMinute(new Date(m)), fichier);
+  }
+}
+
+/**
+ * Écrit le fichier de chaque heure terminée pas encore compactée : la
+ * concaténation, dans l'ordre, des fichiers par minute publiés de cette heure.
+ * Construit depuis les fichiers déjà publiés (et non depuis la base), il
+ * contient exactement les mêmes entrées : le client voit la même foule.
+ */
+async function compacterHeures(dossier: string, manifs: ManifPubliee[], maintenant: Date): Promise<void> {
+  const heures = new Map<number, Set<number>>();
+  for (const manif of manifs) {
+    for (const { heure, minutes } of fichiersPublies(manif, maintenant).heures) {
+      const deLHeure = heures.get(heure.getTime()) ?? new Set<number>();
+      for (const m of minutes) deLHeure.add(m.getTime());
+      heures.set(heure.getTime(), deLHeure);
+    }
+  }
+
+  for (const [heure, minutes] of [...heures].sort(([a], [b]) => a - b)) {
+    const chemin = cheminEntreesHeure(new Date(heure));
+    if (await existe(join(dossier, chemin))) continue;
+    const entrees: EntreePubliee[] = [];
+    for (const m of [...minutes].sort((a, b) => a - b)) {
+      const contenu = await readFile(join(dossier, cheminEntreesMinute(new Date(m))), 'utf8');
+      entrees.push(...lireEntreesMinute(JSON.parse(contenu)).entrees);
+    }
+    const fichier: EntreesHeure = { v: VERSION_FORMAT, heure: new Date(heure).toISOString(), entrees };
+    await ecrire(dossier, chemin, fichier);
   }
 }
