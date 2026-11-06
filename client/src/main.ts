@@ -1,6 +1,8 @@
 import * as Phaser from 'phaser';
 import type { FichierEntrees } from '@petit-cortege/shared';
 import { avatarsPropres, jetonDeRetrait, memoriserAvatarPropre, oublierAvatarPropre } from './avatars-propres';
+import { creerPanneauComposition, type PanneauComposition } from './composition/panneau';
+import { pancarteAuHasard, sectionPancarte } from './composition/section-pancarte';
 import type { Cortege } from './cortege/cortege';
 import { EntreeRefusee, rejoindreLeCortege } from './entree';
 import { Publication } from './publication';
@@ -94,7 +96,7 @@ async function afficherManif(id: string): Promise<void> {
     const n = cortege.avatars.length;
     const texte = `${cortege.etat === 'ouverte' ? 'Ouverte' : 'Terminée'} · ${n} ${n > 1 ? 'soutiens' : 'soutien'}`;
     if (texte !== dernierTexte) etatEl.textContent = dernierTexte = texte;
-    const peutRejoindre = cortege.etat === 'ouverte' && propres.length === 0 && !envoiEnCours;
+    const peutRejoindre = cortege.etat === 'ouverte' && propres.length === 0 && !envoiEnCours && !composition;
     if (boutonEl.hidden === peutRejoindre) boutonEl.hidden = !peutRejoindre;
     // Le jeton est effacé à la fin de la manif : le retrait n'est possible que tant qu'elle est ouverte.
     const peutRetirer = cortege.etat === 'ouverte' && propresRetirables.length > 0 && !envoiEnCours;
@@ -104,30 +106,49 @@ async function afficherManif(id: string): Promise<void> {
     }
   };
 
-  boutonEl.addEventListener('click', async () => {
+  // Composition (pancarte ; l'apparence #10 ajoutera sa section) avant d'entrer.
+  let composition: PanneauComposition | null = null;
+  const fermerComposition = () => {
+    composition?.element.remove();
+    composition = null;
+  };
+  const entrer = async (pancarte: number) => {
     envoiEnCours = true;
-    boutonEl.disabled = true;
-    messageEl.textContent = 'Entrée dans le cortège…';
+    composition?.occupe(true);
+    composition?.annoncer('Entrée dans le cortège…');
     try {
       // Jeton de retrait : gardé sur cet appareil, seul son SHA-256 part au serveur (ADR 0001).
       const jeton = nouveauJetonRetrait();
-      // Apparence et pancarte tirées au hasard en attendant la composition (#10, #11).
+      // Apparence tirée au hasard en attendant sa composition (#10).
       const entree = await rejoindreLeCortege({
         manif: id,
         apparence: auHasard(8),
-        pancarte: auHasard(8),
+        pancarte,
         hachageRetrait: await hacherJetonRetrait(jeton),
       });
       memoriserAvatarPropre(entree, donnees.manif.fin, jeton);
       propres = [...propres, entree];
       propresRetirables = [...propresRetirables, entree];
-      messageEl.textContent = '';
+      fermerComposition();
     } catch (erreur) {
-      messageEl.textContent = messageErreurEntree(erreur);
+      composition?.annoncer(messageErreurEntree(erreur));
+      composition?.occupe(false);
     } finally {
       envoiEnCours = false;
-      boutonEl.disabled = false;
     }
+  };
+  boutonEl.addEventListener('click', () => {
+    if (composition) return;
+    messageEl.textContent = '';
+    const pancarte = sectionPancarte(pancarteAuHasard());
+    composition = creerPanneauComposition({
+      sections: [pancarte.section],
+      libelleValider: 'Rejoindre le cortège',
+      surValider: () => void entrer(pancarte.indice()),
+      surAnnuler: fermerComposition,
+    });
+    interfaceEl.append(composition.element);
+    boutonEl.hidden = true;
   });
 
   retirerEl.addEventListener('click', async () => {
