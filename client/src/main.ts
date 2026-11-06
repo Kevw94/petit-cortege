@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import type { EntreesMinute } from '@petit-cortege/shared';
 import type { Cortege } from './cortege/cortege';
 import { Publication } from './publication';
+import { pageLegale, piedDePage } from './pages/pages-legales';
 import { lienManif, lireRoute } from './routage';
 import { SceneCortege, type DonneesScene } from './scene-cortege';
 
@@ -95,6 +96,7 @@ async function naviguer(): Promise<void> {
   const route = lireRoute(window.location.hash);
   try {
     if (route.page === 'manif') await afficherManif(route.id);
+    else if (route.page === 'legale') interfaceEl.innerHTML = pageLegale(route.id);
     else await afficherListe();
   } catch (erreur) {
     interfaceEl.innerHTML = `<section class="carte"><p>Impossible de charger le cortège. Réessaie dans un instant.</p></section>`;
@@ -102,5 +104,6 @@ async function naviguer(): Promise<void> {
   }
 }
 
+document.body.insertAdjacentHTML('beforeend', piedDePage());
 window.addEventListener('hashchange', () => void naviguer());
 void naviguer();
