@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import type { EntreesMinute } from '@petit-cortege/shared';
+import type { FichierEntrees } from '@petit-cortege/shared';
 import { avatarsPropres, memoriserAvatarPropre } from './avatars-propres';
 import { creerPanneauComposition, type PanneauComposition } from './composition/panneau';
 import { pancarteAuHasard, sectionPancarte } from './composition/section-pancarte';
@@ -61,7 +61,7 @@ async function afficherManif(id: string): Promise<void> {
       <a class="retour" href="#/">← Toutes les manifs</a></section>`;
     return;
   }
-  let entrees: EntreesMinute[] = await publication.entreesPour(manif, new Date());
+  let entrees: FichierEntrees[] = await publication.entreesPour(manif, new Date());
 
   interfaceEl.innerHTML = `
     <section class="carte">
