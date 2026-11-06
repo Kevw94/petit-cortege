@@ -86,6 +86,7 @@ export function creerApp(
     if (!requete) return erreur('requete-invalide');
     if (!(await antiTriche.preuve.verifierEtConsommer(requete.preuve))) return erreur('preuve-invalide');
     const resultat = await entrer(options.sql, options.horloge, requete);
+    if (resultat.ok) antiTriche.compterEntreeAcceptee();
     return resultat.ok ? c.json(resultat.reponse, 201) : erreur(resultat.erreur);
   });
 

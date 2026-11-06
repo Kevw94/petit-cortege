@@ -4,3 +4,4 @@ export { creerManif, preRemplirAvatars, type AvatarPreRempli, type ManifACreer }
 export { publier, type DependancesPublication } from './publication';
 export { creerApp, demarrerServeur, type OptionsServeur, type Serveur } from './serveur';
 export { antiTricheDepuisEnv, type OptionsAntiTriche } from './anti-triche';
+export { alerteJournal, alerteWebhook, type Alerte, type AlertePlafondGlobal } from './alerte';

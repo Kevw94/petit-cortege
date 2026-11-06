@@ -1,6 +1,8 @@
 import { execFileSync } from 'node:child_process';
+import { createServer, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { creerManif } from '../src/index';
+import { antiTricheDepuisEnv, creerManif, type AlertePlafondGlobal } from '../src/index';
 import { demarrerBanc, type Banc } from './support';
 
 const PARCOURS = {
@@ -277,6 +279,74 @@ describe("aucune IP n'est écrite (ADR 0001)", () => {
       expect(dump).not.toContain(ip);
       expect(journaux.join('\n')).not.toContain(ip);
     }
+  });
+});
+
+describe("alerte au porteur sur le plafond global d'entrées", () => {
+  let banc: Banc;
+  const alertes: AlertePlafondGlobal[] = [];
+
+  beforeAll(async () => {
+    banc = await demarrerBanc('2026-06-01T09:10:00Z', {
+      plafondGlobal: { entrees: 3, fenetreMs: 60_000 },
+      alerte: { plafondGlobalDepasse: (a) => void alertes.push(a) },
+    });
+    await creerManifParis(banc);
+  });
+  afterAll(async () => {
+    await banc?.arreter();
+  });
+
+  it('une seule alerte quand le plafond est dépassé, sans bloquer les entrées', async () => {
+    const statuts = [];
+    for (let i = 0; i < 3; i++) statuts.push((await banc.entrer(ENTREE)).statut);
+    const avantDepassement = alertes.length;
+    for (let i = 0; i < 3; i++) statuts.push((await banc.entrer(ENTREE)).statut);
+
+    expect(statuts).toEqual([201, 201, 201, 201, 201, 201]);
+    expect(avantDepassement).toBe(0);
+    expect(alertes).toEqual([{ plafond: 3, fenetreMs: 60_000 }]);
+  });
+});
+
+describe('alerte par webhook configurée par variable d’environnement', () => {
+  let banc: Banc;
+  let recepteur: Server;
+  const recus: unknown[] = [];
+
+  beforeAll(async () => {
+    recepteur = createServer((req, res) => {
+      let corps = '';
+      req.on('data', (morceau: Buffer) => (corps += morceau.toString()));
+      req.on('end', () => {
+        recus.push(JSON.parse(corps));
+        res.end();
+      });
+    });
+    await new Promise<void>((r) => recepteur.listen(0, '127.0.0.1', r));
+    const { port } = recepteur.address() as AddressInfo;
+    const { alerte, plafondGlobal } = antiTricheDepuisEnv({
+      ALTCHA_CLE_HMAC: 'cle',
+      PLAFOND_ENTREES_GLOBAL: '1',
+      ALERTE_WEBHOOK_URL: `http://127.0.0.1:${port}/alerte`,
+    });
+    banc = await demarrerBanc('2026-06-01T09:10:00Z', { ...(alerte && { alerte }), ...(plafondGlobal && { plafondGlobal }) });
+    await creerManifParis(banc);
+  });
+  afterAll(async () => {
+    await banc?.arreter();
+    await new Promise((r) => recepteur?.close(r));
+    vi.restoreAllMocks();
+  });
+
+  it('le webhook reçoit un message lisible, sans IP ni manif', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await banc.entrer(ENTREE, { 'X-Forwarded-For': '203.0.113.5' });
+    await banc.entrer(ENTREE, { 'X-Forwarded-For': '203.0.113.5' });
+    await vi.waitFor(() => expect(recus).toHaveLength(1));
+
+    expect(recus[0]).toMatchObject({ plafond: 1, fenetreMs: 60_000, text: expect.stringContaining('plafond') });
+    expect(JSON.stringify(recus[0])).not.toMatch(/203\.0\.113\.5|127\.0\.0\.1|manif-paris/);
   });
 });
 
