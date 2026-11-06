@@ -3,7 +3,7 @@
  * Manif + entrées publiées + heure courante → état de la manif et position de
  * chaque avatar le long du parcours. Tous les clients calculent la même foule.
  */
-import { VITESSE_M_PAR_MS, type EntreePubliee, type EntreesMinute, type ManifPubliee } from '@petit-cortege/shared';
+import { VITESSE_M_PAR_MS, type EntreePubliee, type FichierEntrees, type ManifPubliee } from '@petit-cortege/shared';
 import { hacherIdentifiant } from './hachage';
 
 export type EtatManif = 'ouverte' | 'terminee';
@@ -35,13 +35,18 @@ export interface Cortege {
 
 export interface EntreesDuCortege {
   manif: ManifPubliee;
-  /** Fichiers d'entrées publiés (toutes manifs confondues). */
-  entrees: EntreesMinute[];
+  /** Fichiers d'entrées publiés, par minute ou par heure (toutes manifs confondues). */
+  entrees: FichierEntrees[];
   /**
    * Avatars du soutien sur cet appareil (réponses à ses entrées), affichés tout
    * de suite sans attendre la publication, même avant leur heure d'entrée tirée.
    */
   propres?: EntreePubliee[];
+  /**
+   * Identifiants des avatars retirés (fichier des retraits, par le soutien ou par
+   * modération), appliqués par-dessus les fichiers d'entrées immuables.
+   */
+  retraits?: readonly string[];
   maintenant: Date;
 }
 
@@ -52,14 +57,14 @@ interface Marcheur {
   pancarte: number;
 }
 
-export function calculerCortege({ manif, entrees, propres = [], maintenant }: EntreesDuCortege): Cortege {
+export function calculerCortege({ manif, entrees, propres = [], retraits = [], maintenant }: EntreesDuCortege): Cortege {
   const depart = Date.parse(manif.depart);
   const t = maintenant.getTime();
   const idsPropres = new Set(propres.filter((e) => e.m === manif.id).map((e) => e.a));
 
   // Regroupe par instant de début de marche : un groupe marche à la même distance.
   const groupes = new Map<number, Marcheur[]>();
-  const vus = new Set<string>();
+  const vus = new Set<string>(retraits); // un avatar retiré est ignoré comme un doublon
   const ajouter = (e: EntreePubliee) => {
     if (e.m !== manif.id || vus.has(e.a)) return;
     if (e.t * 1000 > t && !idsPropres.has(e.a)) return; // pas encore entré

@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { lireEntreesMinute, lireListeManifs, type EntreesMinute, type ManifPubliee } from '@petit-cortege/shared';
+import { lireEntreesMinute, lireListeManifs, lireRetraits, type EntreesMinute, type ManifPubliee } from '@petit-cortege/shared';
 import { calculerCortege } from './cortege';
 
 // Fichiers publiés par les tests du serveur (server/test/publication.test.ts).
@@ -10,6 +10,7 @@ const FIXTURES = join(import.meta.dirname, '../../../fixtures/publication/manif-
 function chargerFixtures(): { manif: ManifPubliee; entrees: EntreesMinute[] } {
   const liste = lireListeManifs(JSON.parse(readFileSync(join(FIXTURES, 'manifs.json'), 'utf8')));
   const entrees = readdirSync(join(FIXTURES, 'entrees'))
+    .filter((f) => /T\d\d-\d\d\.json$/.test(f)) // fichiers par minute (sans les fichiers horaires)
     .sort()
     .map((f) => lireEntreesMinute(JSON.parse(readFileSync(join(FIXTURES, 'entrees', f), 'utf8'))));
   const manif = liste.manifs.find((m) => m.id === 'manif-a');
@@ -188,5 +189,44 @@ describe('Cortège : avatars propres au soutien', () => {
     const cortege = calculerCortege({ manif, entrees, propres: [ailleurs], maintenant: avant });
 
     expect(cortege.avatars.map((a) => a.id)).not.toContain('av-moi-lyon');
+  });
+});
+
+describe('Cortège : retraits', () => {
+  // Fichiers publiés par les tests du serveur (server/test/retrait.test.ts) : av-reste,
+  // av-retire (retiré par le soutien) et av-modere (supprimé par modération).
+  const DOSSIER = join(import.meta.dirname, '../../../fixtures/publication/avec-retraits');
+  const lireJson = (chemin: string): unknown => JSON.parse(readFileSync(join(DOSSIER, chemin), 'utf8'));
+  const manifA = lireListeManifs(lireJson('manifs.json')).manifs.find((m) => m.id === 'manif-a')!;
+  const entreesA = readdirSync(join(DOSSIER, 'entrees'))
+    .sort()
+    .map((f) => lireEntreesMinute(lireJson(join('entrees', f))));
+  const { retraits } = lireRetraits(lireJson('retraits.json'));
+  const maintenant = new Date('2026-05-01T14:05:00Z');
+
+  it('les avatars retirés disparaissent du cortège, les autres restent', () => {
+    const cortege = calculerCortege({ manif: manifA, entrees: entreesA, retraits, maintenant });
+
+    expect(cortege.avatars.map((a) => a.id)).toEqual(['av-reste']);
+  });
+
+  it('sans retraits, tout le monde est là', () => {
+    const cortege = calculerCortege({ manif: manifA, entrees: entreesA, maintenant });
+
+    expect(cortege.avatars.map((a) => a.id).sort()).toEqual(['av-modere', 'av-reste', 'av-retire']);
+  });
+
+  it('son propre avatar retiré disparaît aussi, même avant publication', () => {
+    const propre = { a: 'av-moi', m: 'manif-a', t: Date.parse('2026-05-01T14:04:10Z') / 1000, ap: 0, pa: 0 };
+
+    const cortege = calculerCortege({
+      manif: manifA,
+      entrees: entreesA,
+      propres: [propre],
+      retraits: [...retraits, 'av-moi'],
+      maintenant,
+    });
+
+    expect(cortege.avatars.map((a) => a.id)).toEqual(['av-reste']);
   });
 });

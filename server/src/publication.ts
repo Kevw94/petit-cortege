@@ -1,20 +1,26 @@
-import { access, mkdir, rename, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import {
   CHEMIN_LISTE_MANIFS,
+  CHEMIN_RETRAITS,
   VERSION_FORMAT,
   MINUTE_MS,
   calculerFin,
+  cheminEntreesHeure,
   cheminEntreesMinute,
   debutDeMinute,
+  fichiersPublies,
+  lireEntreesMinute,
   longueurParcours,
   minutesPubliees,
   type EntreePubliee,
+  type EntreesHeure,
   type EntreesMinute,
   type ListeManifs,
   type ManifPubliee,
   type Parcours,
+  type Retraits,
   type Source,
 } from '@petit-cortege/shared';
 import type postgres from 'postgres';
@@ -59,7 +65,9 @@ const existe = (chemin: string) =>
  * Tâche de publication, idempotente :
  * - écrit le fichier de chaque minute écoulée pas encore publiée (toutes manifs
  *   confondues, immuable, y compris vide pour que le client n'attende pas) ;
- * - réécrit la liste des manifs, avec le compteur des entrées publiées.
+ * - compacte chaque heure terminée en un fichier horaire (immuable) ;
+ * - réécrit la liste des manifs, avec le compteur des entrées publiées ;
+ * - réécrit le fichier des retraits.
  */
 export async function publier({ sql, horloge, dossierPublication }: DependancesPublication): Promise<void> {
   // Exclusif avec les entrées en cours (voir verrou.ts) ; l'horloge est lue une fois le verrou obtenu.
@@ -76,7 +84,8 @@ async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublic
     from manif where ouverture <= ${maintenant} order by depart, id`;
   const compteurs = await sql<{ manif_id: string; n: number }[]>`
     select manif_id, count(*)::int as n from avatar
-    where entree < ${minuteEnCours} group by manif_id`;
+    where entree < ${minuteEnCours} and not exists (select 1 from retrait where avatar_id = avatar.id)
+    group by manif_id`;
   const compteurParManif = new Map(compteurs.map((c) => [c.manif_id, c.n]));
 
   const manifs: ManifPubliee[] = lignes.map((l) => {
@@ -96,9 +105,24 @@ async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublic
   });
 
   await publierMinutes(sql, dossierPublication, manifs, maintenant);
+  await compacterHeures(dossierPublication, manifs, maintenant);
 
   const liste: ListeManifs = { v: VERSION_FORMAT, generee: maintenant.toISOString(), manifs };
   await ecrire(dossierPublication, CHEMIN_LISTE_MANIFS, liste);
+
+  await publierRetraits(sql, dossierPublication, maintenant);
+}
+
+/** Retraits des avatars des manifs publiées (mêmes manifs que la liste). */
+async function publierRetraits(sql: Requeteur, dossier: string, maintenant: Date): Promise<void> {
+  const lignes = await sql<{ id: string }[]>`
+    select r.avatar_id as id from retrait r
+    join avatar a on a.id = r.avatar_id
+    join manif m on m.id = a.manif_id
+    where m.ouverture <= ${maintenant}
+    order by r.avatar_id collate "C"`;
+  const retraits: Retraits = { v: VERSION_FORMAT, generee: maintenant.toISOString(), retraits: lignes.map((l) => l.id) };
+  await ecrire(dossier, CHEMIN_RETRAITS, retraits);
 }
 
 async function publierMinutes(sql: Requeteur, dossier: string, manifs: ManifPubliee[], maintenant: Date): Promise<void> {
@@ -131,5 +155,34 @@ async function publierMinutes(sql: Requeteur, dossier: string, manifs: ManifPubl
       entrees: parMinute.get(m) ?? [],
     };
     await ecrire(dossier, cheminEntreesMinute(new Date(m)), fichier);
+  }
+}
+
+/**
+ * Écrit le fichier de chaque heure terminée pas encore compactée : la
+ * concaténation, dans l'ordre, des fichiers par minute publiés de cette heure.
+ * Construit depuis les fichiers déjà publiés (et non depuis la base), il
+ * contient exactement les mêmes entrées : le client voit la même foule.
+ */
+async function compacterHeures(dossier: string, manifs: ManifPubliee[], maintenant: Date): Promise<void> {
+  const heures = new Map<number, Set<number>>();
+  for (const manif of manifs) {
+    for (const { heure, minutes } of fichiersPublies(manif, maintenant).heures) {
+      const deLHeure = heures.get(heure.getTime()) ?? new Set<number>();
+      for (const m of minutes) deLHeure.add(m.getTime());
+      heures.set(heure.getTime(), deLHeure);
+    }
+  }
+
+  for (const [heure, minutes] of [...heures].sort(([a], [b]) => a - b)) {
+    const chemin = cheminEntreesHeure(new Date(heure));
+    if (await existe(join(dossier, chemin))) continue;
+    const entrees: EntreePubliee[] = [];
+    for (const m of [...minutes].sort((a, b) => a - b)) {
+      const contenu = await readFile(join(dossier, cheminEntreesMinute(new Date(m))), 'utf8');
+      entrees.push(...lireEntreesMinute(JSON.parse(contenu)).entrees);
+    }
+    const fichier: EntreesHeure = { v: VERSION_FORMAT, heure: new Date(heure).toISOString(), entrees };
+    await ecrire(dossier, chemin, fichier);
   }
 }
