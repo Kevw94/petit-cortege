@@ -40,7 +40,7 @@ _À éviter_ : participant, joueur, utilisateur, manifestant
 Le personnage d'un soutien dans un cortège, sans aucun lien avec l'identité du soutien.
 
 **Apparence** :
-L'allure d'un avatar, composée à partir d'un catalogue d'éléments neutres (teint, cheveux, haut, accessoire, dont fauteuil roulant, poussette, canne).
+L'allure d'un avatar, composée à partir d'un catalogue d'éléments neutres (teint, cheveux, vêtements, accessoire, dont fauteuil roulant, poussette, canne).
 
 ## Expression
 
@@ -48,7 +48,7 @@ L'allure d'un avatar, composée à partir d'un catalogue d'éléments neutres (t
 Message prédéfini, issu d'un catalogue, qu'un avatar peut scander ou porter.
 
 **Pancarte** :
-Ce que porte un avatar : un slogan du catalogue, mis en forme (couleur, forme, picto du catalogue). Rien n'y est importé par le soutien.
+Ce que porte un avatar : un slogan du catalogue, mis en forme (couleur, forme). Rien n'y est importé par le soutien.
 
 **Réaction** :
 Geste prédéfini d'un avatar (✊ ❤️ 👏 📣).
