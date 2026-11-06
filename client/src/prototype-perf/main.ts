@@ -39,6 +39,7 @@ declare global {
 const parametres = lireParametres(window.location.search);
 const scenario = scenarioPerf(parametres.n);
 const mesures: MesuresScene = { msMiseAJour: 0, images: 0, dessines: 0 };
+const collectesCpu = new Set<number[]>();
 const affichage = document.querySelector<HTMLDivElement>('#mesures')!;
 
 const tasMo = () => {
@@ -58,7 +59,9 @@ function mesurer(dureeMs: number): Promise<ResultatMesure> {
   return new Promise((resoudre) => {
     const durees: number[] = [];
     const depart = { images: mesures.images, ms: mesures.msMiseAJour };
-    coutsCpu.length = 0;
+    // Chaque mesure a sa propre collecte : l'affichage à l'écran mesure en parallèle du script.
+    const coutsCpu: number[] = [];
+    collectesCpu.add(coutsCpu);
     let precedent = performance.now();
     const debut = precedent;
     const image = (t: number) => {
@@ -69,7 +72,8 @@ function mesurer(dureeMs: number): Promise<ResultatMesure> {
         return;
       }
       const tri = [...durees].sort((a, b) => a - b);
-      const cpu = [...coutsCpu].sort((a, b) => a - b);
+      collectesCpu.delete(coutsCpu);
+      const cpu = coutsCpu.sort((a, b) => a - b);
       const images = mesures.images - depart.images;
       resoudre({
         parametres,
@@ -119,7 +123,9 @@ const jeu = new Phaser.Game({
 jeu.scene.add('perf', ScenePerf, true, donnees);
 
 // Coût du fil principal par pas de jeu : du début de la mise à jour à la fin de l'envoi du rendu.
-const coutsCpu: number[] = [];
 let debutPas = 0;
 jeu.events.on(Phaser.Core.Events.PRE_STEP, () => (debutPas = performance.now()));
-jeu.events.on(Phaser.Core.Events.POST_RENDER, () => coutsCpu.push(performance.now() - debutPas));
+jeu.events.on(Phaser.Core.Events.POST_RENDER, () => {
+  const cout = performance.now() - debutPas;
+  for (const collecte of collectesCpu) collecte.push(cout);
+});
