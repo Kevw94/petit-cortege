@@ -17,7 +17,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "build": "npm run build --workspace=@petit-cortege/client"
+    "build": "npm run build --workspace=@petit-cortege/client",
+    "mesure-perf": "npm run mesure-perf --workspace=@petit-cortege/scripts --"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
