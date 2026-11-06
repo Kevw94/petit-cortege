@@ -39,9 +39,11 @@ export async function entrer(sql: Sql, horloge: Horloge, requete: RequeteEntree)
 
     const id = nouvelIdentifiant();
     const entree = new Date(debutDeMinute(maintenant).getTime() + randomInt(MINUTE_MS / 1000) * 1000);
+    // Seul le hachage du jeton de retrait est stocké, jamais le jeton (ADR 0001).
+    const hachageRetrait = requete.hachageRetrait ? Buffer.from(requete.hachageRetrait, 'hex') : null;
     await tx`
-      insert into avatar (id, manif_id, entree, apparence, pancarte)
-      values (${id}, ${requete.manif}, ${entree}, ${requete.apparence}, ${requete.pancarte})`;
+      insert into avatar (id, manif_id, entree, apparence, pancarte, hachage_retrait)
+      values (${id}, ${requete.manif}, ${entree}, ${requete.apparence}, ${requete.pancarte}, ${hachageRetrait})`;
     return { ok: true, reponse: { avatar: id, entree: entree.getTime() / 1000 } } as const;
   });
 }

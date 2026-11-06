@@ -18,6 +18,8 @@ export interface DonneesScene {
   entrees: () => EntreesMinute[];
   /** Avatars du soutien sur cet appareil (affichés tout de suite, mis en valeur). */
   propres: () => EntreePubliee[];
+  /** Identifiants des avatars retirés (fichier des retraits, cache court). */
+  retraits: () => readonly string[];
   /** Appelé à chaque image avec le cortège calculé (pour l'interface HTML). */
   surCortege: (cortege: Cortege) => void;
 }
@@ -67,6 +69,7 @@ export class SceneCortege extends Phaser.Scene {
       manif: this.#donnees.manif,
       entrees: this.#donnees.entrees(),
       propres: this.#donnees.propres(),
+      retraits: this.#donnees.retraits(),
       maintenant: new Date(),
     });
     this.#avatars.clear();
