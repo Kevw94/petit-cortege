@@ -1,3 +1,4 @@
+import { mkdir } from 'node:fs/promises';
 import type { AddressInfo } from 'node:net';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
@@ -42,6 +43,7 @@ export function creerApp(options: Pick<OptionsServeur, 'dossierPublication' | 's
 
 export async function demarrerServeur(options: OptionsServeur): Promise<Serveur> {
   await migrer(options.sql);
+  await mkdir(options.dossierPublication, { recursive: true });
   const app = creerApp(options);
   const http = await new Promise<ReturnType<typeof serve>>((resolve) => {
     const s = serve({ fetch: app.fetch, port: options.port, hostname: '127.0.0.1' }, () => resolve(s));
