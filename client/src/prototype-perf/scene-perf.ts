@@ -13,13 +13,11 @@
  */
 import * as Phaser from 'phaser';
 import feuillePersonnages from '../../../assets/kenney/chars/Spritesheet/roguelikeChar_transparent.png?url';
-import { calculerCortege } from '../cortege/cortege';
+import { calculerCortege, COLONNES_FOULE, PAS_FOULE_M } from '../cortege/cortege';
 import type { ParametresPerf } from './parametres';
 import { creerPlacement, PX_PAR_M, type Placer } from './placement';
 import type { ScenarioPerf } from './scenario';
 
-/** Largeur de rue sur laquelle s'étale le cortège : 20 m = 10 tuiles. */
-const LARGEUR_RUE_M = 20;
 const NB_APPARENCES = 64;
 const TAILLE = 16;
 const COLONNES_FEUILLE = 54;
@@ -68,7 +66,7 @@ export class ScenePerf extends Phaser.Scene {
   create(): void {
     this.#composerApparences();
     const { parametres, scenario } = this.#donnees;
-    this.#placer = creerPlacement(scenario.manif.parcours, { largeurRueM: LARGEUR_RUE_M });
+    this.#placer = creerPlacement(scenario.manif.parcours);
     this.#cadrer();
     this.scale.on(Phaser.Scale.Events.RESIZE, () => this.#cadrer());
 
@@ -111,7 +109,7 @@ export class ScenePerf extends Phaser.Scene {
       const pas = couche.nextMemberF32.length;
       for (let i = 0; i < avatars.length; i++) {
         const a = avatars[i]!;
-        const p = this.#placer(a.distanceM, a.id);
+        const p = this.#placer(a.distanceM, a.decalageM);
         // x et y sont les premières valeurs animables du membre : [base, amplitude, ease, durée].
         const x = p.x * s + this.#dx;
         const y = p.y * s + this.#dy - TAILLE / 2;
@@ -130,7 +128,7 @@ export class ScenePerf extends Phaser.Scene {
           objet.visible = false;
           continue;
         }
-        const p = this.#placer(a.distanceM, a.id);
+        const p = this.#placer(a.distanceM, a.decalageM);
         const x = p.x * s + ox;
         const y = p.y * s + oy;
         const visible = x > -TAILLE && y > -TAILLE && x < width && y < height;
@@ -182,7 +180,7 @@ export class ScenePerf extends Phaser.Scene {
     const { width, height } = this.scale.gameSize;
     const { parametres, scenario } = this.#donnees;
     if (parametres.vue === 'rue') {
-      const centre = this.#placer(2000, 'centre');
+      const centre = this.#placer(2000, 0);
       this.#echelle = 1;
       this.#dx = width / 2 - centre.x;
       this.#dy = height / 2 - centre.y;
@@ -190,9 +188,9 @@ export class ScenePerf extends Phaser.Scene {
     }
     const pas = 50;
     const points = Array.from({ length: Math.ceil(scenario.manif.longueurM / pas) + 1 }, (_, i) =>
-      this.#placer(i * pas, 'cadrage'),
+      this.#placer(i * pas, 0),
     );
-    const marge = 32 + (LARGEUR_RUE_M * PX_PAR_M) / 2;
+    const marge = 32 + COLONNES_FOULE * PAS_FOULE_M * PX_PAR_M;
     const xs = points.map((p) => p.x);
     const ys = points.map((p) => p.y);
     const [minX, maxX, minY, maxY] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
