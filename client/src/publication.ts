@@ -4,6 +4,7 @@
  */
 import {
   CHEMIN_LISTE_MANIFS,
+  CHEMIN_RETRAITS,
   PREFIXE_PUBLICATION,
   cheminEntreesHeure,
   cheminEntreesMinute,
@@ -11,6 +12,7 @@ import {
   lireEntreesHeure,
   lireEntreesMinute,
   lireListeManifs,
+  lireRetraits,
   type FichierEntrees,
   type ListeManifs,
   type ManifPubliee,
@@ -35,6 +37,17 @@ export class Publication {
     const reponse = await fetch(this.base + CHEMIN_LISTE_MANIFS, { cache: 'no-cache' });
     if (!reponse.ok) throw new Error(`Liste des manifs indisponible (${reponse.status})`);
     return lireListeManifs(await reponse.json());
+  }
+
+  /**
+   * Identifiants des avatars retirés (cache court), à appliquer par-dessus les
+   * entrées. Pas encore publié (404) : aucun retrait.
+   */
+  async retraits(): Promise<string[]> {
+    const reponse = await fetch(this.base + CHEMIN_RETRAITS, { cache: 'no-cache' });
+    if (reponse.status === 404) return [];
+    if (!reponse.ok) throw new Error(`Retraits indisponibles (${reponse.status})`);
+    return lireRetraits(await reponse.json()).retraits;
   }
 
   /**

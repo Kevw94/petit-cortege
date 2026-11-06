@@ -5,6 +5,14 @@ export default defineConfig({
     projects: [
       {
         test: {
+          name: 'shared',
+          root: './shared',
+          include: ['src/**/*.test.ts'],
+          environment: 'node',
+        },
+      },
+      {
+        test: {
           name: 'server',
           root: './server',
           include: ['test/**/*.test.ts'],

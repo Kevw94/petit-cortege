@@ -7,6 +7,7 @@ import { randomBytes } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { connecter, creerManif, migrer, preRemplirAvatars, type AvatarPreRempli, type Sql } from '@petit-cortege/server';
+import { COULEURS_PANCARTE, encoderPancarte, FORMES_PANCARTE, SLOGANS } from '@petit-cortege/shared';
 import { assurerBase, DOSSIER_PUBLICATION_DEV, URL_BASE_DEV } from './config';
 
 export const ID_MANIF_DEMO = 'demo-republique-nation';
@@ -14,6 +15,13 @@ export const ID_MANIF_DEMO = 'demo-republique-nation';
 const MINUTE = 60_000;
 const identifiant = () => randomBytes(9).toString('base64url');
 const auHasard = (n: number) => Math.floor(Math.random() * n);
+/** Une pancarte quelconque du catalogue, pour une foule variée. */
+const pancarteAuHasard = () =>
+  encoderPancarte({
+    slogan: auHasard(SLOGANS.length),
+    couleur: auHasard(COULEURS_PANCARTE.length),
+    forme: auHasard(FORMES_PANCARTE.length),
+  });
 
 export async function semerManifDemo(sql: Sql, dossierPublication: string): Promise<void> {
   const maintenant = Date.now();
@@ -52,7 +60,7 @@ export async function semerManifDemo(sql: Sql, dossierPublication: string): Prom
 }
 
 function avatar(entree: number): AvatarPreRempli {
-  return { id: identifiant(), manifId: ID_MANIF_DEMO, entree: new Date(entree), apparence: auHasard(8), pancarte: auHasard(8) };
+  return { id: identifiant(), manifId: ID_MANIF_DEMO, entree: new Date(entree), apparence: auHasard(8), pancarte: pancarteAuHasard() };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

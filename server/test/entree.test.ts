@@ -134,6 +134,9 @@ describe('rejoindre le cortège', () => {
     ['manif absente', { apparence: 0, pancarte: 0 }],
     ['indice négatif', { manif: 'manif-paris', apparence: -1, pancarte: 0 }],
     ['indice non entier', { manif: 'manif-paris', apparence: 1.5, pancarte: 0 }],
+    // Couleur 15 : hors du catalogue des pancartes (shared/src/catalogues/pancartes.ts).
+    ['pancarte hors catalogue', { manif: 'manif-paris', apparence: 0, pancarte: 15 }],
+    ['pancarte au slogan inexistant', { manif: 'manif-paris', apparence: 0, pancarte: 255 << 6 }],
     ['corps trop gros', { manif: 'manif-paris', apparence: 0, pancarte: 0, bourrage: 'x'.repeat(20_000) }],
   ])('entrée refusée si la requête est invalide : %s', async (_cas, corps) => {
     banc.horloge.regler('2026-06-01T09:45:00Z');
