@@ -20,6 +20,37 @@ export function longueurParcours(parcours: Parcours): number {
   return total;
 }
 
+/**
+ * Position d'un avatar du cortège : point du parcours à `distance` mètres du
+ * départ, décalé de `decalage` mètres perpendiculairement au tronçon (positif à
+ * gauche du sens de marche). Une distance négative prolonge le premier tronçon
+ * vers l'arrière (rangées qui attendent derrière la ligne de départ).
+ */
+export function positionDansLeCortege(parcours: Parcours, distance: number, decalage: number): Position {
+  const points = parcours.coordinates;
+  if (points.length < 2) return pointSurParcours(parcours, distance);
+  let restant = distance;
+  let i = 1;
+  for (; i < points.length - 1; i++) {
+    const troncon = distanceM(points[i - 1]!, points[i]!);
+    if (restant <= troncon) break;
+    restant -= troncon;
+  }
+  const a = points[i - 1]!;
+  const b = points[i]!;
+  // Mètres par degré autour du tronçon (projection locale, suffisante à l'échelle d'une rue).
+  const kx = 111_320 * Math.cos(rad(a[1]));
+  const ky = 110_540;
+  const ex = (b[0] - a[0]) * kx;
+  const ey = (b[1] - a[1]) * ky;
+  const longueur = Math.hypot(ex, ey);
+  const troncon = distanceM(a, b);
+  if (longueur === 0 || troncon === 0) return a;
+  const f = Math.min(restant, troncon) / troncon;
+  const [ux, uy] = [ex / longueur, ey / longueur];
+  return [a[0] + (b[0] - a[0]) * f + (-uy * decalage) / kx, a[1] + (b[1] - a[1]) * f + (ux * decalage) / ky];
+}
+
 /** Point du parcours situé à `distance` mètres du départ (plafonné aux extrémités). */
 export function pointSurParcours(parcours: Parcours, distance: number): Position {
   const points = parcours.coordinates;

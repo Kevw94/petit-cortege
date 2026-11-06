@@ -17,8 +17,10 @@ import {
   type Parcours,
   type Source,
 } from '@petit-cortege/shared';
+import type postgres from 'postgres';
 import type { Sql } from './base';
 import type { Horloge } from './horloge';
+import { verrouillerPourPublication } from './verrou';
 
 export interface DependancesPublication {
   sql: Sql;
@@ -34,6 +36,8 @@ async function ecrire(dossier: string, chemin: string, contenu: unknown): Promis
   await writeFile(temporaire, JSON.stringify(contenu));
   await rename(temporaire, destination);
 }
+
+type Requeteur = Sql | postgres.TransactionSql;
 
 interface LigneManif {
   id: string;
@@ -58,7 +62,14 @@ const existe = (chemin: string) =>
  * - réécrit la liste des manifs, avec le compteur des entrées publiées.
  */
 export async function publier({ sql, horloge, dossierPublication }: DependancesPublication): Promise<void> {
-  const maintenant = horloge.maintenant();
+  // Exclusif avec les entrées en cours (voir verrou.ts) ; l'horloge est lue une fois le verrou obtenu.
+  await sql.begin(async (tx) => {
+    await verrouillerPourPublication(tx);
+    await publierSousVerrou(tx, horloge.maintenant(), dossierPublication);
+  });
+}
+
+async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublication: string): Promise<void> {
   const minuteEnCours = debutDeMinute(maintenant);
   const lignes = await sql<LigneManif[]>`
     select id, intitule, ville, ouverture, depart, parcours, sources
@@ -90,7 +101,7 @@ export async function publier({ sql, horloge, dossierPublication }: DependancesP
   await ecrire(dossierPublication, CHEMIN_LISTE_MANIFS, liste);
 }
 
-async function publierMinutes(sql: Sql, dossier: string, manifs: ManifPubliee[], maintenant: Date): Promise<void> {
+async function publierMinutes(sql: Requeteur, dossier: string, manifs: ManifPubliee[], maintenant: Date): Promise<void> {
   const attendues = new Set<number>();
   for (const manif of manifs) for (const m of minutesPubliees(manif, maintenant)) attendues.add(m.getTime());
 

@@ -3,8 +3,10 @@ import type { AddressInfo } from 'node:net';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
-import { PREFIXE_PUBLICATION } from '@petit-cortege/shared';
+import { bodyLimit } from 'hono/body-limit';
+import { CHEMIN_API_ENTREE, lireRequeteEntree, PREFIXE_PUBLICATION, type ReponseErreur } from '@petit-cortege/shared';
 import { migrer, type Sql } from './base';
+import { entrer } from './entree';
 import type { Horloge } from './horloge';
 import { publier } from './publication';
 
@@ -27,8 +29,27 @@ export interface Serveur {
   fermer(): Promise<void>;
 }
 
-export function creerApp(options: Pick<OptionsServeur, 'dossierPublication' | 'servirPublication'>): Hono {
+/** Taille maximale d'un corps POST : large pour la future solution ALTCHA (#8). */
+const TAILLE_MAX_CORPS = 8 * 1024;
+
+const STATUT_ERREUR = { 'requete-invalide': 400, 'manif-inconnue': 404, 'manif-terminee': 409 } as const;
+
+export function creerApp(
+  options: Pick<OptionsServeur, 'sql' | 'horloge' | 'dossierPublication' | 'servirPublication'>,
+): Hono {
   const app = new Hono();
+  const erreur = (code: ReponseErreur['erreur']) => Response.json({ erreur: code }, { status: STATUT_ERREUR[code] });
+
+  app.use('/api/*', bodyLimit({ maxSize: TAILLE_MAX_CORPS, onError: () => erreur('requete-invalide') }));
+
+  // Entrée dans un cortège : identifiant de manif dans le corps, jamais dans l'URL (ADR 0002).
+  app.post(CHEMIN_API_ENTREE, async (c) => {
+    const requete = lireRequeteEntree(await c.req.json().catch(() => null));
+    if (!requete) return erreur('requete-invalide');
+    const resultat = await entrer(options.sql, options.horloge, requete);
+    return resultat.ok ? c.json(resultat.reponse, 201) : erreur(resultat.erreur);
+  });
+
   if (options.servirPublication ?? true) {
     app.use(
       `${PREFIXE_PUBLICATION}*`,
