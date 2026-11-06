@@ -63,7 +63,7 @@ export function creerApp(
    * jamais écrite, jamais journalisée (ADR 0001).
    */
   const limiter = (limiteur: Limiteur) => async (c: Context, suite: () => Promise<void>) => {
-    const ip = getConnInfo(c).remote.address ?? '';
+    const ip = antiTriche.lireIp(getConnInfo(c).remote.address, (nom) => c.req.header(nom));
     const attente = limiteur.compter(ip);
     if (attente === null) return suite();
     const reponse = erreur('trop-de-requetes');

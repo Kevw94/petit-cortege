@@ -3,6 +3,7 @@
  * et sans jamais écrire d'IP.
  */
 import { randomBytes } from 'node:crypto';
+import { creerLecteurIp, type LireIpClient } from './ip-client';
 import { creerLimiteur, type Limite, type Limiteur } from './limite-debit';
 import {
   creerPreuveTravail,
@@ -23,12 +24,20 @@ export interface OptionsAntiTriche {
    * (box familiale, réseau d'entreprise, CGNAT mobile). La route de défi a droit au double.
    */
   limiteParIp?: Limite;
+  /**
+   * En-tête où le CDN transmet la vraie IP (ex. `CDN-RequestClientIP` chez Bunny).
+   * Défaut : `X-Forwarded-For`. Lu seulement si la connexion vient d'un proxy de confiance.
+   */
+  enteteIp?: string;
+  /** Adresses ou CIDR du CDN. Vide (défaut) : l'en-tête est ignoré, on prend l'adresse de connexion. */
+  proxysDeConfiance?: readonly string[];
 }
 
 export const LIMITE_PAR_IP_PAR_DEFAUT: Limite = { requetes: 60, fenetreMs: 60_000 };
 
 export interface AntiTriche {
   preuve: PreuveTravail;
+  lireIp: LireIpClient;
   /** Limites par IP des routes d'entrée et de défi (clé = IP, en mémoire seulement). */
   limiteEntree: Limiteur;
   limiteDefi: Limiteur;
@@ -37,6 +46,10 @@ export interface AntiTriche {
 export function creerAntiTriche(options: OptionsAntiTriche): AntiTriche {
   const limite = options.limiteParIp ?? LIMITE_PAR_IP_PAR_DEFAUT;
   return {
+    lireIp: creerLecteurIp({
+      enteteIp: options.enteteIp ?? 'X-Forwarded-For',
+      proxysDeConfiance: options.proxysDeConfiance ?? [],
+    }),
     limiteEntree: creerLimiteur(limite, Date.now),
     limiteDefi: creerLimiteur({ ...limite, requetes: 2 * limite.requetes }, Date.now),
     preuve: creerPreuveTravail({
