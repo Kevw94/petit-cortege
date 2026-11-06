@@ -75,7 +75,41 @@ export interface EntreesMinute {
   entrees: EntreePubliee[];
 }
 
+/**
+ * Fichier « entrées d'une heure » (immuable) : les fichiers par minute d'une
+ * heure terminée, compactés en un seul, toutes manifs confondues. Mêmes
+ * entrées, dans le même ordre, que les fichiers par minute de cette heure.
+ */
+export interface EntreesHeure {
+  v: typeof VERSION_FORMAT;
+  /** Début de l'heure couverte. */
+  heure: Instant;
+  entrees: EntreePubliee[];
+}
+
+/** Un fichier d'entrées publié, par minute ou par heure : le Cortège lit les deux. */
+export type FichierEntrees = EntreesMinute | EntreesHeure;
+
+/**
+ * Fichier « retraits » (cache court) : identifiants des avatars retirés, par le
+ * soutien ou par modération, toutes manifs publiées confondues. Le client les
+ * applique par-dessus les fichiers d'entrées, qui sont immuables.
+ */
+export interface Retraits {
+  v: typeof VERSION_FORMAT;
+  generee: Instant;
+  /** Identifiants d'avatars, triés. */
+  retraits: string[];
+}
+
 export const CHEMIN_LISTE_MANIFS = 'manifs.json';
+export const CHEMIN_RETRAITS = 'retraits.json';
+
+/**
+ * Durée de cache (s) des fichiers réécrits à chaque publication (liste des
+ * manifs, retraits) : un retrait ou un départ corrigé se propage en moins d'une minute.
+ */
+export const DUREE_CACHE_COURT_S = 30;
 
 const deuxChiffres = (n: number) => String(n).padStart(2, '0');
 
@@ -85,6 +119,15 @@ export function cheminEntreesMinute(minute: Date): string {
   return (
     `entrees/${d.getUTCFullYear()}-${deuxChiffres(d.getUTCMonth() + 1)}-${deuxChiffres(d.getUTCDate())}` +
     `T${deuxChiffres(d.getUTCHours())}-${deuxChiffres(d.getUTCMinutes())}.json`
+  );
+}
+
+/** Chemin daté du fichier des entrées de l'heure qui commence à `heure` (`entrees/AAAA-MM-JJTHH.json`). */
+export function cheminEntreesHeure(heure: Date): string {
+  const d = heure;
+  return (
+    `entrees/${d.getUTCFullYear()}-${deuxChiffres(d.getUTCMonth() + 1)}-${deuxChiffres(d.getUTCDate())}` +
+    `T${deuxChiffres(d.getUTCHours())}.json`
   );
 }
 
@@ -102,4 +145,14 @@ export function lireListeManifs(json: unknown): ListeManifs {
 export function lireEntreesMinute(json: unknown): EntreesMinute {
   verifierVersion(json, 'Entrées par minute');
   return json as EntreesMinute;
+}
+
+export function lireEntreesHeure(json: unknown): EntreesHeure {
+  verifierVersion(json, 'Entrées par heure');
+  return json as EntreesHeure;
+}
+
+export function lireRetraits(json: unknown): Retraits {
+  verifierVersion(json, 'Retraits');
+  return json as Retraits;
 }

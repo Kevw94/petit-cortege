@@ -8,7 +8,12 @@ import { bodyLimit } from 'hono/body-limit';
 import {
   CHEMIN_API_DEFI,
   CHEMIN_API_ENTREE,
+  CHEMIN_API_RETRAIT,
+  CHEMIN_LISTE_MANIFS,
+  CHEMIN_RETRAITS,
+  DUREE_CACHE_COURT_S,
   lireRequeteEntree,
+  lireRequeteRetrait,
   PREFIXE_PUBLICATION,
   type ReponseErreur,
 } from '@petit-cortege/shared';
@@ -18,6 +23,7 @@ import { migrer, type Sql } from './base';
 import { entrer } from './entree';
 import type { Horloge } from './horloge';
 import { publier } from './publication';
+import { retirerParLeSoutien } from './retrait';
 
 export interface OptionsServeur {
   sql: Sql;
@@ -46,6 +52,7 @@ const TAILLE_MAX_CORPS = 8 * 1024;
 const STATUT_ERREUR = {
   'requete-invalide': 400,
   'preuve-invalide': 403,
+  'retrait-refuse': 403,
   'manif-inconnue': 404,
   'manif-terminee': 409,
   'trop-de-requetes': 429,
@@ -90,7 +97,22 @@ export function creerApp(
     return resultat.ok ? c.json(resultat.reponse, 201) : erreur(resultat.erreur);
   });
 
+  // Retrait de son avatar : identifiant de l'avatar et jeton en clair dans le corps.
+  app.post(CHEMIN_API_RETRAIT, async (c) => {
+    const requete = lireRequeteRetrait(await c.req.json().catch(() => null));
+    if (!requete) return erreur('requete-invalide');
+    const resultat = await retirerParLeSoutien(options.sql, requete);
+    return resultat.ok ? c.json(resultat.reponse, 200) : erreur(resultat.erreur);
+  });
+
   if (options.servirPublication ?? true) {
+    // Fichiers réécrits à chaque publication : cache court (en prod, règle équivalente sur le CDN).
+    for (const chemin of [CHEMIN_LISTE_MANIFS, CHEMIN_RETRAITS]) {
+      app.use(`${PREFIXE_PUBLICATION}${chemin}`, async (c, next) => {
+        await next();
+        c.header('Cache-Control', `public, max-age=${DUREE_CACHE_COURT_S}`);
+      });
+    }
     app.use(
       `${PREFIXE_PUBLICATION}*`,
       serveStatic({
