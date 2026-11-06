@@ -172,6 +172,24 @@ button.rejoindre:disabled {
   opacity: 0.6;
 }
 
+/* Action secondaire, discrète mais assez grande pour le doigt. */
+button.retirer {
+  min-height: 44px;
+  padding: 10px 20px;
+  border: 1px solid #999;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.92);
+  color: var(--texte);
+  font: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button.retirer:disabled {
+  opacity: 0.6;
+}
+
 .message:empty {
   display: none;
 }

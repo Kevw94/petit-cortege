@@ -2,9 +2,8 @@
  * API POST du serveur : contrat entre le client et le serveur.
  *
  * L'identifiant de manif voyage dans le corps, jamais dans l'URL (ADR 0002).
- * Les corps sont des objets JSON extensibles : le retrait (#7) ajoutera le
- * hachage du jeton de retrait, l'anti-triche (#8) la solution ALTCHA, sans
- * changer les champs existants.
+ * Les corps sont des objets JSON extensibles : l'anti-triche (#8) ajoutera la
+ * solution ALTCHA sans changer les champs existants.
  */
 
 /** Entrée d'un avatar dans un cortège. */
@@ -17,6 +16,12 @@ export interface RequeteEntree {
   apparence: number;
   /** Indice de pancarte (catalogue partagé). */
   pancarte: number;
+  /**
+   * SHA-256 (hex) du jeton de retrait généré par le client (ADR 0001) : seul ce
+   * hachage est stocké. Facultatif : sans lui, l'avatar ne peut pas être retiré
+   * par le soutien (seulement par modération).
+   */
+  hachageRetrait?: string;
 }
 
 /** Réponse 201 à une entrée acceptée. */
@@ -34,7 +39,7 @@ export type CodeErreurEntree = 'requete-invalide' | 'manif-inconnue' | 'manif-te
 
 /** Corps d'une réponse d'erreur (4xx). */
 export interface ReponseErreur {
-  erreur: CodeErreurEntree;
+  erreur: CodeErreurEntree | CodeErreurRetrait;
 }
 
 /** Plus grand indice d'apparence ou de pancarte accepté (les catalogues #10, #11 resserreront). */
@@ -48,5 +53,46 @@ export function lireRequeteEntree(json: unknown): RequeteEntree | null {
   const { manif, apparence, pancarte } = json as Record<string, unknown>;
   if (typeof manif !== 'string' || manif.length === 0 || manif.length > 200) return null;
   if (!estIndice(apparence) || !estIndice(pancarte)) return null;
-  return { manif, apparence, pancarte };
+  const { hachageRetrait } = json as Record<string, unknown>;
+  if (hachageRetrait === undefined) return { manif, apparence, pancarte };
+  if (typeof hachageRetrait !== 'string' || !HACHAGE_RETRAIT.test(hachageRetrait)) return null;
+  return { manif, apparence, pancarte, hachageRetrait };
+}
+
+/**
+ * Retrait de son avatar par le soutien, depuis l'appareil qui l'a créé :
+ * l'identifiant de l'avatar et le jeton de retrait en clair. Le serveur compare
+ * son SHA-256 au hachage reçu à l'entrée.
+ */
+export const CHEMIN_API_RETRAIT = '/api/retrait';
+
+export interface RequeteRetrait {
+  /** Identifiant de l'avatar (réponse à l'entrée). */
+  avatar: string;
+  /** Jeton de retrait en clair : 128 bits en hexadécimal (32 caractères). */
+  jeton: string;
+}
+
+/** Réponse 200 à un retrait accepté (rejouer un retrait déjà fait est aussi accepté). */
+export interface ReponseRetrait {
+  avatar: string;
+}
+
+/**
+ * `retrait-refuse` couvre sans les distinguer le mauvais jeton, l'avatar
+ * inconnu et le hachage déjà effacé (1 h après la fin) : la réponse ne dit
+ * rien de l'existence d'un avatar.
+ */
+export type CodeErreurRetrait = 'requete-invalide' | 'retrait-refuse';
+
+const JETON_RETRAIT = /^[0-9a-f]{32}$/;
+const HACHAGE_RETRAIT = /^[0-9a-f]{64}$/;
+
+/** Valide un corps de retrait reçu ; `null` s'il est invalide. Les champs inconnus sont ignorés. */
+export function lireRequeteRetrait(json: unknown): RequeteRetrait | null {
+  if (typeof json !== 'object' || json === null) return null;
+  const { avatar, jeton } = json as Record<string, unknown>;
+  if (typeof avatar !== 'string' || avatar.length === 0 || avatar.length > 200) return null;
+  if (typeof jeton !== 'string' || !JETON_RETRAIT.test(jeton)) return null;
+  return { avatar, jeton };
 }

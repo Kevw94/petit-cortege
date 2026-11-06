@@ -75,7 +75,26 @@ export interface EntreesMinute {
   entrees: EntreePubliee[];
 }
 
+/**
+ * Fichier « retraits » (cache court) : identifiants des avatars retirés, par le
+ * soutien ou par modération, toutes manifs publiées confondues. Le client les
+ * applique par-dessus les fichiers d'entrées, qui sont immuables.
+ */
+export interface Retraits {
+  v: typeof VERSION_FORMAT;
+  generee: Instant;
+  /** Identifiants d'avatars, triés. */
+  retraits: string[];
+}
+
 export const CHEMIN_LISTE_MANIFS = 'manifs.json';
+export const CHEMIN_RETRAITS = 'retraits.json';
+
+/**
+ * Durée de cache (s) des fichiers réécrits à chaque publication (liste des
+ * manifs, retraits) : un retrait ou un départ corrigé se propage en moins d'une minute.
+ */
+export const DUREE_CACHE_COURT_S = 30;
 
 const deuxChiffres = (n: number) => String(n).padStart(2, '0');
 
@@ -102,4 +121,9 @@ export function lireListeManifs(json: unknown): ListeManifs {
 export function lireEntreesMinute(json: unknown): EntreesMinute {
   verifierVersion(json, 'Entrées par minute');
   return json as EntreesMinute;
+}
+
+export function lireRetraits(json: unknown): Retraits {
+  verifierVersion(json, 'Retraits');
+  return json as Retraits;
 }

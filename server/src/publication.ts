@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import {
   CHEMIN_LISTE_MANIFS,
+  CHEMIN_RETRAITS,
   VERSION_FORMAT,
   MINUTE_MS,
   calculerFin,
@@ -15,6 +16,7 @@ import {
   type ListeManifs,
   type ManifPubliee,
   type Parcours,
+  type Retraits,
   type Source,
 } from '@petit-cortege/shared';
 import type postgres from 'postgres';
@@ -59,7 +61,8 @@ const existe = (chemin: string) =>
  * Tâche de publication, idempotente :
  * - écrit le fichier de chaque minute écoulée pas encore publiée (toutes manifs
  *   confondues, immuable, y compris vide pour que le client n'attende pas) ;
- * - réécrit la liste des manifs, avec le compteur des entrées publiées.
+ * - réécrit la liste des manifs, avec le compteur des entrées publiées ;
+ * - réécrit le fichier des retraits.
  */
 export async function publier({ sql, horloge, dossierPublication }: DependancesPublication): Promise<void> {
   // Exclusif avec les entrées en cours (voir verrou.ts) ; l'horloge est lue une fois le verrou obtenu.
@@ -76,7 +79,8 @@ async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublic
     from manif where ouverture <= ${maintenant} order by depart, id`;
   const compteurs = await sql<{ manif_id: string; n: number }[]>`
     select manif_id, count(*)::int as n from avatar
-    where entree < ${minuteEnCours} group by manif_id`;
+    where entree < ${minuteEnCours} and not exists (select 1 from retrait where avatar_id = avatar.id)
+    group by manif_id`;
   const compteurParManif = new Map(compteurs.map((c) => [c.manif_id, c.n]));
 
   const manifs: ManifPubliee[] = lignes.map((l) => {
@@ -99,6 +103,20 @@ async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublic
 
   const liste: ListeManifs = { v: VERSION_FORMAT, generee: maintenant.toISOString(), manifs };
   await ecrire(dossierPublication, CHEMIN_LISTE_MANIFS, liste);
+
+  await publierRetraits(sql, dossierPublication, maintenant);
+}
+
+/** Retraits des avatars des manifs publiées (mêmes manifs que la liste). */
+async function publierRetraits(sql: Requeteur, dossier: string, maintenant: Date): Promise<void> {
+  const lignes = await sql<{ id: string }[]>`
+    select r.avatar_id as id from retrait r
+    join avatar a on a.id = r.avatar_id
+    join manif m on m.id = a.manif_id
+    where m.ouverture <= ${maintenant}
+    order by r.avatar_id collate "C"`;
+  const retraits: Retraits = { v: VERSION_FORMAT, generee: maintenant.toISOString(), retraits: lignes.map((l) => l.id) };
+  await ecrire(dossier, CHEMIN_RETRAITS, retraits);
 }
 
 async function publierMinutes(sql: Requeteur, dossier: string, manifs: ManifPubliee[], maintenant: Date): Promise<void> {
