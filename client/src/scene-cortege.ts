@@ -3,13 +3,21 @@
  * Squelette : parcours en simple ligne sur fond vide, un point par avatar.
  */
 import * as Phaser from 'phaser';
-import { pointSurParcours, type EntreesMinute, type ManifPubliee, type Position } from '@petit-cortege/shared';
+import {
+  positionDansLeCortege,
+  type EntreePubliee,
+  type EntreesMinute,
+  type ManifPubliee,
+  type Position,
+} from '@petit-cortege/shared';
 import { calculerCortege, type Cortege } from './cortege/cortege';
 
 export interface DonneesScene {
   manif: ManifPubliee;
   /** Fichiers d'entrées chargés à ce jour (mis à jour par le chargement périodique). */
   entrees: () => EntreesMinute[];
+  /** Avatars du soutien sur cet appareil (affichés tout de suite, mis en valeur). */
+  propres: () => EntreePubliee[];
   /** Appelé à chaque image avec le cortège calculé (pour l'interface HTML). */
   surCortege: (cortege: Cortege) => void;
 }
@@ -17,6 +25,7 @@ export interface DonneesScene {
 const MARGE_PX = 32;
 const COULEUR_PARCOURS = 0x8a8a8a;
 const COULEUR_AVATAR = 0xc0392b;
+const COULEUR_TOI = 0xf1c40f;
 
 /** Projection locale équirectangulaire en mètres, suffisante à l'échelle d'une ville. */
 function projeteur(origine: Position) {
@@ -29,6 +38,7 @@ export class SceneCortege extends Phaser.Scene {
   #donnees!: DonneesScene;
   #parcours!: Phaser.GameObjects.Graphics;
   #avatars!: Phaser.GameObjects.Graphics;
+  #toi!: Phaser.GameObjects.Text;
   #versEcran: (p: Position) => { x: number; y: number } = () => ({ x: 0, y: 0 });
 
   constructor() {
@@ -42,6 +52,12 @@ export class SceneCortege extends Phaser.Scene {
   create(): void {
     this.#parcours = this.add.graphics();
     this.#avatars = this.add.graphics();
+    this.#toi = this.add
+      .text(0, 0, 'toi', { fontFamily: 'system-ui, sans-serif', fontSize: '13px', fontStyle: 'bold', color: '#222' })
+      .setOrigin(0.5, 1)
+      .setBackgroundColor('#f1c40f')
+      .setPadding(4, 1, 4, 1)
+      .setVisible(false);
     this.#cadrer();
     this.scale.on(Phaser.Scale.Events.RESIZE, () => this.#cadrer());
   }
@@ -50,14 +66,27 @@ export class SceneCortege extends Phaser.Scene {
     const cortege = calculerCortege({
       manif: this.#donnees.manif,
       entrees: this.#donnees.entrees(),
+      propres: this.#donnees.propres(),
       maintenant: new Date(),
     });
     this.#avatars.clear();
     this.#avatars.fillStyle(COULEUR_AVATAR, 1);
+    const propres: { x: number; y: number }[] = [];
     for (const avatar of cortege.avatars) {
-      const { x, y } = this.#versEcran(pointSurParcours(this.#donnees.manif.parcours, avatar.distanceM));
-      this.#avatars.fillCircle(x, y, 4);
+      const position = positionDansLeCortege(this.#donnees.manif.parcours, avatar.distanceM, avatar.decalageM);
+      const { x, y } = this.#versEcran(position);
+      if (avatar.propre) propres.push({ x, y });
+      else this.#avatars.fillCircle(x, y, 4);
     }
+    // Mise en valeur « toi », visible uniquement sur l'écran du soutien, dessinée par-dessus la foule.
+    for (const p of propres) {
+      this.#avatars.fillStyle(COULEUR_TOI, 0.45).fillCircle(p.x, p.y, 11);
+      this.#avatars.fillStyle(COULEUR_TOI, 1).fillCircle(p.x, p.y, 5);
+      this.#avatars.lineStyle(2, 0x222222, 1).strokeCircle(p.x, p.y, 5);
+    }
+    const toi = propres[0];
+    if (toi) this.#toi.setPosition(toi.x, toi.y - 12);
+    this.#toi.setVisible(toi !== undefined);
     this.#donnees.surCortege(cortege);
   }
 
