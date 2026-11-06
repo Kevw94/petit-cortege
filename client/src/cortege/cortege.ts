@@ -3,7 +3,7 @@
  * Manif + entrées publiées + heure courante → état de la manif et position de
  * chaque avatar le long du parcours. Tous les clients calculent la même foule.
  */
-import { VITESSE_M_PAR_MS, type EntreePubliee, type EntreesMinute, type ManifPubliee } from '@petit-cortege/shared';
+import { VITESSE_M_PAR_MS, type EntreePubliee, type FichierEntrees, type ManifPubliee } from '@petit-cortege/shared';
 import { hacherIdentifiant } from './hachage';
 
 export type EtatManif = 'ouverte' | 'terminee';
@@ -35,8 +35,8 @@ export interface Cortege {
 
 export interface EntreesDuCortege {
   manif: ManifPubliee;
-  /** Fichiers d'entrées publiés (toutes manifs confondues). */
-  entrees: EntreesMinute[];
+  /** Fichiers d'entrées publiés, par minute ou par heure (toutes manifs confondues). */
+  entrees: FichierEntrees[];
   /**
    * Avatars du soutien sur cet appareil (réponses à ses entrées), affichés tout
    * de suite sans attendre la publication, même avant leur heure d'entrée tirée.
