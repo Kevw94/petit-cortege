@@ -1,7 +1,10 @@
 import * as Phaser from 'phaser';
 import type { EntreesMinute } from '@petit-cortege/shared';
+import { avatarsPropres, memoriserAvatarPropre } from './avatars-propres';
 import type { Cortege } from './cortege/cortege';
+import { EntreeRefusee, rejoindreLeCortege } from './entree';
 import { Publication } from './publication';
+import { pageLegale, piedDePage } from './pages/pages-legales';
 import { lienManif, lireRoute } from './routage';
 import { SceneCortege, type DonneesScene } from './scene-cortege';
 
@@ -64,15 +67,51 @@ async function afficherManif(id: string): Promise<void> {
       <h1>${echapper(manif.intitule)}</h1>
       <p>${echapper(manif.ville)} · départ ${heure(manif.depart)}</p>
       <p data-etat></p>
+    </section>
+    <section class="action">
+      <button type="button" class="rejoindre" data-rejoindre hidden>Rejoindre le cortège</button>
+      <p class="message" data-message role="status"></p>
     </section>`;
   const etatEl = interfaceEl.querySelector<HTMLParagraphElement>('[data-etat]')!;
+  const boutonEl = interfaceEl.querySelector<HTMLButtonElement>('[data-rejoindre]')!;
+  const messageEl = interfaceEl.querySelector<HTMLParagraphElement>('[data-message]')!;
+
+  // Avatars de ce soutien : relus du localStorage (purgé 1 h après la fin), mis en valeur.
+  let propres = avatarsPropres(new Date()).filter((e) => e.m === id);
+  let envoiEnCours = false;
   let dernierTexte = '';
   const surCortege = (cortege: Cortege) => {
-    const texte = `${cortege.etat === 'ouverte' ? 'Ouverte' : 'Terminée'} · ${cortege.avatars.length} soutiens`;
+    // Compteur : avatars du cortège à l'heure locale (publiés et entrés, plus les siens) ;
+    // c'est ce qui est dessiné. Le `compteur` de la liste des manifs sert à la liste.
+    const n = cortege.avatars.length;
+    const texte = `${cortege.etat === 'ouverte' ? 'Ouverte' : 'Terminée'} · ${n} ${n > 1 ? 'soutiens' : 'soutien'}`;
     if (texte !== dernierTexte) etatEl.textContent = dernierTexte = texte;
+    const peutRejoindre = cortege.etat === 'ouverte' && propres.length === 0 && !envoiEnCours;
+    if (boutonEl.hidden === peutRejoindre) boutonEl.hidden = !peutRejoindre;
+    if (propres.length > 0 && !envoiEnCours && !messageEl.textContent) {
+      messageEl.textContent = 'Tu marches avec le cortège. Tu peux fermer la page : ton avatar continue.';
+    }
   };
 
-  const donnees: DonneesScene = { manif, entrees: () => entrees, surCortege };
+  boutonEl.addEventListener('click', async () => {
+    envoiEnCours = true;
+    boutonEl.disabled = true;
+    messageEl.textContent = 'Entrée dans le cortège…';
+    try {
+      // Apparence et pancarte tirées au hasard en attendant la composition (#10, #11).
+      const entree = await rejoindreLeCortege({ manif: id, apparence: auHasard(8), pancarte: auHasard(8) });
+      memoriserAvatarPropre(entree, donnees.manif.fin);
+      propres = [...propres, entree];
+      messageEl.textContent = '';
+    } catch (erreur) {
+      messageEl.textContent = messageErreurEntree(erreur);
+    } finally {
+      envoiEnCours = false;
+      boutonEl.disabled = false;
+    }
+  });
+
+  const donnees: DonneesScene = { manif, entrees: () => entrees, propres: () => propres, surCortege };
   jeu = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'jeu',
@@ -90,11 +129,26 @@ async function afficherManif(id: string): Promise<void> {
   arreterRafraichissement = () => window.clearInterval(minuterie);
 }
 
+const auHasard = (n: number) => Math.floor(Math.random() * n);
+
+function messageErreurEntree(erreur: unknown): string {
+  const code = erreur instanceof EntreeRefusee ? erreur.code : 'reseau';
+  switch (code) {
+    case 'manif-terminee':
+      return 'Cette manif est terminée : on ne peut plus la rejoindre.';
+    case 'manif-inconnue':
+      return "Cette manif n'est pas ouverte.";
+    default:
+      return 'Impossible de rejoindre le cortège pour le moment. Réessaie dans un instant.';
+  }
+}
+
 async function naviguer(): Promise<void> {
   quitterVue();
   const route = lireRoute(window.location.hash);
   try {
     if (route.page === 'manif') await afficherManif(route.id);
+    else if (route.page === 'legale') interfaceEl.innerHTML = pageLegale(route.id);
     else await afficherListe();
   } catch (erreur) {
     interfaceEl.innerHTML = `<section class="carte"><p>Impossible de charger le cortège. Réessaie dans un instant.</p></section>`;
@@ -102,5 +156,6 @@ async function naviguer(): Promise<void> {
   }
 }
 
+document.body.insertAdjacentHTML('beforeend', piedDePage());
 window.addEventListener('hashchange', () => void naviguer());
 void naviguer();

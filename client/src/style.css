@@ -76,3 +76,112 @@ a.retour {
   color: var(--accent);
   font-size: 0.9rem;
 }
+
+/* Pied de page légal (#17), visible sur toutes les vues, par-dessus le canvas. */
+.pied-de-page {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  padding: 6px 12px max(6px, env(safe-area-inset-bottom));
+  text-align: center;
+  font-size: 0.75rem;
+  line-height: 1.8;
+  background: rgb(244 241 234 / 0.85);
+}
+
+.pied-de-page a {
+  color: var(--texte);
+  white-space: nowrap;
+}
+
+/* Pages légales : texte long, défilable dans la carte (le body ne défile pas). */
+.page-legale {
+  max-width: 42rem;
+  margin: 0 auto;
+  max-height: calc(100dvh - 5.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  line-height: 1.5;
+}
+
+.page-legale h2 {
+  font-size: 1rem;
+  margin: 16px 0 4px;
+}
+
+.page-legale p,
+.page-legale li {
+  font-size: 0.92rem;
+  margin: 4px 0;
+}
+
+.page-legale ul {
+  padding-left: 1.2rem;
+  margin: 4px 0;
+}
+
+.page-legale mark {
+  background: #ffe066;
+  outline: 2px dashed var(--accent);
+  padding: 0 2px;
+}
+
+.page-legale .mise-a-jour {
+  margin-top: 16px;
+  color: #666;
+  font-size: 0.8rem;
+}
+
+/* Action principale en bas de l'écran, à portée de pouce sur mobile. */
+#interface > .action {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  /* Au-dessus du pied de page légal (#17). */
+  bottom: calc(max(6px, env(safe-area-inset-bottom)) + 4rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.action > * {
+  pointer-events: auto;
+}
+
+button.rejoindre {
+  min-height: 48px;
+  padding: 12px 28px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.25);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button.rejoindre:disabled {
+  opacity: 0.6;
+}
+
+.message:empty {
+  display: none;
+}
+
+.message {
+  margin: 0;
+  max-width: 28rem;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.92);
+  font-size: 0.9rem;
+  text-align: center;
+}
