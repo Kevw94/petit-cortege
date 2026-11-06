@@ -10,7 +10,7 @@ Contexte : porteur seul, sous pseudo, éditeur non professionnel (identité conn
 - « Rejoindre le cortège » : apparence de l'avatar (catalogue neutre, accessoires inclusifs) + pancarte (slogan générique + couleur + forme, sans picto).
 - Un seul compteur « soutiens ».
 - Retrait de son avatar (jeton en localStorage) ; mise en valeur locale de son propre avatar, pendant la marche et dans l'image finale.
-- Image finale rendue côté client, PNG téléchargeable / partage natif ; aperçu de lien = image fixe par manif.
+- Image finale rendue côté client, PNG téléchargeable / partage natif ; aperçu de lien = une image générique pour tout le site (ADR 0002).
 - Rappel via un `.ics` généré côté client, titre neutre (« Petit Cortège – voir la photo finale »).
 - Anti-triche (ADR 0001) + outil minimal de suppression d'avatar sur signalement.
 - Pages : mentions légales + adresse de signalement, vie privée (dont rétention des journaux), charte / « comment on choisit les manifs », CGU.

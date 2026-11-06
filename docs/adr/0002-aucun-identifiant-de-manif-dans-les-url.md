@@ -5,3 +5,7 @@ Supabase et le CDN journalisent les IP avec les URL demandées : une URL `/manif
 Hébergement en région UE, rétention des journaux la plus courte possible, et mention honnête du Cloud Act dans la page vie privée. Un hébergement maison sans journaux reste possible plus tard.
 
 Ne pas « corriger » vers un routage par chemin ou des paramètres de requête.
+
+## Conséquence : aperçu de lien générique
+
+Les réseaux sociaux ne voient pas le fragment, donc pas la manif : l'aperçu de lien (Open Graph) est une seule image générique pour tout le site. Ne pas ajouter d'URL du type `/m/123` pour obtenir un aperçu par manif : elle remettrait l'identifiant dans les journaux.
