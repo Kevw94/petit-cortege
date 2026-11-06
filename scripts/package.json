@@ -1,0 +1,17 @@
+{
+  "name": "@petit-cortege/scripts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx dev.ts",
+    "seed": "tsx seed.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@petit-cortege/server": "*",
+    "@petit-cortege/shared": "*"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}
