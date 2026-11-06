@@ -27,7 +27,7 @@ export class HorlogeControlee implements Horloge {
 }
 
 /** Base Postgres jetable, propre à un fichier de test (les agents tournent en parallèle). */
-export async function creerBaseDeTest(): Promise<{ sql: Sql; detruire: () => Promise<void> }> {
+export async function creerBaseDeTest(): Promise<{ sql: Sql; url: string; detruire: () => Promise<void> }> {
   const nom = `pc_test_${randomBytes(6).toString('hex')}`;
   const admin = postgres(URL_POSTGRES_ADMIN, { max: 1, onnotice: () => {} });
   await admin.unsafe(`create database ${nom}`);
@@ -36,6 +36,7 @@ export async function creerBaseDeTest(): Promise<{ sql: Sql; detruire: () => Pro
   const sql = postgres(url.toString(), { max: 4, onnotice: () => {} });
   return {
     sql,
+    url: url.toString(),
     detruire: async () => {
       await sql.end();
       await admin.unsafe(`drop database if exists ${nom}`);
@@ -46,6 +47,8 @@ export async function creerBaseDeTest(): Promise<{ sql: Sql; detruire: () => Pro
 
 export interface Banc {
   sql: Sql;
+  /** URL de la base jetable (ex. pour un pg_dump). */
+  urlBase: string;
   horloge: HorlogeControlee;
   serveur: Serveur;
   dossierPublication: string;
@@ -113,6 +116,7 @@ export async function demarrerBanc(
   };
   return {
     sql: base.sql,
+    urlBase: base.url,
     horloge,
     serveur,
     dossierPublication,
