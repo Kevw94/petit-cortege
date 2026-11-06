@@ -96,7 +96,8 @@ async function afficherManif(id: string): Promise<void> {
   boutonEl.addEventListener('click', async () => {
     envoiEnCours = true;
     boutonEl.disabled = true;
-    messageEl.textContent = 'Entrée dans le cortège…';
+    // Preuve de travail anti-robots (#8) : quelques secondes de calcul, attente affichée.
+    messageEl.textContent = 'Vérification anti-robots, quelques secondes…';
     try {
       // Apparence et pancarte tirées au hasard en attendant la composition (#10, #11).
       const entree = await rejoindreLeCortege({ manif: id, apparence: auHasard(8), pancarte: auHasard(8) });
@@ -138,6 +139,8 @@ function messageErreurEntree(erreur: unknown): string {
       return 'Cette manif est terminée : on ne peut plus la rejoindre.';
     case 'manif-inconnue':
       return "Cette manif n'est pas ouverte.";
+    case 'trop-de-requetes':
+      return 'Beaucoup d’entrées depuis ta connexion : réessaie dans une minute.';
     default:
       return 'Impossible de rejoindre le cortège pour le moment. Réessaie dans un instant.';
   }
