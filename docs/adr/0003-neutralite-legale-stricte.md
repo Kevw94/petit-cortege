@@ -7,4 +7,4 @@ Toute manif déclarée, non interdite par arrêté préfectoral et avec un parco
 - Des manifs légales que l'équipe désapprouve seront ajoutées si elles remplissent le critère d'ampleur.
 - Vérifier l'absence d'arrêté d'interdiction juste avant le départ (souvent pris la veille) ; retrait si arrêté.
 - Distinct : le retrait d'un contenu manifestement illicite signalé (ex. intitulé injurieux) relève de l'obligation d'hébergeur (LCEN). C'est une obligation sur un contenu, pas un jugement sur la cause.
-- Le catalogue d'apparence ne contient que des éléments neutres : ni drapeaux, ni gilets jaunes, ni keffiehs, ni symboles de partis ou syndicats.
+- Le catalogue d'apparence ne contient que des éléments neutres : ni drapeaux, ni gilets jaunes, ni keffiehs, ni symboles de partis ou syndicats, ni armes, armures, casques ou autre équipement de combat (présents dans les packs Kenney). Les pièces autorisées sont une liste blanche explicite dans le module partagé : tout ce qui n'y figure pas est exclu.
