@@ -147,6 +147,88 @@ describe('limite de débit par IP', () => {
   });
 });
 
+describe('vraie IP transmise par le CDN', () => {
+  const limiteParIp = { requetes: 2, fenetreMs: 60_000 };
+  const depuis = (ip: string) => ({ 'CDN-RequestClientIP': ip });
+  let derriereCdn: Banc;
+  let sansProxyDeConfiance: Banc;
+
+  beforeAll(async () => {
+    // Le banc se connecte depuis 127.0.0.1 : il joue le rôle du CDN.
+    derriereCdn = await demarrerBanc('2026-06-01T09:10:00Z', {
+      limiteParIp,
+      enteteIp: 'CDN-RequestClientIP',
+      proxysDeConfiance: ['127.0.0.1', '::1'],
+    });
+    sansProxyDeConfiance = await demarrerBanc('2026-06-01T09:10:00Z', {
+      limiteParIp,
+      enteteIp: 'CDN-RequestClientIP',
+      proxysDeConfiance: ['192.0.2.1'],
+    });
+    await creerManifParis(derriereCdn);
+    await creerManifParis(sansProxyDeConfiance);
+  });
+  afterAll(async () => {
+    await derriereCdn?.arreter();
+    await sansProxyDeConfiance?.arreter();
+  });
+
+  it("la limite s'applique à chaque soutien, pas à l'IP du CDN", async () => {
+    const a = [];
+    for (let i = 0; i < 3; i++) a.push((await derriereCdn.entrer(ENTREE, depuis('203.0.113.7'))).statut);
+    const b = [];
+    for (let i = 0; i < 2; i++) b.push((await derriereCdn.entrer(ENTREE, depuis('198.51.100.23'))).statut);
+
+    expect(a).toEqual([201, 201, 429]);
+    expect(b).toEqual([201, 201]);
+  });
+
+  it("l'en-tête est ignoré s'il ne vient pas d'un proxy de confiance (sinon chacun choisirait son IP)", async () => {
+    const statuts = [];
+    for (const ip of ['203.0.113.1', '203.0.113.2', '203.0.113.3']) {
+      statuts.push((await sansProxyDeConfiance.entrer(ENTREE, depuis(ip))).statut);
+    }
+
+    expect(statuts).toEqual([201, 201, 429]);
+  });
+
+  it('une IPv6 compte pour tout son /64 (sinon un abonné changerait d’adresse à volonté)', async () => {
+    const statuts = [];
+    for (const ip of ['2001:db8:1:2::a', '2001:db8:1:2::b', '2001:db8:1:2:ffff::1']) {
+      statuts.push((await derriereCdn.entrer(ENTREE, depuis(ip))).statut);
+    }
+    const voisin = await derriereCdn.entrer(ENTREE, depuis('2001:db8:1:3::a'));
+
+    expect(statuts).toEqual([201, 201, 429]);
+    expect(voisin.statut).toBe(201);
+  });
+});
+
+describe('vraie IP dans X-Forwarded-For', () => {
+  let banc: Banc;
+
+  beforeAll(async () => {
+    banc = await demarrerBanc('2026-06-01T09:10:00Z', {
+      limiteParIp: { requetes: 2, fenetreMs: 60_000 },
+      proxysDeConfiance: ['127.0.0.0/8', '::1', '10.0.0.0/8'],
+    });
+    await creerManifParis(banc);
+  });
+  afterAll(async () => {
+    await banc?.arreter();
+  });
+
+  it('la partie gauche, forgeable par le client, ne permet pas d’échapper à la limite', async () => {
+    const statuts = [];
+    for (const forge of ['192.0.2.1', '192.0.2.2', '192.0.2.3']) {
+      const xff = { 'X-Forwarded-For': `${forge}, 203.0.113.9, 10.1.2.3` };
+      statuts.push((await banc.entrer(ENTREE, xff)).statut);
+    }
+
+    expect(statuts).toEqual([201, 201, 429]);
+  });
+});
+
 describe('limite de débit par IP, fenêtre suivante', () => {
   let banc: Banc;
 
