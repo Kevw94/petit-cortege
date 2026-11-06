@@ -5,20 +5,25 @@
 import {
   CHEMIN_LISTE_MANIFS,
   PREFIXE_PUBLICATION,
+  cheminEntreesHeure,
   cheminEntreesMinute,
+  fichiersPublies,
+  lireEntreesHeure,
   lireEntreesMinute,
   lireListeManifs,
-  minutesPubliees,
-  type EntreesMinute,
+  type FichierEntrees,
   type ListeManifs,
   type ManifPubliee,
 } from '@petit-cortege/shared';
 
 const REQUETES_SIMULTANEES = 6;
 
+/** Un fichier à télécharger et la fonction qui vérifie son format. */
+type ATelecharger = [chemin: string, lire: (json: unknown) => FichierEntrees];
+
 export class Publication {
-  /** Fichiers par minute déjà chargés (immuables), par chemin. */
-  readonly #minutes = new Map<string, EntreesMinute>();
+  /** Fichiers d'entrées déjà chargés (immuables, par minute ou par heure), par chemin. */
+  readonly #fichiers = new Map<string, FichierEntrees>();
 
   readonly base: string;
 
@@ -33,27 +38,55 @@ export class Publication {
   }
 
   /**
-   * Charge les fichiers par minute de la manif publiés à `maintenant` qui ne
-   * sont pas encore en mémoire, et renvoie tous ceux qu'on a.
-   * Un fichier pas encore publié (404, horloge en avance) sera redemandé plus tard.
+   * Charge les fichiers d'entrées de la manif publiés à `maintenant` qui ne sont
+   * pas encore en mémoire, et renvoie tous ceux qu'on a : un fichier horaire par
+   * heure terminée, les fichiers par minute de l'heure en cours.
+   *
+   * Pour une heure terminée dont on a déjà des minutes (soutien présent depuis
+   * le début), on complète avec les minutes plutôt que de télécharger l'heure.
+   * Si le fichier horaire n'est pas encore publié, on se rabat sur ses minutes.
+   * Un fichier absent (404, horloge en avance) sera redemandé plus tard.
    */
-  async entreesPour(manif: ManifPubliee, maintenant: Date): Promise<EntreesMinute[]> {
-    const manquants = minutesPubliees(manif, maintenant)
-      .map(cheminEntreesMinute)
-      .filter((chemin) => !this.#minutes.has(chemin));
+  async entreesPour(manif: ManifPubliee, maintenant: Date): Promise<FichierEntrees[]> {
+    const { heures, minutes } = fichiersPublies(manif, maintenant);
+    const enMemoire = (chemin: string) => this.#fichiers.has(chemin);
+    const parMinute = (liste: Date[]) => liste.map((m): ATelecharger => [cheminEntreesMinute(m), lireEntreesMinute]);
 
+    const terminees = heures.map(({ heure, minutes: deLHeure }) => {
+      const cheminHeure = cheminEntreesHeure(heure);
+      const minutesDeLHeure = parMinute(deLHeure);
+      const enMinutes = !enMemoire(cheminHeure) && minutesDeLHeure.some(([c]) => enMemoire(c));
+      return { cheminHeure, minutesDeLHeure, enMinutes };
+    });
+    const heureEnCours = parMinute(minutes);
+
+    await this.#telecharger([
+      ...terminees.flatMap((h): ATelecharger[] => (h.enMinutes ? h.minutesDeLHeure : [[h.cheminHeure, lireEntreesHeure]])),
+      ...heureEnCours,
+    ]);
+    // Fichier horaire pas encore publié : repli sur les minutes de cette heure.
+    for (const h of terminees) if (!enMemoire(h.cheminHeure)) h.enMinutes = true;
+    await this.#telecharger(terminees.filter((h) => h.enMinutes).flatMap((h) => h.minutesDeLHeure));
+
+    return [
+      ...terminees.flatMap((h) => (h.enMinutes ? h.minutesDeLHeure.map(([c]) => c) : [h.cheminHeure])),
+      ...heureEnCours.map(([c]) => c),
+    ]
+      .map((c) => this.#fichiers.get(c))
+      .filter((f): f is FichierEntrees => f !== undefined);
+  }
+
+  /** Télécharge les fichiers absents de la mémoire, quelques requêtes à la fois. */
+  async #telecharger(fichiers: ATelecharger[]): Promise<void> {
+    const manquants = fichiers.filter(([chemin]) => !this.#fichiers.has(chemin));
     let suivant = 0;
     const travailleur = async () => {
       while (suivant < manquants.length) {
-        const chemin = manquants[suivant++]!;
+        const [chemin, lire] = manquants[suivant++]!;
         const reponse = await fetch(this.base + chemin).catch(() => null);
-        if (reponse?.ok) this.#minutes.set(chemin, lireEntreesMinute(await reponse.json()));
+        if (reponse?.ok) this.#fichiers.set(chemin, lire(await reponse.json()));
       }
     };
     await Promise.all(Array.from({ length: REQUETES_SIMULTANEES }, travailleur));
-
-    return minutesPubliees(manif, maintenant)
-      .map((m) => this.#minutes.get(cheminEntreesMinute(m)))
-      .filter((f): f is EntreesMinute => f !== undefined);
   }
 }
