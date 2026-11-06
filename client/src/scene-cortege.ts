@@ -7,7 +7,7 @@ import * as Phaser from 'phaser';
 import {
   positionDansLeCortege,
   type EntreePubliee,
-  type EntreesMinute,
+  type FichierEntrees,
   type ManifPubliee,
   type Position,
 } from '@petit-cortege/shared';
@@ -19,7 +19,7 @@ import { dessinerPancarte, SlogansAffiches } from './pancartes/dessin';
 export interface DonneesScene {
   manif: ManifPubliee;
   /** Fichiers d'entrées chargés à ce jour (mis à jour par le chargement périodique). */
-  entrees: () => EntreesMinute[];
+  entrees: () => FichierEntrees[];
   /** Avatars du soutien sur cet appareil (affichés tout de suite, mis en valeur). */
   propres: () => EntreePubliee[];
   /** Appelé à chaque image avec le cortège calculé (pour l'interface HTML). */
