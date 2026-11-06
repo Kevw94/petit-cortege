@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="robots" content="noindex" />
+    <title>Petit Cortège – prototype de performance</title>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f1ea; }
+      #mesures { position: fixed; left: 8px; top: 8px; right: 8px; font: 12px/1.3 system-ui, sans-serif;
+        background: rgb(255 255 255 / 0.85); padding: 4px 6px; border-radius: 4px; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <div id="jeu"></div>
+    <div id="mesures">Chargement…</div>
+    <script type="module" src="/src/prototype-perf/main.ts"></script>
+  </body>
+</html>
