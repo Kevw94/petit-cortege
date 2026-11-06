@@ -126,3 +126,44 @@ describe('défi expiré', () => {
     expect(reponse).toEqual({ statut: 403, corps: { erreur: 'preuve-invalide' } });
   });
 });
+
+describe('limite de débit par IP', () => {
+  let banc: Banc;
+
+  beforeAll(async () => {
+    banc = await demarrerBanc('2026-06-01T09:10:00Z', { limiteParIp: { requetes: 3, fenetreMs: 60_000 } });
+    await creerManifParis(banc);
+  });
+  afterAll(async () => {
+    await banc?.arreter();
+  });
+
+  it('entrée refusée une fois la limite atteinte, même avec une preuve valide', async () => {
+    const reponses = [];
+    for (let i = 0; i < 4; i++) reponses.push(await banc.entrer(ENTREE));
+
+    expect(reponses.map((r) => r.statut)).toEqual([201, 201, 201, 429]);
+    expect(reponses[3]!.corps).toEqual({ erreur: 'trop-de-requetes' });
+  });
+});
+
+describe('limite de débit par IP, fenêtre suivante', () => {
+  let banc: Banc;
+
+  beforeAll(async () => {
+    banc = await demarrerBanc('2026-06-01T09:10:00Z', { limiteParIp: { requetes: 1, fenetreMs: 1_500 } });
+    await creerManifParis(banc);
+  });
+  afterAll(async () => {
+    await banc?.arreter();
+  });
+
+  it('la limite se relâche à la fenêtre suivante', async () => {
+    const premiere = await banc.entrer(ENTREE);
+    const refusee = await banc.entrer(ENTREE);
+    await new Promise((r) => setTimeout(r, 1_600));
+    const apres = await banc.entrer(ENTREE);
+
+    expect([premiere.statut, refusee.statut, apres.statut]).toEqual([201, 429, 201]);
+  });
+});
