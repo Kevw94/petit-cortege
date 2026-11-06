@@ -10,6 +10,7 @@ const FIXTURES = join(import.meta.dirname, '../../../fixtures/publication/manif-
 function chargerFixtures(): { manif: ManifPubliee; entrees: EntreesMinute[] } {
   const liste = lireListeManifs(JSON.parse(readFileSync(join(FIXTURES, 'manifs.json'), 'utf8')));
   const entrees = readdirSync(join(FIXTURES, 'entrees'))
+    .filter((f) => /T\d\d-\d\d\.json$/.test(f)) // fichiers par minute (sans les fichiers horaires)
     .sort()
     .map((f) => lireEntreesMinute(JSON.parse(readFileSync(join(FIXTURES, 'entrees', f), 'utf8'))));
   const manif = liste.manifs.find((m) => m.id === 'manif-a');
