@@ -1,0 +1,8 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    // atob, Blob, DecompressionStream, Response : globaux communs à Node et aux navigateurs (lecture du décor).
+    "types": ["node"]
+  },
+  "include": ["src"]
+}
