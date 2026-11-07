@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
+import { apparenceAuHasard, ATTRIBUTION_OSM, type FichierEntrees } from '@petit-cortege/shared';
 import { avatarsPropres, jetonDeRetrait, memoriserAvatarPropre, oublierAvatarPropre } from './avatars-propres';
-import { apparenceAuHasard, type FichierEntrees } from '@petit-cortege/shared';
+import { chargerDecor } from './decor/chargement';
 import { creerPanneauComposition, type PanneauComposition } from './composition/panneau';
 import { sectionApparence } from './composition/section-apparence';
 import { pancarteAuHasard, sectionPancarte } from './composition/section-pancarte';
@@ -63,6 +64,8 @@ async function afficherManif(id: string): Promise<void> {
       <a class="retour" href="#/">← Toutes les manifs</a></section>`;
     return;
   }
+  // Décor OSM : tous les décors publiés sont demandés, quelle que soit la manif (ADR 0002).
+  const decor = chargerDecor(manif.parcours.coordinates);
   let entrees: FichierEntrees[] = await publication.entreesPour(manif, new Date());
   let retraitsPublies: string[] = await publication.retraits().catch(() => []);
   // Retirés depuis cet appareil : effacés tout de suite, sans attendre le fichier des retraits.
@@ -79,7 +82,8 @@ async function afficherManif(id: string): Promise<void> {
       <button type="button" class="rejoindre" data-rejoindre hidden>Rejoindre le cortège</button>
       <button type="button" class="retirer" data-retirer hidden>Retirer mon avatar</button>
       <p class="message" data-message role="status"></p>
-    </section>`;
+    </section>
+    <p class="attribution">${ATTRIBUTION_OSM.replace('OpenStreetMap', '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>')}</p>`;
   const etatEl = interfaceEl.querySelector<HTMLParagraphElement>('[data-etat]')!;
   const boutonEl = interfaceEl.querySelector<HTMLButtonElement>('[data-rejoindre]')!;
   const retirerEl = interfaceEl.querySelector<HTMLButtonElement>('[data-retirer]')!;
@@ -178,6 +182,7 @@ async function afficherManif(id: string): Promise<void> {
 
   const donnees: DonneesScene = {
     manif,
+    decor: await decor,
     entrees: () => entrees,
     propres: () => propres,
     retraits: () => (retiresIci.size === 0 ? retraitsPublies : [...retraitsPublies, ...retiresIci]),

@@ -8,9 +8,18 @@
  * (vague d'arrivées en 2 minutes, 10 minutes après le départ).
  */
 import { randomBytes } from 'node:crypto';
-import { rm } from 'node:fs/promises';
+import { readFile, rm } from 'node:fs/promises';
+import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { connecter, creerManif, migrer, preRemplirAvatars, type AvatarPreRempli, type Sql } from '@petit-cortege/server';
+import {
+  connecter,
+  creerManif,
+  lireParcoursGeoJson,
+  migrer,
+  preRemplirAvatars,
+  type AvatarPreRempli,
+  type Sql,
+} from '@petit-cortege/server';
 import {
   ACCESSOIRES,
   apparenceAuHasard,
@@ -20,7 +29,7 @@ import {
   FORMES_PANCARTE,
   SLOGANS,
 } from '@petit-cortege/shared';
-import { assurerBase, DOSSIER_PUBLICATION_DEV, URL_BASE_DEV } from './config';
+import { assurerBase, DOSSIER_PUBLICATION_DEV, RACINE, URL_BASE_DEV } from './config';
 
 export const ID_MANIF_DEMO = 'demo-republique-nation';
 
@@ -46,6 +55,12 @@ const nombreDepuisEnv = (nom: string, defaut: number) => {
   return Number.isFinite(valeur) ? valeur : defaut;
 };
 
+/** Parcours de la démo : celui du décor publié dans client/public/decors/republique-nation.json. */
+export async function parcoursDemo() {
+  const fichier = join(RACINE, 'donnees/osm/republique-nation/parcours.geojson');
+  return lireParcoursGeoJson(JSON.parse(await readFile(fichier, 'utf8')));
+}
+
 export async function semerManifDemo(sql: Sql, dossierPublication: string): Promise<void> {
   const maintenant = Date.now();
   const depart = maintenant + nombreDepuisEnv('SEED_DEPART_MIN', 2) * MINUTE;
@@ -60,19 +75,8 @@ export async function semerManifDemo(sql: Sql, dossierPublication: string): Prom
     ville: 'Paris',
     ouverture: new Date(Math.min(maintenant, depart) - 30 * MINUTE),
     depart: new Date(depart),
-    // République → Nation par le boulevard Voltaire (≈ 3 km), tracé à la main.
-    parcours: {
-      type: 'LineString',
-      coordinates: [
-        [2.3634, 48.8673],
-        [2.3683, 48.8649],
-        [2.3755, 48.8613],
-        [2.3805, 48.8578],
-        [2.3846, 48.8549],
-        [2.3905, 48.8513],
-        [2.3959, 48.8483],
-      ],
-    },
+    // République → Nation par le boulevard Voltaire (≈ 3 km), sur les chemins OSM (donnees/osm/, ODbL).
+    parcours: await parcoursDemo(),
     sources: [{ libelle: 'Source fictive (démo)', url: 'https://example.org/' }],
   });
 

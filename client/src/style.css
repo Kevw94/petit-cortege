@@ -426,3 +426,19 @@ button.secondaire {
 .pancarte.mini[data-forme='losange'] {
   width: 24px;
 }
+
+/* Mention des données cartographiques (ODbL), toujours visible sur la vue d'une manif. */
+#interface > .attribution {
+  position: fixed;
+  right: 0;
+  bottom: calc(max(6px, env(safe-area-inset-bottom)) + 2.6rem);
+  margin: 0;
+  padding: 1px 6px;
+  font-size: 0.7rem;
+  background: rgb(255 255 255 / 0.8);
+  border-radius: 4px 0 0 4px;
+}
+
+#interface > .attribution a {
+  color: inherit;
+}
