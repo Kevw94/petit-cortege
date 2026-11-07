@@ -166,6 +166,12 @@ export class SceneCortege extends Phaser.Scene {
     this.#parcoursADessiner = true;
   }
 
+  /** Zoom d'un facteur autour du centre de l'écran (boutons + et −). */
+  zoomer(facteur: number): void {
+    const ecran = this.#ecran();
+    this.#zoomer(facteur, { x: ecran.largeur / 2, y: ecran.hauteur / 2 });
+  }
+
   #detacher(): void {
     if (!this.#suivi) return;
     this.#suivi = false;
