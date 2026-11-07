@@ -21,7 +21,7 @@ export interface OptionsAntiTriche {
   /** Durée de validité d'un défi, et donc de la mémoire anti-rejeu. */
   dureeDefiMs?: number;
   /**
-   * Requêtes d'entrée par IP et par fenêtre. Généreux : une IP peut être partagée
+   * Requêtes d'entrée (et, séparément, de retrait) par IP et par fenêtre. Généreux : une IP peut être partagée
    * (box familiale, réseau d'entreprise, CGNAT mobile). La route de défi a droit au double.
    */
   limiteParIp?: Limite;
@@ -44,9 +44,10 @@ export const PLAFOND_GLOBAL_PAR_DEFAUT = { entrees: 1_000, fenetreMs: 60_000 };
 export interface AntiTriche {
   preuve: PreuveTravail;
   lireIp: LireIpClient;
-  /** Limites par IP des routes d'entrée et de défi (clé = IP, en mémoire seulement). */
+  /** Limites par IP des routes d'entrée, de défi et de retrait (clé = IP, en mémoire seulement). */
   limiteEntree: Limiteur;
   limiteDefi: Limiteur;
+  limiteRetrait: Limiteur;
   /** À appeler pour chaque entrée acceptée : alerte une fois par fenêtre au-delà du plafond. */
   compterEntreeAcceptee(): void;
 }
@@ -76,6 +77,8 @@ export function creerAntiTriche(options: OptionsAntiTriche): AntiTriche {
     }),
     limiteEntree: creerLimiteur(limite, Date.now),
     limiteDefi: creerLimiteur({ ...limite, requetes: 2 * limite.requetes }, Date.now),
+    // Même limite que l'entrée, compteur à part (une entrée ne consomme pas le droit de se retirer).
+    limiteRetrait: creerLimiteur(limite, Date.now),
     preuve: creerPreuveTravail({
       cleHmac: options.cleHmac,
       difficulte: options.difficulte ?? DIFFICULTE_PAR_DEFAUT,

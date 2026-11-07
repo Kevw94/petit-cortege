@@ -148,6 +148,21 @@ describe('limite de débit par IP', () => {
     expect(reponses.map((r) => r.statut)).toEqual([201, 201, 201, 429]);
     expect(reponses[3]!.corps).toEqual({ erreur: 'trop-de-requetes' });
   });
+
+  it('retrait refusé une fois la limite atteinte, avec un délai avant de réessayer', async () => {
+    const corps = { avatar: 'inconnu', jeton: '0'.repeat(32) };
+    const statuts = [];
+    for (let i = 0; i < 3; i++) statuts.push((await banc.poster('/api/retrait', corps)).statut);
+    const reponse = await fetch(new URL('/api/retrait', banc.serveur.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(corps),
+    });
+
+    expect([...statuts, reponse.status]).toEqual([403, 403, 403, 429]);
+    expect(await reponse.json()).toEqual({ erreur: 'trop-de-requetes' });
+    expect(Number(reponse.headers.get('retry-after'))).toBeGreaterThan(0);
+  });
 });
 
 describe('vraie IP transmise par le CDN', () => {
