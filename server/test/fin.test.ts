@@ -42,6 +42,13 @@ describe('fin de la manif : effacement des hachages de jetons de retrait', () =>
     await banc?.arreter();
   });
 
+  // Entré avant toute publication (les tests suivants font avancer la tâche de publication).
+  let avatarManifRetiree: { avatar: string; jeton: string };
+  beforeAll(async () => {
+    banc.horloge.regler('2026-06-01T09:05:00Z');
+    avatarManifRetiree = await entrer('manif-retiree');
+  });
+
   async function entrer(manif: string): Promise<{ avatar: string; jeton: string }> {
     const jeton = nouveauJeton();
     const reponse = await banc.entrer<ReponseEntree>({ manif, apparence: 0, pancarte: 0, hachageRetrait: sha256(jeton) });
@@ -83,8 +90,7 @@ describe('fin de la manif : effacement des hachages de jetons de retrait', () =>
   });
 
   it('une manif retirée par modération perd aussi ses hachages après sa fin', async () => {
-    banc.horloge.regler('2026-06-01T09:20:00Z');
-    const avatar = await entrer('manif-retiree');
+    const avatar = avatarManifRetiree;
     await retirerManif(banc.sql, banc.horloge, 'manif-retiree', 'Arrêté préfectoral');
 
     banc.horloge.regler('2026-06-01T11:31:00Z');

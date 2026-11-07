@@ -103,9 +103,15 @@ async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublic
     }
   };
 
+  const minuteEnCours = debutDeMinute(maintenant);
+  // Marque haute, avant d'écrire la moindre minute : les entrées reçues ensuite, même par
+  // un processus à l'horloge en retard, tombent après (voir entree.ts).
+  await sql`
+    insert into publication_etat (avant) values (${minuteEnCours})
+    on conflict (unique_ligne) do update set avant = greatest(publication_etat.avant, excluded.avant)`;
+
   await etape('effacement des hachages', () => effacerHachagesDesManifsTerminees(sql, maintenant));
 
-  const minuteEnCours = debutDeMinute(maintenant);
   const lignes = (
     await sql<LigneManif[]>`
       select id, intitule, ville, ouverture, depart, parcours, sources

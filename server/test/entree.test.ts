@@ -162,3 +162,40 @@ describe('rejoindre le cortège', () => {
     expect(reponse.statut).toBe(201);
   });
 });
+
+describe('rejoindre le cortège : horloges des processus décalées', () => {
+  let banc: Banc;
+
+  beforeAll(async () => {
+    banc = await demarrerBanc('2026-06-01T09:00:00Z');
+    await creerManif(banc.sql, {
+      id: 'manif-paris',
+      intitule: 'Marche',
+      ville: 'Paris',
+      ouverture: new Date('2026-06-01T09:00:00Z'),
+      depart: new Date('2026-06-01T10:00:00Z'),
+      parcours: PARCOURS,
+      sources: [],
+    });
+  });
+  afterAll(async () => {
+    await banc?.arreter();
+  });
+
+  it("une entrée reçue par un processus en retard sur celui qui publie n'est jamais perdue : elle passe dans la prochaine minute non publiée", async () => {
+    // Le processus qui publie est à 09:11:30 : la minute 09:10 est publiée.
+    banc.horloge.regler('2026-06-01T09:11:30Z');
+    await banc.serveur.publier();
+
+    // Un autre processus, 80 s en retard, reçoit une entrée « à 09:10:10 ».
+    banc.horloge.regler('2026-06-01T09:10:10Z');
+    const reponse = await banc.entrer<ReponseEntree>({ manif: 'manif-paris', apparence: 0, pancarte: 0 });
+    expect(reponse.statut).toBe(201);
+    expect(reponse.corps.entree).toBeGreaterThanOrEqual(Date.parse('2026-06-01T09:11:00Z') / 1000);
+
+    banc.horloge.regler('2026-06-01T09:12:30Z');
+    await banc.serveur.publier();
+    const minute = await banc.lire<EntreesMinute>('/publie/entrees/2026-06-01T09-11.json');
+    expect(minute.corps.entrees.map((e) => e.a)).toEqual([reponse.corps.avatar]);
+  });
+});
