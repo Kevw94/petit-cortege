@@ -40,8 +40,10 @@ import {
   CHEMIN_API_DEFI,
   CHEMIN_API_ENTREE,
   CHEMIN_API_RETRAIT,
+  apparenceAuHasard,
   calculerFin,
   COULEURS_PANCARTE,
+  encoderApparence,
   encoderPancarte,
   FORMES_PANCARTE,
   longueurParcours,
@@ -360,7 +362,7 @@ async function soutenir(i: number): Promise<void> {
     const jeton = randomBytes(16).toString('hex');
     const corps = JSON.stringify({
       manif: ID_MANIF,
-      apparence: Math.floor(alea() * 1000),
+      apparence: encoderApparence(apparenceAuHasard(alea)),
       pancarte: encoderPancarte({
         slogan: Math.floor(alea() * SLOGANS.length),
         couleur: Math.floor(alea() * COULEURS_PANCARTE.length),

@@ -163,8 +163,9 @@ la cause : `verifierEtConsommer` parcourait à chaque preuve **toute** la table 
   manif de 150 points). Avec 50 manifs, elle pèse ≈ 60 Ko gzip, soit ≈ 4,5 Mo par client sur 25 min et
   ≈ +7 $ pour 150 000 clients. Pistes : séparer les parcours (immuables) de l'état (départs, compteurs), ou
   relire la liste moins souvent.
-- **Application** : 365 Ko gzip aujourd'hui, comptés une fois par client. Les sprites Kenney (#10, #12)
-  l'alourdiront ; les visiteurs qui reviennent l'ont en cache.
+- **Application** : 365 Kio gzip au moment de l'essai, comptés une fois par client. Après la fusion de #10
+  et #12 (apparences, décor), le build pèse 498 Kio gzip (`client/dist` entier, décors compris), soit
+  ≈ +20 Go et ≈ +0,2 $ pour 150 000 clients. Les visiteurs qui reviennent ont l'application en cache.
 - **Spectateurs** : comptés à 0,5 par soutien (hypothèse). Le coût est proportionnel au nombre de clients.
 
 ## Ce qui diffère de la production, et à rejouer après #18

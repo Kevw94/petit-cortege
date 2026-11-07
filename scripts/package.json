@@ -11,7 +11,9 @@
   "dependencies": {
     "@petit-cortege/server": "*",
     "@petit-cortege/shared": "*",
+    "@types/pngjs": "6.0.5",
     "altcha-lib": "^2.8.0",
+    "pngjs": "7.0.0",
     "postgres": "^4.1.0"
   },
   "devDependencies": {

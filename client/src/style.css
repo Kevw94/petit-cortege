@@ -318,6 +318,38 @@ button.secondaire {
   place-items: center;
 }
 
+/* Avatar : aperçu et vignettes en pixels Kenney agrandis sans lissage (#10). */
+.cadre-apercu-apparence {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0;
+}
+
+.apercu-apparence,
+.vignette-apparence {
+  image-rendering: pixelated;
+}
+
+.apercu-apparence {
+  width: 144px;
+  height: 96px;
+}
+
+.section-apparence .choix + .choix {
+  margin-top: 8px;
+}
+
+.choix-vignettes button {
+  padding: 2px;
+  display: grid;
+  place-items: center;
+}
+
+.vignette-apparence {
+  width: 48px;
+  height: 32px;
+}
+
 /* Pancarte en HTML : aperçu et vignettes des formes, mêmes proportions que dans la scène. */
 .apercu-pancarte {
   display: flex;
@@ -393,4 +425,20 @@ button.secondaire {
 
 .pancarte.mini[data-forme='losange'] {
   width: 24px;
+}
+
+/* Mention des données cartographiques (ODbL), toujours visible sur la vue d'une manif. */
+#interface > .attribution {
+  position: fixed;
+  right: 0;
+  bottom: calc(max(6px, env(safe-area-inset-bottom)) + 2.6rem);
+  margin: 0;
+  padding: 1px 6px;
+  font-size: 0.7rem;
+  background: rgb(255 255 255 / 0.8);
+  border-radius: 4px 0 0 4px;
+}
+
+#interface > .attribution a {
+  color: inherit;
 }

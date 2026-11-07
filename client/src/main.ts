@@ -1,7 +1,9 @@
 import * as Phaser from 'phaser';
-import type { FichierEntrees } from '@petit-cortege/shared';
+import { apparenceAuHasard, ATTRIBUTION_OSM, type FichierEntrees } from '@petit-cortege/shared';
 import { avatarsPropres, jetonDeRetrait, memoriserAvatarPropre, oublierAvatarPropre } from './avatars-propres';
+import { chargerDecor } from './decor/chargement';
 import { creerPanneauComposition, type PanneauComposition } from './composition/panneau';
+import { sectionApparence } from './composition/section-apparence';
 import { pancarteAuHasard, sectionPancarte } from './composition/section-pancarte';
 import type { Cortege } from './cortege/cortege';
 import { EntreeRefusee, rejoindreLeCortege } from './entree';
@@ -62,6 +64,8 @@ async function afficherManif(id: string): Promise<void> {
       <a class="retour" href="#/">← Toutes les manifs</a></section>`;
     return;
   }
+  // Décor OSM : tous les décors publiés sont demandés, quelle que soit la manif (ADR 0002).
+  const decor = chargerDecor(manif.parcours.coordinates);
   let entrees: FichierEntrees[] = await publication.entreesPour(manif, new Date());
   let retraitsPublies: string[] = await publication.retraits().catch(() => []);
   // Retirés depuis cet appareil : effacés tout de suite, sans attendre le fichier des retraits.
@@ -78,7 +82,8 @@ async function afficherManif(id: string): Promise<void> {
       <button type="button" class="rejoindre" data-rejoindre hidden>Rejoindre le cortège</button>
       <button type="button" class="retirer" data-retirer hidden>Retirer mon avatar</button>
       <p class="message" data-message role="status"></p>
-    </section>`;
+    </section>
+    <p class="attribution">${ATTRIBUTION_OSM.replace('OpenStreetMap', '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>')}</p>`;
   const etatEl = interfaceEl.querySelector<HTMLParagraphElement>('[data-etat]')!;
   const boutonEl = interfaceEl.querySelector<HTMLButtonElement>('[data-rejoindre]')!;
   const retirerEl = interfaceEl.querySelector<HTMLButtonElement>('[data-retirer]')!;
@@ -106,13 +111,13 @@ async function afficherManif(id: string): Promise<void> {
     }
   };
 
-  // Composition (pancarte ; l'apparence #10 ajoutera sa section) avant d'entrer.
+  // Composition de l'apparence et de la pancarte avant d'entrer.
   let composition: PanneauComposition | null = null;
   const fermerComposition = () => {
     composition?.element.remove();
     composition = null;
   };
-  const entrer = async (pancarte: number) => {
+  const entrer = async (apparence: number, pancarte: number) => {
     envoiEnCours = true;
     composition?.occupe(true);
     // Preuve de travail anti-robots (#8) : quelques secondes de calcul, attente affichée.
@@ -120,10 +125,9 @@ async function afficherManif(id: string): Promise<void> {
     try {
       // Jeton de retrait : gardé sur cet appareil, seul son SHA-256 part au serveur (ADR 0001).
       const jeton = nouveauJetonRetrait();
-      // Apparence tirée au hasard en attendant sa composition (#10).
       const entree = await rejoindreLeCortege({
         manif: id,
-        apparence: auHasard(8),
+        apparence,
         pancarte,
         hachageRetrait: await hacherJetonRetrait(jeton),
       });
@@ -141,11 +145,12 @@ async function afficherManif(id: string): Promise<void> {
   boutonEl.addEventListener('click', () => {
     if (composition) return;
     messageEl.textContent = '';
+    const apparence = sectionApparence(apparenceAuHasard());
     const pancarte = sectionPancarte(pancarteAuHasard());
     composition = creerPanneauComposition({
-      sections: [pancarte.section],
+      sections: [apparence.section, pancarte.section],
       libelleValider: 'Rejoindre le cortège',
-      surValider: () => void entrer(pancarte.indice()),
+      surValider: () => void entrer(apparence.indice(), pancarte.indice()),
       surAnnuler: fermerComposition,
     });
     interfaceEl.append(composition.element);
@@ -177,6 +182,7 @@ async function afficherManif(id: string): Promise<void> {
 
   const donnees: DonneesScene = {
     manif,
+    decor: await decor,
     entrees: () => entrees,
     propres: () => propres,
     retraits: () => (retiresIci.size === 0 ? retraitsPublies : [...retraitsPublies, ...retiresIci]),
@@ -199,8 +205,6 @@ async function afficherManif(id: string): Promise<void> {
   }, INTERVALLE_RAFRAICHISSEMENT_MS);
   arreterRafraichissement = () => window.clearInterval(minuterie);
 }
-
-const auHasard = (n: number) => Math.floor(Math.random() * n);
 
 function messageErreurEntree(erreur: unknown): string {
   const code = erreur instanceof EntreeRefusee ? erreur.code : 'reseau';
