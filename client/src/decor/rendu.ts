@@ -20,16 +20,12 @@ import {
   TAILLE_TUILE_PX,
   type BlocDecor,
   type Decor,
-  type TilesetTiled,
 } from '@petit-cortege/shared';
-import urlRpg from '../../../assets/kenney/rpg/Spritesheet/roguelikeSheet_transparent.png';
-import urlVille from '../../../assets/kenney/city/Spritesheet/roguelikeCity_transparent.png';
 import type { PointM, PointPx } from '../cadrage';
 import { blocsVisibles, COTE_BLOC_M } from './blocs';
+import { cuireBloc, dessinerVueDEnsemble, IMAGES_TILESETS, type ImagesTilesets } from './cuisson';
 import { NomsDesPlaces } from './places';
 
-/** Images des tilesets Kenney (CC0), par nom de tileset Tiled. */
-const IMAGES_TILESETS: Record<string, string> = { roguelikeCity: urlVille, roguelikeSheet: urlRpg };
 const cleTexture = (nom: string) => `tileset-${nom}`;
 
 /** En deçà (pixels par mètre), on n'affiche que la vue d'ensemble : une tuile y fait moins de 3 px. */
@@ -64,6 +60,7 @@ export class DecorAffiche {
   readonly #couchesSol: string[];
   readonly #couchesBatiments: string[];
   readonly #places: NomsDesPlaces;
+  readonly #images: ImagesTilesets;
   #image = 0;
   #numeroTexture = 0;
 
@@ -72,9 +69,11 @@ export class DecorAffiche {
     this.#decor = decor;
     this.#couchesSol = decor.nomsCouches.filter((c) => !COUCHES_BATIMENTS.includes(c));
     this.#couchesBatiments = decor.nomsCouches.filter((c) => COUCHES_BATIMENTS.includes(c));
+    this.#images = (nom) =>
+      scene.textures.exists(cleTexture(nom)) ? (scene.textures.get(cleTexture(nom)).getSourceImage() as CanvasImageSource) : undefined;
     this.#places = new NomsDesPlaces(scene, decor);
     const cle = `decor-ensemble-${Phaser.Math.RND.uuid()}`;
-    scene.textures.addCanvas(cle, this.#dessinerEnsemble())!.setFilter(Phaser.Textures.FilterMode.NEAREST);
+    scene.textures.addCanvas(cle, dessinerVueDEnsemble(decor, this.#images))!.setFilter(Phaser.Textures.FilterMode.NEAREST);
     this.#ensemble = scene.add.image(0, 0, cle).setOrigin(0, 0).setDepth(PROFONDEUR_DECOR);
   }
 
@@ -148,90 +147,10 @@ export class DecorAffiche {
 
   /** Dessine les couches d'un bloc dans une texture ; renvoie sa clé et les rangées non vides. */
   #cuire(bloc: BlocDecor, couches: string[]): { cle: string; rangees: number[] } {
-    const cote = TAILLE_BLOC * TAILLE_TUILE_PX;
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = cote;
-    const ctx = canvas.getContext('2d')!;
-    ctx.imageSmoothingEnabled = false;
-    const pleines = new Set<number>();
-    for (const nom of couches) {
-      const gids = bloc.couches[nom];
-      if (!gids) continue;
-      gids.forEach((gid, i) => {
-        const source = this.#source(gid);
-        if (!source) return;
-        const rangee = Math.floor(i / TAILLE_BLOC);
-        pleines.add(rangee);
-        const x = (i % TAILLE_BLOC) * TAILLE_TUILE_PX;
-        ctx.drawImage(source.image, source.sx, source.sy, TAILLE_TUILE_PX, TAILLE_TUILE_PX, x, rangee * TAILLE_TUILE_PX, TAILLE_TUILE_PX, TAILLE_TUILE_PX);
-      });
-    }
+    const { canvas, rangees } = cuireBloc(this.#decor, this.#images, bloc, couches);
     const cle = `decor-bloc-${this.#numeroTexture++}-${Phaser.Math.RND.uuid()}`;
     this.#scene.textures.addCanvas(cle, canvas)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
-    return { cle, rangees: [...pleines].sort((a, b) => a - b) };
-  }
-
-  /** Tileset, image et position dans la planche d'un gid (0 = vide). */
-  #source(gid: number): { image: CanvasImageSource; sx: number; sy: number; tileset: TilesetTiled } | null {
-    if (gid === 0) return null;
-    const tileset = this.#decor.tilesets.reduce<TilesetTiled | null>((t, c) => (gid >= c.firstgid ? c : t), null);
-    if (!tileset || !this.#scene.textures.exists(cleTexture(tileset.name))) return null;
-    const i = gid - tileset.firstgid;
-    const pas = tileset.tilewidth + tileset.spacing;
-    return {
-      image: this.#scene.textures.get(cleTexture(tileset.name)).getSourceImage() as CanvasImageSource,
-      sx: tileset.margin + (i % tileset.columns) * pas,
-      sy: tileset.margin + Math.floor(i / tileset.columns) * pas,
-      tileset,
-    };
-  }
-
-  /** Vue d'ensemble : un pixel par tuile, de la couleur moyenne de la tuile la plus haute. */
-  #dessinerEnsemble(): HTMLCanvasElement {
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, this.#decor.largeur);
-    canvas.height = Math.max(1, this.#decor.hauteur);
-    const ctx = canvas.getContext('2d')!;
-    const pixels = ctx.createImageData(canvas.width, canvas.height);
-    const couleurs = new Map<number, number[]>();
-    const echantillon = document.createElement('canvas').getContext('2d', { willReadFrequently: true })!;
-    const couleur = (gid: number) => {
-      let c = couleurs.get(gid);
-      if (!c) {
-        c = [0, 0, 0, 0];
-        const s = this.#source(gid);
-        if (s) {
-          echantillon.canvas.width = echantillon.canvas.height = TAILLE_TUILE_PX;
-          echantillon.clearRect(0, 0, TAILLE_TUILE_PX, TAILLE_TUILE_PX);
-          echantillon.drawImage(s.image, s.sx, s.sy, TAILLE_TUILE_PX, TAILLE_TUILE_PX, 0, 0, TAILLE_TUILE_PX, TAILLE_TUILE_PX);
-          const d = echantillon.getImageData(0, 0, TAILLE_TUILE_PX, TAILLE_TUILE_PX).data;
-          let n = 0;
-          for (let i = 0; i < d.length; i += 4) {
-            if (d[i + 3]! < 128) continue;
-            c[0]! += d[i]!;
-            c[1]! += d[i + 1]!;
-            c[2]! += d[i + 2]!;
-            n++;
-          }
-          c = n ? [c[0]! / n, c[1]! / n, c[2]! / n, 255] : c;
-        }
-        couleurs.set(gid, c);
-      }
-      return c;
-    };
-    for (const bloc of this.#decor.blocs.values()) {
-      for (let i = 0; i < TAILLE_BLOC * TAILLE_BLOC; i++) {
-        const x = bloc.x + (i % TAILLE_BLOC);
-        const y = bloc.y + Math.floor(i / TAILLE_BLOC);
-        if (x >= canvas.width || y >= canvas.height) continue;
-        let gid = 0;
-        for (const nom of this.#decor.nomsCouches) gid = bloc.couches[nom]?.[i] || gid;
-        if (gid === 0) continue;
-        pixels.data.set(couleur(gid), (y * canvas.width + x) * 4);
-      }
-    }
-    ctx.putImageData(pixels, 0, 0);
-    return canvas;
+    return { cle, rangees };
   }
 }
 
