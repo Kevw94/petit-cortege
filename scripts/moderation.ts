@@ -130,7 +130,7 @@ function aide(): string {
 /** Exécute une commande de modération ; renvoie le code de sortie. */
 export async function executerModeration(argv: string[], deps: DependancesModeration): Promise<number> {
   const [nom, ...args] = argv;
-  const commande = nom === undefined ? undefined : COMMANDES[nom];
+  const commande = nom !== undefined && Object.hasOwn(COMMANDES, nom) ? COMMANDES[nom] : undefined;
   if (!commande) {
     deps.ecrire(nom === undefined || nom === 'aide' ? aide() : `Commande inconnue : ${nom}\n\n${aide()}`);
     return nom === 'aide' ? 0 : 1;
