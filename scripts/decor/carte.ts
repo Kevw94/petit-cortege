@@ -1,0 +1,258 @@
+/**
+ * Génération du décor d'une manif : bande d'environ 200 m autour du parcours
+ * → tilemap Tiled (carte infinie découpée en blocs de 32 × 32 tuiles) avec les
+ * tilesets Kenney, et le tracé du parcours en couche d'objets.
+ *
+ * Données dérivées d'OpenStreetMap : la carte produite est sous ODbL.
+ */
+import { deflateSync } from 'node:zlib';
+import {
+  ATTRIBUTION_OSM,
+  FORMAT_DECOR,
+  METRES_PAR_TUILE,
+  TAILLE_BLOC,
+  TAILLE_TUILE_PX,
+  tracerParcours,
+  VERSION_FORMAT_DECOR,
+  versPosition,
+  versTuiles,
+  type BlocTiled,
+  type CarteTiled,
+  type CoucheObjetsTiled,
+  type CoucheTuilesTiled,
+  type Georeference,
+  type ObjetTiled,
+  type Parcours,
+  type PointTuiles,
+  type Position,
+} from '@petit-cortege/shared';
+import { classer, Terrain, type Classement } from './classement';
+import { lireExtrait, type ExtraitOverpass, type ObjetOsm } from './osm';
+import { Grille } from './raster';
+import { tilesets, TUILES } from './tuiles';
+
+export interface OptionsDecor {
+  osm: ExtraitOverpass;
+  parcours: Parcours;
+  /** Demi-largeur de la bande autour du parcours, en mètres (bande ≈ 200 m → 100). */
+  demiLargeurM: number;
+  /** Espacement des flèches du tracé, en mètres. */
+  espacementFlechesM?: number;
+  /** Chemin du dossier assets/kenney relatif au fichier de la carte (pour Tiled). */
+  dossierKenney?: string;
+}
+
+export const DEMI_LARGEUR_PAR_DEFAUT_M = 100;
+const ESPACEMENT_FLECHES_M = 50;
+/** Chemin de assets/kenney depuis client/public/decors/. */
+const DOSSIER_KENNEY_PAR_DEFAUT = '../../../assets/kenney';
+
+const enTuiles = (m: number) => m / METRES_PAR_TUILE;
+/** Rayon minimal d’une ligne peinte : au-delà de √2/2 tuile, une diagonale reste continue. */
+const RAYON_MIN_TUILES = 0.75;
+const rayonDe = (largeurM: number) => Math.max(enTuiles(largeurM / 2), RAYON_MIN_TUILES);
+
+export function genererDecor(options: OptionsDecor): CarteTiled {
+  const { georef, largeur, hauteur } = cadrer(options.parcours.coordinates, enTuiles(options.demiLargeurM));
+  const projeter = (l: Position[]) => l.map((p) => versTuiles(georef, p));
+  const parcours = projeter(options.parcours.coordinates);
+
+  const grille = new Grille(largeur, hauteur);
+  // La bande : îlots partout à moins de demiLargeurM du parcours ; rien ne se peint en dehors.
+  grille.peindreLigne(parcours, enTuiles(options.demiLargeurM), Terrain.ilot, false);
+
+  const classes = lireExtrait(options.osm)
+    .map((objet) => ({ objet, classe: classer(objet) }))
+    .filter((c): c is { objet: ObjetOsm; classe: Classement } => c.classe !== null);
+  const surfaces = (terrain: Terrain) => {
+    for (const { objet, classe } of classes) {
+      if (classe.sorte === 'surface' && classe.terrain === terrain) grille.peindrePolygone(objet.anneaux.map(projeter), terrain);
+    }
+  };
+  const rues = (terrain: Terrain, avecTrottoirs: boolean) => {
+    // Les plus étroites d'abord : une rue large recouvre l'amorce d'une rue étroite.
+    const choisies = classes
+      .flatMap(({ objet, classe }) => (classe.sorte === 'rue' && classe.terrain === terrain ? [{ objet, classe }] : []))
+      .sort((a, b) => a.classe.largeurM - b.classe.largeurM);
+    for (const { objet, classe } of choisies) {
+      const largeur = avecTrottoirs ? classe.largeurM + 2 * classe.trottoirM : classe.largeurM;
+      if (avecTrottoirs && classe.trottoirM === 0) continue;
+      grille.peindreLigne(projeter(objet.ligne), rayonDe(largeur), avecTrottoirs ? Terrain.trottoir : terrain);
+    }
+  };
+
+  surfaces(Terrain.vert);
+  surfaces(Terrain.eau);
+  for (const { objet, classe } of classes) {
+    if (classe.sorte === 'cours-d-eau') grille.peindreLigne(projeter(objet.ligne), rayonDe(classe.largeurM), Terrain.eau);
+  }
+  rues(Terrain.chaussee, true);
+  surfaces(Terrain.trottoir);
+  rues(Terrain.trottoir, false);
+  surfaces(Terrain.pieton);
+  rues(Terrain.pieton, false);
+  rues(Terrain.chaussee, false);
+
+  const trace = tracerParcours(parcours, { espacementFleches: enTuiles(options.espacementFlechesM ?? ESPACEMENT_FLECHES_M) });
+  const couches: (CoucheTuilesTiled | CoucheObjetsTiled)[] = [coucheTuiles(1, 'sol', grille, tuileDuSol)];
+  let idObjet = 1;
+  const objet = (name: string, p: PointTuiles, rotation = 0, polyline?: PointTuiles[]): ObjetTiled => ({
+    id: idObjet++,
+    name,
+    type: name,
+    x: p.x * TAILLE_TUILE_PX,
+    y: p.y * TAILLE_TUILE_PX,
+    width: 0,
+    height: 0,
+    rotation,
+    visible: true,
+    ...(polyline
+      ? { polyline: polyline.map((q) => ({ x: (q.x - p.x) * TAILLE_TUILE_PX, y: (q.y - p.y) * TAILLE_TUILE_PX })) }
+      : { point: true as const }),
+  });
+  couches.push({
+    type: 'objectgroup',
+    id: 2,
+    name: 'parcours',
+    x: 0,
+    y: 0,
+    opacity: 1,
+    visible: true,
+    draworder: 'topdown',
+    objects: [
+      objet('trace', trace.ligne[0]!, 0, trace.ligne),
+      objet('depart', trace.depart, trace.depart.angle),
+      ...trace.fleches.map((f) => objet('fleche', f, f.angle)),
+      objet('arrivee', trace.arrivee, trace.arrivee.angle),
+    ],
+  });
+
+  return {
+    type: 'map',
+    version: '1.10',
+    tiledversion: '1.11.0',
+    orientation: 'orthogonal',
+    renderorder: 'right-down',
+    infinite: true,
+    width: largeur,
+    height: hauteur,
+    tilewidth: TAILLE_TUILE_PX,
+    tileheight: TAILLE_TUILE_PX,
+    nextlayerid: couches.length + 1,
+    nextobjectid: idObjet,
+    properties: [
+      { name: 'attribution', type: 'string', value: ATTRIBUTION_OSM },
+      { name: 'format', type: 'string', value: FORMAT_DECOR },
+      { name: 'licence', type: 'string', value: 'ODbL 1.0 (https://opendatacommons.org/licenses/odbl/1-0/)' },
+      { name: 'metres_par_tuile', type: 'float', value: METRES_PAR_TUILE },
+      { name: 'origine_lat', type: 'float', value: georef.origine[1] },
+      { name: 'origine_lon', type: 'float', value: georef.origine[0] },
+      { name: 'version_format', type: 'int', value: VERSION_FORMAT_DECOR },
+    ],
+    tilesets: tilesets(options.dossierKenney ?? DOSSIER_KENNEY_PAR_DEFAUT),
+    layers: couches,
+  };
+}
+
+/** Origine et taille de la carte : emprise de la bande, coin haut-gauche sur une tuile entière. */
+function cadrer(points: Position[], rayon: number): { georef: Georeference; largeur: number; hauteur: number } {
+  if (points.length < 2) throw new Error('Parcours : au moins deux points');
+  const provisoire: Georeference = { origine: [Math.min(...points.map((p) => p[0])), Math.max(...points.map((p) => p[1]))] };
+  const t = points.map((p) => versTuiles(provisoire, p));
+  // Une tuile de marge : l'échelle est-ouest dépend (à peine) de la latitude de l'origine.
+  const minX = Math.floor(Math.min(...t.map((p) => p.x)) - rayon) - 1;
+  const minY = Math.floor(Math.min(...t.map((p) => p.y)) - rayon) - 1;
+  const maxX = Math.ceil(Math.max(...t.map((p) => p.x)) + rayon) + 1;
+  const maxY = Math.ceil(Math.max(...t.map((p) => p.y)) + rayon) + 1;
+  return {
+    georef: { origine: versPosition(provisoire, { x: minX, y: minY }) },
+    largeur: maxX - minX,
+    hauteur: maxY - minY,
+  };
+}
+
+/** Tuile Kenney d'une case du sol, selon son terrain et ses voisines. */
+function tuileDuSol(g: Grille, x: number, y: number): number {
+  const terrain = g.lire(x, y);
+  switch (terrain) {
+    case Terrain.vide:
+      return 0;
+    case Terrain.ilot:
+      return TUILES.ilot;
+    case Terrain.vert:
+      return TUILES.vert;
+    case Terrain.chaussee:
+      return TUILES.chaussee;
+    case Terrain.trottoir:
+      return g.lire(x, y + 1) === Terrain.chaussee ? TUILES.trottoirBordure : TUILES.trottoir;
+    case Terrain.pieton:
+      return g.lire(x, y + 1) === Terrain.chaussee ? TUILES.pietonBordure : TUILES.pieton;
+    case Terrain.eau: {
+      // Quai en pierre là où l'eau touche la terre (le bord de la carte n'est pas un quai).
+      const terre = (dx: number, dy: number) => {
+        const voisin = g.lire(x + dx, y + dy);
+        return voisin !== Terrain.eau && voisin !== Terrain.vide;
+      };
+      const [h, b, gauche, d] = [terre(0, -1), terre(0, 1), terre(-1, 0), terre(1, 0)];
+      const q = TUILES.quai;
+      if (h) return gauche ? q.hautGauche : d ? q.hautDroite : q.haut;
+      if (b) return gauche ? q.basGauche : d ? q.basDroite : q.bas;
+      if (gauche) return q.gauche;
+      if (d) return q.droite;
+      return TUILES.eau;
+    }
+    default:
+      throw new Error(`Terrain inconnu : ${terrain}`);
+  }
+}
+
+/** Couche de tuiles découpée en blocs alignés de TAILLE_BLOC ; les blocs entièrement vides sont omis. */
+export function coucheTuiles(
+  id: number,
+  nom: string,
+  grille: Grille,
+  tuile: (g: Grille, x: number, y: number) => number,
+): CoucheTuilesTiled {
+  const chunks: BlocTiled[] = [];
+  for (let by = 0; by * TAILLE_BLOC < grille.hauteur; by++) {
+    for (let bx = 0; bx * TAILLE_BLOC < grille.largeur; bx++) {
+      const gids = new Uint32Array(TAILLE_BLOC * TAILLE_BLOC);
+      let plein = false;
+      for (let y = 0; y < TAILLE_BLOC; y++) {
+        for (let x = 0; x < TAILLE_BLOC; x++) {
+          const gid = tuile(grille, bx * TAILLE_BLOC + x, by * TAILLE_BLOC + y);
+          gids[y * TAILLE_BLOC + x] = gid;
+          if (gid !== 0) plein = true;
+        }
+      }
+      if (!plein) continue;
+      const octets = Buffer.alloc(gids.length * 4);
+      gids.forEach((gid, i) => octets.writeUInt32LE(gid, i * 4));
+      chunks.push({
+        x: bx * TAILLE_BLOC,
+        y: by * TAILLE_BLOC,
+        width: TAILLE_BLOC,
+        height: TAILLE_BLOC,
+        data: deflateSync(octets, { level: 9 }).toString('base64'),
+      });
+    }
+  }
+  const largeurBlocs = Math.ceil(grille.largeur / TAILLE_BLOC) * TAILLE_BLOC;
+  const hauteurBlocs = Math.ceil(grille.hauteur / TAILLE_BLOC) * TAILLE_BLOC;
+  return {
+    type: 'tilelayer',
+    id,
+    name: nom,
+    x: 0,
+    y: 0,
+    startx: 0,
+    starty: 0,
+    width: largeurBlocs,
+    height: hauteurBlocs,
+    opacity: 1,
+    visible: true,
+    encoding: 'base64',
+    compression: 'zlib',
+    chunks,
+  };
+}

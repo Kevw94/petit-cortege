@@ -31,6 +31,12 @@ export interface AvatarDuCortege {
 export interface Cortege {
   etat: EtatManif;
   avatars: AvatarDuCortege[];
+  /**
+   * Distance parcourue depuis le départ par qui marche depuis le départ (plafonnée à la
+   * longueur) : origine d'un repère qui avance avec le cortège, où la foule en marche
+   * garde sa forme (sert à mesurer la densité, `composerFoule`).
+   */
+  avanceeM: number;
 }
 
 export interface EntreesDuCortege {
@@ -92,7 +98,8 @@ export function calculerCortege({ manif, entrees, propres = [], retraits = [], m
       });
     }
   }
-  return { etat: t < Date.parse(manif.fin) ? 'ouverte' : 'terminee', avatars };
+  const avanceeM = Math.min(manif.longueurM, Math.max(0, t - depart) * VITESSE_M_PAR_MS);
+  return { etat: t < Date.parse(manif.fin) ? 'ouverte' : 'terminee', avatars, avanceeM };
 }
 
 /**
