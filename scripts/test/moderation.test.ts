@@ -394,12 +394,14 @@ describe('modération en ligne de commande', () => {
     }
 
     it("il est ajouté au fichier des retraits et n'est plus compté", async () => {
+      // Après les passages de publication des tests précédents (une entrée ne tombe
+      // jamais dans une minute déjà publiée, même si l'horloge du banc recule).
       const id = await nouvelleManif('signalement');
-      banc.horloge.regler('2026-06-01T08:30:00Z');
+      banc.horloge.regler('2026-06-01T10:30:00Z');
       try {
         const garde = await banc.entrer<ReponseEntree>({ manif: id, apparence: 1, pancarte: 1 });
         const signale = await banc.entrer<ReponseEntree>({ manif: id, apparence: 2, pancarte: 2 });
-        banc.horloge.regler('2026-06-01T08:31:00Z');
+        banc.horloge.regler('2026-06-01T10:31:00Z');
 
         expect(await moderer('supprimer-avatar', '--avatar', signale.corps.avatar)).toBe(0);
 

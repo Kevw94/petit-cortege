@@ -21,10 +21,13 @@ const nouvelIdentifiant = () => randomBytes(12).toString('base64url');
 /**
  * Fait entrer un avatar dans le cortège d'une manif.
  *
- * L'heure stockée est la minute de réception + un aléa de 0 à 59 s (ADR 0001) :
- * elle tombe toujours dans la minute en cours, jamais publiée. Le verrou partagé
- * avec la tâche de publication garantit qu'elle ne publie pas cette minute
- * pendant l'insertion (sinon l'entrée serait perdue : une minute publiée est immuable).
+ * L'heure stockée est la minute de réception + un aléa de 0 à 59 s (ADR 0001).
+ * Elle doit tomber dans une minute pas encore publiée (une minute publiée est
+ * immuable : l'entrée serait perdue). Le verrou partagé avec la tâche de publication
+ * l'empêche de publier pendant l'insertion ; et la minute est au plus tôt la marque
+ * haute de la publication (`publication_etat.avant`, lue en base sous ce verrou) :
+ * un processus dont l'horloge retarde sur celle du processus qui publie repousse
+ * l'entrée à la première minute non publiée au lieu de la perdre.
  */
 export async function entrer(sql: Sql, horloge: Horloge, requete: RequeteEntree): Promise<ResultatEntree> {
   return sql.begin(async (tx) => {
@@ -34,12 +37,16 @@ export async function entrer(sql: Sql, horloge: Horloge, requete: RequeteEntree)
       select ouverture, depart, parcours from manif where id = ${requete.manif} and retiree is null`;
     // Une manif retirée par la modération est traitée comme inconnue.
     if (!manif || manif.ouverture > maintenant) return { ok: false, erreur: 'manif-inconnue' } as const;
-    if (maintenant >= calculerFin(manif.depart, longueurParcours(manif.parcours))) {
-      return { ok: false, erreur: 'manif-terminee' } as const;
-    }
+    const fin = calculerFin(manif.depart, longueurParcours(manif.parcours));
+    if (maintenant >= fin) return { ok: false, erreur: 'manif-terminee' } as const;
+
+    const [etat] = await tx<{ avant: Date }[]>`select avant from publication_etat`;
+    const minute = Math.max(debutDeMinute(maintenant).getTime(), etat?.avant.getTime() ?? 0);
+    // Minute repoussée au-delà de la fin : elle ne serait jamais publiée.
+    if (minute >= fin.getTime()) return { ok: false, erreur: 'manif-terminee' } as const;
 
     const id = nouvelIdentifiant();
-    const entree = new Date(debutDeMinute(maintenant).getTime() + randomInt(MINUTE_MS / 1000) * 1000);
+    const entree = new Date(minute + randomInt(MINUTE_MS / 1000) * 1000);
     // Seul le hachage du jeton de retrait est stocké, jamais le jeton (ADR 0001).
     const hachageRetrait = requete.hachageRetrait ? Buffer.from(requete.hachageRetrait, 'hex') : null;
     await tx`
