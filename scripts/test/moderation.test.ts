@@ -248,4 +248,89 @@ describe('modération en ligne de commande', () => {
     expect(await moderer('effacer-tout')).toBe(1);
     expect(sorties.join('\n')).toMatch(/creer-manif/);
   });
+
+  /** Crée une manif par la CLI (départ 10:00 UTC, ouverte tout de suite) et renvoie son identifiant. */
+  async function nouvelleManif(prefixe: string, depart = '2026-06-01T10:00:00Z'): Promise<string> {
+    const id = `${prefixe}-${Math.random().toString(36).slice(2, 8)}`;
+    const code = await moderer(
+      'creer-manif',
+      '--id', id,
+      '--geojson', await fichier(`${id}.geojson`, EXPORT_UMAP),
+      '--intitule', 'Marche',
+      '--ville', 'Paris',
+      '--depart', depart,
+      '--source', 'Préfecture|https://example.org/',
+    );
+    expect(code).toBe(0);
+    return id;
+  }
+
+  describe('décaler un départ', () => {
+    it('à une heure donnée : départ et fin publiés sont décalés', async () => {
+      const id = await nouvelleManif('decale');
+
+      expect(await moderer('decaler-depart', '--manif', id, '--depart', '2026-06-01T10:45:00Z')).toBe(0);
+
+      const manif = (await manifsPubliees()).find((m) => m.id === id);
+      expect(manif?.depart).toBe('2026-06-01T10:45:00.000Z');
+      expect(manif?.fin).toBe('2026-06-01T12:15:01.357Z');
+    });
+
+    it("d'un nombre de minutes (retard ou avance), pendant la manif", async () => {
+      const id = await nouvelleManif('retard');
+      banc.horloge.regler('2026-06-01T10:10:00Z');
+      try {
+        expect(await moderer('decaler-depart', '--manif', id, '--minutes', '20')).toBe(0);
+        expect((await manifsPubliees()).find((m) => m.id === id)?.depart).toBe('2026-06-01T10:20:00.000Z');
+
+        expect(await moderer('decaler-depart', '--manif', id, '--minutes', '-5')).toBe(0);
+        expect((await manifsPubliees()).find((m) => m.id === id)?.depart).toBe('2026-06-01T10:15:00.000Z');
+      } finally {
+        banc.horloge.regler('2026-06-01T08:00:00Z');
+      }
+    });
+
+    it('la liste publiée est servie avec un cache court (≈ 1 min au plus)', async () => {
+      const reponse = await fetch(new URL('/publie/manifs.json', banc.serveur.url));
+      const maxAge = Number(/max-age=(\d+)/.exec(reponse.headers.get('cache-control') ?? '')?.[1]);
+      expect(maxAge).toBeLessThanOrEqual(60);
+    });
+
+    it.each([
+      ['manif inconnue', ['--manif', 'inconnue', '--minutes', '10'], /inconnue/],
+      ['ni --depart ni --minutes', ['--manif', '$id'], /--depart ou --minutes/],
+      ['--depart et --minutes à la fois', ['--manif', '$id', '--minutes', '5', '--depart', '2026-06-01T11:00:00Z'], /--depart ou --minutes/],
+      ['minutes illisibles', ['--manif', '$id', '--minutes', 'dix'], /minutes/],
+      ["départ avant l'ouverture des entrées", ['--manif', '$id', '--depart', '2026-06-01T07:00:00Z'], /ouverture/],
+    ])('refusé : %s', async (_cas, args, message) => {
+      const id = await nouvelleManif('refus-decalage');
+
+      expect(await moderer('decaler-depart', ...args.map((a) => (a === '$id' ? id : a)))).toBe(1);
+
+      expect(sorties.join('\n')).toMatch(message);
+      expect((await manifsPubliees()).find((m) => m.id === id)?.depart).toBe('2026-06-01T10:00:00.000Z');
+    });
+
+    it('refusé une fois la manif terminée', async () => {
+      const id = await nouvelleManif('finie');
+      banc.horloge.regler('2026-06-01T12:00:00Z');
+      try {
+        expect(await moderer('decaler-depart', '--manif', id, '--minutes', '60')).toBe(1);
+        expect(sorties.join('\n')).toMatch(/terminée/);
+      } finally {
+        banc.horloge.regler('2026-06-01T08:00:00Z');
+      }
+    });
+
+    it('refusé si le nouveau départ terminerait la manif tout de suite', async () => {
+      const id = await nouvelleManif('avance');
+      banc.horloge.regler('2026-06-01T11:00:00Z');
+      try {
+        expect(await moderer('decaler-depart', '--manif', id, '--minutes', '-45')).toBe(1);
+        expect(sorties.join('\n')).toMatch(/terminée/);
+      } finally {
+        banc.horloge.regler('2026-06-01T08:00:00Z');
+      }
+    });
+  });
 });
