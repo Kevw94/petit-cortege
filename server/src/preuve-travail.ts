@@ -42,14 +42,7 @@ export function creerPreuveTravail(options: OptionsPreuveTravail): PreuveTravail
   const { cleHmac, difficulte, dureeDefiMs, maintenantMs } = options;
   // Clé de signature des clés dérivées, distincte de celle des défis.
   const cleSignatureCle = `${cleHmac}:cle-derivee`;
-  /** Signature du défi consommé → expiration (ms). Purgé au fil de l'eau. */
-  const consommes = new Map<string, number>();
-
-  const purger = (maintenant: number) => {
-    for (const [signature, expiration] of consommes) {
-      if (expiration <= maintenant) consommes.delete(signature);
-    }
-  };
+  const consommes = creerMemoireAntiRejeu(maintenantMs);
 
   return {
     creerDefi: () =>
@@ -71,7 +64,7 @@ export function creerPreuveTravail(options: OptionsPreuveTravail): PreuveTravail
       const expiration = challenge.parameters.expiresAt;
       const maintenant = maintenantMs();
       if (typeof expiration !== 'number' || expiration * 1000 <= maintenant) return false;
-      if (consommes.has(challenge.signature)) return false;
+      if (consommes.contient(challenge.signature)) return false;
       const resultat = await verifySolution({
         challenge,
         solution,
@@ -81,11 +74,40 @@ export function creerPreuveTravail(options: OptionsPreuveTravail): PreuveTravail
       }).catch(() => null);
       if (!resultat?.verified) return false;
       // Re-vérifié après l'attente : deux envois simultanés de la même preuve.
-      if (consommes.has(challenge.signature)) return false;
-      purger(maintenant);
-      consommes.set(challenge.signature, expiration * 1000);
+      if (consommes.contient(challenge.signature)) return false;
+      consommes.consommer(challenge.signature, expiration * 1000);
       return true;
     },
+  };
+}
+
+export interface MemoireAntiRejeu {
+  consommer(signature: string, expirationMs: number): void;
+  contient(signature: string): boolean;
+  taille(): number;
+}
+
+/**
+ * Signatures des défis consommés, retenues jusqu'à leur expiration. La purge part
+ * des plus anciennes (ordre d'insertion) et s'arrête à la première encore valide :
+ * temps constant amorti par preuve. (Parcourir toute la table à chaque preuve
+ * faisait s'effondrer le serveur vers 500 entrées/s : test de charge #19.)
+ * Une signature expirée peut rester un peu derrière une plus ancienne encore
+ * valide ; sans conséquence, une preuve expirée est refusée avant d'arriver ici.
+ */
+export function creerMemoireAntiRejeu(maintenantMs: () => number): MemoireAntiRejeu {
+  const consommes = new Map<string, number>();
+  return {
+    consommer(signature, expirationMs) {
+      const maintenant = maintenantMs();
+      for (const [ancienne, expiration] of consommes) {
+        if (expiration > maintenant) break;
+        consommes.delete(ancienne);
+      }
+      consommes.set(signature, expirationMs);
+    },
+    contient: (signature) => consommes.has(signature),
+    taille: () => consommes.size,
   };
 }
 
