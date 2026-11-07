@@ -106,16 +106,23 @@ async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublic
   await etape('effacement des hachages', () => effacerHachagesDesManifsTerminees(sql, maintenant));
 
   const minuteEnCours = debutDeMinute(maintenant);
-  const lignes = await sql<LigneManif[]>`
-    select id, intitule, ville, ouverture, depart, parcours, sources
-    from manif where ouverture <= ${maintenant} and retiree is null order by depart, id`;
+  const lignes = (
+    await sql<LigneManif[]>`
+      select id, intitule, ville, ouverture, depart, parcours, sources
+      from manif where ouverture <= ${maintenant} and retiree is null order by depart, id`
+  ).filter(
+    (l) => calculerFin(l.depart, longueurParcours(l.parcours)).getTime() + CONSULTATION_APRES_FIN_MS > maintenant.getTime(),
+  );
+  // Compteurs des seules manifs listées (index avatar_manif), pas de toute la table.
+  const ids = lignes.map((l) => l.id);
   const compteurs = await sql<{ manif_id: string; n: number }[]>`
     select manif_id, count(*)::int as n from avatar
-    where entree < ${minuteEnCours} and not exists (select 1 from retrait where avatar_id = avatar.id)
+    where manif_id = any(${ids}::text[]) and entree < ${minuteEnCours}
+      and not exists (select 1 from retrait where avatar_id = avatar.id)
     group by manif_id`;
   const compteurParManif = new Map(compteurs.map((c) => [c.manif_id, c.n]));
 
-  const toutes: ManifPubliee[] = lignes.map((l) => {
+  const manifs: ManifPubliee[] = lignes.map((l) => {
     const longueurM = longueurParcours(l.parcours);
     return {
       id: l.id,
@@ -130,7 +137,6 @@ async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublic
       compteur: compteurParManif.get(l.id) ?? 0,
     };
   });
-  const manifs = toutes.filter((m) => Date.parse(m.fin) + CONSULTATION_APRES_FIN_MS > maintenant.getTime());
 
   await etape('fichiers par minute', () => publierMinutes(sql, dossierPublication, manifs, maintenant));
   await etape('compactage par heure', () => compacterHeures(sql, dossierPublication, manifs, maintenant));
