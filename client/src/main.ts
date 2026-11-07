@@ -104,6 +104,10 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
       <p>${echapper(manif.ville)} · départ ${heure(manif.depart)}</p>
       <p data-etat></p>
     </section>
+    <div class="camera" role="group" aria-label="Caméra">
+      <button type="button" data-suivre hidden>Suivre</button>
+      <button type="button" data-ensemble>Vue d’ensemble</button>
+    </div>
     <section class="action">
       <button type="button" class="rejoindre" data-rejoindre hidden>Rejoindre le cortège</button>
       <button type="button" class="retirer" data-retirer hidden>Retirer mon avatar</button>
@@ -116,6 +120,8 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
   const retirerEl = interfaceEl.querySelector<HTMLButtonElement>('[data-retirer]')!;
   const messageEl = interfaceEl.querySelector<HTMLParagraphElement>('[data-message]')!;
   const rappelEl = interfaceEl.querySelector<HTMLButtonElement>('[data-rappel]')!;
+  const suivreEl = interfaceEl.querySelector<HTMLButtonElement>('[data-suivre]')!;
+  const ensembleEl = interfaceEl.querySelector<HTMLButtonElement>('[data-ensemble]')!;
 
   // Rappel d'agenda (.ics) généré ici, au titre neutre, à l'heure de fin (ADR 0002 : seul
   // le fragment désigne la manif, jamais envoyé au serveur).
@@ -236,6 +242,10 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
     propres: () => propres,
     retraits: () => (retiresIci.size === 0 ? retraitsPublies : [...retraitsPublies, ...retiresIci]),
     surCortege,
+    // Caméra à la troisième personne : « Suivre » n'apparaît que quand la vue est détachée.
+    surModeCamera: (suivi) => {
+      suivreEl.hidden = suivi;
+    },
   };
   const jeu = new Phaser.Game({
     type: Phaser.AUTO,
@@ -245,6 +255,10 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
     scene: [],
   });
   jeu.scene.add('cortege', SceneCortege, true, donnees);
+  // La scène n'existe qu'une fois le jeu démarré : on la cherche au moment du clic.
+  const scene = () => jeu.scene.getScene('cortege') as SceneCortege | null;
+  suivreEl.addEventListener('click', () => scene()?.suivreLeCortege());
+  ensembleEl.addEventListener('click', () => scene()?.vueDEnsemble());
   vue.surQuitter(() => jeu.destroy(true));
 
   // Sans chevauchement, et rien n'est appliqué une fois la vue quittée.
