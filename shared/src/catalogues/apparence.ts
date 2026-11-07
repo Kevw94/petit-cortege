@@ -223,3 +223,20 @@ export function couchesApparence(apparence: CompositionApparence): string[] {
   if (accessoire !== 0) couches.push(`accessoire/${accessoire}/avant`);
   return couches;
 }
+
+/**
+ * Une apparence tirée au hasard dans le catalogue, sans accessoire : point de départ
+ * de la composition et variété des avatars pré-remplis.
+ */
+export function apparenceAuHasard(alea: () => number = Math.random): CompositionApparence {
+  const tirer = (liste: readonly unknown[]) => Math.floor(alea() * liste.length);
+  return {
+    teint: tirer(TEINTS),
+    couleurCheveux: tirer(COULEURS_CHEVEUX),
+    coupe: tirer(COUPES),
+    haut: tirer(HAUTS),
+    couleurHaut: tirer(COULEURS_VETEMENTS),
+    couleurBas: tirer(COULEURS_VETEMENTS),
+    accessoire: 0,
+  };
+}

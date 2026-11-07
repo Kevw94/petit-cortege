@@ -318,6 +318,38 @@ button.secondaire {
   place-items: center;
 }
 
+/* Avatar : aperçu et vignettes en pixels Kenney agrandis sans lissage (#10). */
+.cadre-apercu-apparence {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0;
+}
+
+.apercu-apparence,
+.vignette-apparence {
+  image-rendering: pixelated;
+}
+
+.apercu-apparence {
+  width: 144px;
+  height: 96px;
+}
+
+.section-apparence .choix + .choix {
+  margin-top: 8px;
+}
+
+.choix-vignettes button {
+  padding: 2px;
+  display: grid;
+  place-items: center;
+}
+
+.vignette-apparence {
+  width: 48px;
+  height: 32px;
+}
+
 /* Pancarte en HTML : aperçu et vignettes des formes, mêmes proportions que dans la scène. */
 .apercu-pancarte {
   display: flex;
