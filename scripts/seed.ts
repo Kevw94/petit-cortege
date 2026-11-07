@@ -64,6 +64,8 @@ export async function parcoursDemo() {
 export async function semerManifDemo(sql: Sql, dossierPublication: string): Promise<void> {
   const maintenant = Date.now();
   const depart = maintenant + nombreDepuisEnv('SEED_DEPART_MIN', 2) * MINUTE;
+  // Retraits d'abord : ils référencent les avatars de la démo (essais précédents).
+  await sql`delete from retrait where avatar_id in (select id from avatar where manif_id = ${ID_MANIF_DEMO})`;
   await sql`delete from avatar where manif_id = ${ID_MANIF_DEMO}`;
   await sql`delete from manif where id = ${ID_MANIF_DEMO}`;
   // Les fichiers par minute sont immuables : on repart d'une publication vide.
