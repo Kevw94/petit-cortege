@@ -22,8 +22,8 @@ export const TUILES = {
   trottoirBordure: ville(1, 22),
   pieton: ville(4, 20),
   pietonBordure: ville(4, 22),
-  /** Cœur d'îlot : toit gris uni (zinc), en attendant les bâtiments (#13). */
-  ilot: ville(10, 3),
+  /** Cœur d'îlot hors bâtiments (cours, terrains non cartographiés) : gravier gris. */
+  ilot: ville(8, 24),
   vert: ville(0, 24),
   eau: rpg(3, 4),
   /** Quais en pierre autour de l'eau (pièce en 9 morceaux). */
@@ -37,7 +37,72 @@ export const TUILES = {
     basGauche: rpg(2, 5),
     basDroite: rpg(4, 5),
   },
+  /** Garde-corps des ponts, posés par-dessus le tablier au bord de l'eau. */
+  gardeCorps: {
+    /** Lisses horizontales (bords nord et sud du tablier). */
+    nord: rpg(52, 23),
+    sud: rpg(52, 24),
+    /** Poteaux le long du bord ouest / est. */
+    ouest: rpg(51, 23),
+    est: rpg(50, 23),
+  },
 } as const;
+
+/** Toit en 9 morceaux et coins rentrants : planche Roguelike Modern City, 8 colonnes × 2 rangées par couleur. */
+const toit = (c0: number) => ({
+  hautGauche: ville(c0, 0),
+  hautDroite: ville(c0 + 1, 0),
+  haut: ville(c0 + 2, 0),
+  gauche: ville(c0 + 3, 0),
+  /** Coin rentrant : seule la case en diagonale (en bas à droite) n'est pas du toit. */
+  creuxBasDroite: ville(c0 + 4, 0),
+  creuxBasGauche: ville(c0 + 5, 0),
+  plein: ville(c0 + 6, 0),
+  /** Plusieurs coins rentrants. */
+  creuxMultiples: ville(c0 + 7, 0),
+  basGauche: ville(c0, 1),
+  basDroite: ville(c0 + 1, 1),
+  bas: ville(c0 + 2, 1),
+  droite: ville(c0 + 3, 1),
+  creuxHautDroite: ville(c0 + 4, 1),
+  creuxHautGauche: ville(c0 + 5, 1),
+});
+export type PiecesToit = ReturnType<typeof toit>;
+
+/** Rangée de façade : colonnes « seule » (pilastres des deux côtés), gauche, milieu, droite. */
+const rangee = (c0: number, r: number) => ({
+  seule: ville(c0, r),
+  gauche: ville(c0 + 1, r),
+  milieu: ville(c0 + 2, r),
+  droite: ville(c0 + 3, r),
+});
+/** Façade : rangée sous le toit (haut), étages (milieu), soubassement (bas), ou rangée unique. */
+const mur = (c0: number) => ({ haut: rangee(c0, 9), milieu: rangee(c0, 5), bas: rangee(c0, 8), unique: rangee(c0, 10) });
+export type PiecesMur = ReturnType<typeof mur>;
+
+export interface Materiau {
+  nom: string;
+  toit: PiecesToit;
+  mur: PiecesMur;
+  fenetre: number;
+  porte: number;
+}
+
+const TOITS = { rouge: toit(0), zinc: toit(8), ardoiseClaire: toit(16), beige: toit(24) };
+const MURS = { brique: mur(0), pierreGrise: mur(4), pierreBeige: mur(8) };
+const FENETRES = { bois: ville(25, 16), boisLarge: ville(27, 16), grise: ville(25, 19), griseLarge: ville(27, 19) };
+const PORTES = { brune: ville(20, 27), verte: ville(23, 27), orange: ville(26, 27) };
+
+/** Matériaux des bâtiments (façades génériques) : pierre beige et zinc d'abord, comme à Paris. */
+export const MATERIAUX: readonly Materiau[] = [
+  { nom: 'pierre beige, zinc', toit: TOITS.zinc, mur: MURS.pierreBeige, fenetre: FENETRES.bois, porte: PORTES.brune },
+  { nom: 'pierre beige, ardoise', toit: TOITS.ardoiseClaire, mur: MURS.pierreBeige, fenetre: FENETRES.grise, porte: PORTES.verte },
+  { nom: 'pierre grise, zinc', toit: TOITS.zinc, mur: MURS.pierreGrise, fenetre: FENETRES.griseLarge, porte: PORTES.brune },
+  { nom: 'brique, tuiles', toit: TOITS.rouge, mur: MURS.brique, fenetre: FENETRES.boisLarge, porte: PORTES.orange },
+  { nom: 'pierre beige, toit beige', toit: TOITS.beige, mur: MURS.pierreBeige, fenetre: FENETRES.boisLarge, porte: PORTES.orange },
+];
+/** Tirage pondéré des matériaux (indices dans MATERIAUX). */
+export const TIRAGE_MATERIAUX: readonly number[] = [0, 0, 0, 1, 1, 2, 2, 3, 4];
 
 /** Tilesets de la carte ; `dossierKenney` : chemin de assets/kenney relatif au fichier de la carte. */
 export function tilesets(dossierKenney: string): TilesetTiled[] {

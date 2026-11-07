@@ -50,7 +50,7 @@ describe('npm run decor', () => {
     await executer('extraire', '--parcours', PARCOURS, '--overpass', urlOverpass, '--sortie', 'extrait.json');
     const requete = requetesRecues.at(-1)!;
     expect(requete).toContain('[out:json]');
-    expect(requete).toContain('(around:150,48.87,2.36,48.87,2.3654628)');
+    expect(requete).toContain('(around:150,48.87,2.36,48.87,2.365463)');
     expect(requete).toContain('out geom;');
     expect(await readFile(join(dossier, 'extrait.json'), 'utf8')).toBe(await readFile(EXTRAIT, 'utf8'));
   });

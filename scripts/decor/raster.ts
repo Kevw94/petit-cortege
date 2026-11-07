@@ -52,28 +52,42 @@ export class Grille {
 
   /** Peint l'intérieur des anneaux (règle pair-impair : les anneaux intérieurs font des trous). */
   peindrePolygone(anneaux: PointTuiles[][], valeur: number): void {
-    const ys = anneaux.flat().map((p) => p.y);
-    const y0 = Math.max(0, Math.floor(Math.min(...ys)));
-    const y1 = Math.min(this.hauteur - 1, Math.ceil(Math.max(...ys)));
-    for (let y = y0; y <= y1; y++) {
-      const cy = y + 0.5;
-      const xs: number[] = [];
-      for (const anneau of anneaux) {
-        for (let i = 1; i < anneau.length; i++) {
-          const a = anneau[i - 1]!;
-          const b = anneau[i]!;
-          if (a.y <= cy !== b.y <= cy) xs.push(a.x + ((cy - a.y) / (b.y - a.y)) * (b.x - a.x));
-        }
+    parcourirPolygone(anneaux, this.largeur, this.hauteur, (x, y) => {
+      const i = y * this.largeur + x;
+      if (this.cases[i] !== 0) this.cases[i] = valeur;
+    });
+  }
+}
+
+/**
+ * Appelle `visiter` pour chaque tuile de la grille dont le centre est à
+ * l'intérieur des anneaux (règle pair-impair : les anneaux intérieurs font des trous).
+ */
+export function parcourirPolygone(
+  anneaux: PointTuiles[][],
+  largeur: number,
+  hauteur: number,
+  visiter: (x: number, y: number) => void,
+): void {
+  const ys = anneaux.flat().map((p) => p.y);
+  if (ys.length === 0) return;
+  const y0 = Math.max(0, Math.floor(Math.min(...ys)));
+  const y1 = Math.min(hauteur - 1, Math.ceil(Math.max(...ys)));
+  for (let y = y0; y <= y1; y++) {
+    const cy = y + 0.5;
+    const xs: number[] = [];
+    for (const anneau of anneaux) {
+      for (let i = 1; i < anneau.length; i++) {
+        const a = anneau[i - 1]!;
+        const b = anneau[i]!;
+        if (a.y <= cy !== b.y <= cy) xs.push(a.x + ((cy - a.y) / (b.y - a.y)) * (b.x - a.x));
       }
-      xs.sort((p, q) => p - q);
-      for (let k = 0; k + 1 < xs.length; k += 2) {
-        const debut = Math.max(0, Math.ceil(xs[k]! - 0.5));
-        const fin = Math.min(this.largeur - 1, Math.ceil(xs[k + 1]! - 0.5) - 1);
-        for (let x = debut; x <= fin; x++) {
-          const i = y * this.largeur + x;
-          if (this.cases[i] !== 0) this.cases[i] = valeur;
-        }
-      }
+    }
+    xs.sort((p, q) => p - q);
+    for (let k = 0; k + 1 < xs.length; k += 2) {
+      const debut = Math.max(0, Math.ceil(xs[k]! - 0.5));
+      const fin = Math.min(largeur - 1, Math.ceil(xs[k + 1]! - 0.5) - 1);
+      for (let x = debut; x <= fin; x++) visiter(x, y);
     }
   }
 }

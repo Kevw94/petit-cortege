@@ -148,7 +148,7 @@ export class SceneCortege extends Phaser.Scene {
     });
     const ecran = this.#ecran();
     const vers = versEcran(this.#cadrage!, ecran);
-    this.#decor?.afficher(this.#cadrage!, ecran, vers);
+    this.#decor?.afficher(this.#cadrage!, ecran, vers, (y) => this.#profondeurSelonY(y));
     if (this.#parcoursADessiner) {
       this.#parcoursADessiner = false;
       this.#trace.dessiner(this.#cadrage!.echelle, vers);
@@ -211,7 +211,6 @@ export class SceneCortege extends Phaser.Scene {
 
   /** Un sprite par avatar dessiné (réservoir réutilisé), profondeur selon y : les plus bas devant. */
   #placerSprites(avatars: readonly { x: number; y: number; apparence: number; propre: boolean }[], echelle: number): void {
-    const hauteurEcran = Math.max(this.scale.gameSize.height, 1);
     avatars.forEach((avatar, i) => {
       let sprite = this.#sprites[i];
       if (!sprite) {
@@ -221,11 +220,16 @@ export class SceneCortege extends Phaser.Scene {
       sprite.setFrame(this.#apparences.cadre(avatar.apparence), false, false);
       sprite.setPosition(avatar.x, avatar.y).setScale(echelle).setVisible(true);
       sprite.setDepth(
-        avatar.propre ? PROFONDEUR.avatarToi : PROFONDEUR.foule + Math.min(Math.max(avatar.y / hauteurEcran, 0), 1) * 0.99,
+        avatar.propre ? PROFONDEUR.avatarToi : this.#profondeurSelonY(avatar.y),
       );
     });
     for (let i = avatars.length; i < this.#sprites.length; i++) this.#sprites[i]!.setVisible(false);
     this.#apparences.actualiser();
+  }
+
+  /** Profondeur = y à l'écran (1 à 2, les plus bas devant) : avatars de la foule et rangées de bâtiments. */
+  #profondeurSelonY(y: number): number {
+    return PROFONDEUR.foule + Math.min(Math.max(y / Math.max(this.scale.gameSize.height, 1), 0), 1) * 0.99;
   }
 
   #ecran() {

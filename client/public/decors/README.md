@@ -18,5 +18,8 @@ npm run decor -- tilemap --parcours donnees/osm/republique-nation/parcours.geojs
   --osm donnees/osm/republique-nation/extrait-overpass.json --sortie client/public/decors/republique-nation.json
 ```
 
-Les cartes s'ouvrent dans Tiled (carte infinie, blocs de 32 × 32, couche `sol`, couche d'objets `parcours`)
-pour un nettoyage à la main ; les chemins des tilesets pointent vers `assets/kenney/`.
+Les cartes s'ouvrent dans Tiled (carte infinie, blocs de 32 × 32) pour un nettoyage à la main ; les chemins des
+tilesets pointent vers `assets/kenney/`. Couches de tuiles : `sol` (rues, verts, eau, cours), `ponts`
+(garde-corps), `batiments` (toits et murs) et `facades` (fenêtres, portes), ces deux dernières dessinées en jeu
+par rangées avec profondeur = y ; couches d'objets : `parcours` (tracé) et `places` (noms des places
+traversées, propriété `arrivee`).
