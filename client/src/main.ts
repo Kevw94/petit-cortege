@@ -4,7 +4,6 @@ import {
   avatarsPropres,
   jetonDeRetrait,
   memoriserAvatarPropre,
-  oublierAvatarPropre,
   suivreFinsDesManifs,
 } from './avatars-propres';
 import { chargerDecor } from './decor/chargement';
@@ -17,7 +16,7 @@ import { afficherImageFinale } from './image-finale/vue';
 import { telechargerDansLeNavigateur } from './partage/partage';
 import { NOM_FICHIER_RAPPEL, rappelIcs } from './partage/rappel';
 import { Publication } from './publication';
-import { hacherJetonRetrait, nouveauJetonRetrait, RetraitRefuse, retirerMonAvatar } from './retrait';
+import { hacherJetonRetrait, nouveauJetonRetrait, RetraitRefuse, retirerMesAvatars } from './retrait';
 import { pageLegale, piedDePage } from './pages/pages-legales';
 import { lienManif, lireRoute } from './routage';
 import { SceneCortege, type DonneesScene } from './scene-cortege';
@@ -221,17 +220,16 @@ async function afficherManif(id: string): Promise<void> {
     retirerEl.disabled = true;
     messageEl.textContent = 'Retrait de ton avatar…';
     try {
-      for (const { a: avatar } of propresRetirables) {
-        const jeton = jetonDeRetrait(avatar, new Date());
-        if (jeton !== undefined) await retirerMonAvatar({ avatar, jeton });
-        oublierAvatarPropre(avatar);
-        retiresIci.add(avatar);
-        propres = propres.filter((e) => e.a !== avatar);
-        propresRetirables = propresRetirables.filter((e) => e.a !== avatar);
-      }
-      messageEl.textContent = "Ton avatar est retiré. Il disparaîtra pour tout le monde d'ici quelques minutes.";
-    } catch (erreur) {
-      messageEl.textContent = messageErreurRetrait(erreur);
+      const resultat = await retirerMesAvatars(propresRetirables.map((e) => e.a), new Date());
+      const { retires, refuses } = resultat;
+      for (const avatar of retires) retiresIci.add(avatar);
+      propres = propres.filter((e) => !retires.includes(e.a));
+      // Refusés pour de bon : jeton oublié, le bouton « Retirer » disparaît.
+      propresRetirables = propresRetirables.filter((e) => !retires.includes(e.a) && !refuses.includes(e.a));
+      if ('erreur' in resultat) messageEl.textContent = messageErreurRetrait(resultat.erreur);
+      else if (refuses.length > 0) {
+        messageEl.textContent = "Le retrait n'est plus possible pour ton avatar : il reste dans le cortège jusqu'à la fin.";
+      } else messageEl.textContent = "Ton avatar est retiré. Il disparaîtra pour tout le monde d'ici quelques minutes.";
     } finally {
       envoiEnCours = false;
       retirerEl.disabled = false;
