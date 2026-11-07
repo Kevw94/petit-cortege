@@ -92,12 +92,14 @@ export function composerImageFinale(
     return { xM: r * Math.cos(i * ANGLE_D_OR), yM: r * Math.sin(i * ANGLE_D_OR) };
   };
 
+  // Place visée : un second tirage, indépendant de celui du premier plan (sinon les avatars
+  // tirés au premier plan, aux plus petits tirages, seraient tous au centre de la spirale).
   const tires = avatars
-    .map((avatar) => ({ avatar, tirage: tirageIdentifiant(avatar.id) }))
-    .sort((a, b) => a.tirage - b.tirage || (a.avatar.id < b.avatar.id ? -1 : a.avatar.id > b.avatar.id ? 1 : 0));
+    .map((avatar) => ({ avatar, tirage: tirageIdentifiant(avatar.id), visee: tirageIdentifiant(`place:${avatar.id}`) }))
+    .sort((a, b) => a.visee - b.visee || (a.avatar.id < b.avatar.id ? -1 : a.avatar.id > b.avatar.id ? 1 : 0));
   const occupees = new Set<number>();
-  const places = tires.map(({ avatar, tirage }) => {
-    let i = Math.floor((tirage / DEUX_32) * nombrePlaces);
+  const places = tires.map(({ avatar, tirage, visee }) => {
+    let i = Math.floor((visee / DEUX_32) * nombrePlaces);
     while (occupees.has(i)) i = (i + 1) % nombrePlaces;
     occupees.add(i);
     const { id, apparence, pancarte, propre } = avatar;
