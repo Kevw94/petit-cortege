@@ -72,3 +72,10 @@ export function fichiersPublies(
   }
   return { heures, minutes };
 }
+
+/**
+ * Durée pendant laquelle une manif terminée reste dans la liste publiée, pour revoir
+ * son image finale (story 43) : 30 jours après la fin. Ensuite elle sort de la liste,
+ * et ses retraits du fichier des retraits.
+ */
+export const CONSULTATION_APRES_FIN_MS = 30 * 24 * HEURE_MS;
