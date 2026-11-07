@@ -11,6 +11,8 @@
   "dependencies": {
     "@petit-cortege/server": "*",
     "@petit-cortege/shared": "*",
+    "@types/pngjs": "6.0.5",
+    "pngjs": "7.0.0",
     "postgres": "^4.1.0"
   },
   "devDependencies": {
