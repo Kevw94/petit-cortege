@@ -1,0 +1,35 @@
+{
+  "name": "petit-cortege",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "shared",
+    "server",
+    "client",
+    "scripts"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace=@petit-cortege/scripts",
+    "seed": "npm run seed --workspace=@petit-cortege/scripts",
+    "moderation": "tsx scripts/moderation.ts",
+    "decor": "tsx scripts/decor.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build --workspace=@petit-cortege/client",
+    "mesure-perf": "npm run mesure-perf --workspace=@petit-cortege/scripts --",
+    "serveur": "tsx server/src/principal.ts",
+    "charge": "tsx scripts/charge/charge.ts",
+    "generer-apparence": "tsx scripts/generer-apparence.ts",
+    "generer-apercu": "tsx scripts/generer-apercu.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

@@ -1,0 +1,488 @@
+:root {
+  --fond: #f4f1ea;
+  --texte: #222;
+  --accent: #c0392b;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--texte);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--fond);
+  overflow: hidden;
+  /* Gestes gérés par le jeu, pas de zoom accidentel de la page. */
+  touch-action: none;
+}
+
+#jeu {
+  position: fixed;
+  inset: 0;
+}
+
+#interface {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  /* Au-dessus du pied de page : le panneau de composition le recouvre. */
+  z-index: 2;
+  padding: max(12px, env(safe-area-inset-top)) 12px 12px;
+}
+
+#interface > * {
+  pointer-events: auto;
+}
+
+.carte {
+  background: rgb(255 255 255 / 0.92);
+  border-radius: 10px;
+  padding: 10px 14px;
+  max-width: 28rem;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.15);
+}
+
+.carte h1 {
+  font-size: 1.1rem;
+  margin: 0 0 4px;
+}
+
+.carte p {
+  margin: 2px 0;
+  font-size: 0.9rem;
+}
+
+.liste {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+}
+
+.liste a {
+  display: block;
+  padding: 10px 0;
+  color: inherit;
+  text-decoration: none;
+  border-top: 1px solid #ddd;
+}
+
+.liste a strong {
+  display: block;
+}
+
+a.retour {
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+/* Pied de page légal (#17), visible sur toutes les vues, par-dessus le canvas. */
+.pied-de-page {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  padding: 6px 12px max(6px, env(safe-area-inset-bottom));
+  text-align: center;
+  font-size: 0.75rem;
+  line-height: 1.8;
+  background: rgb(244 241 234 / 0.85);
+}
+
+.pied-de-page a {
+  color: var(--texte);
+  white-space: nowrap;
+}
+
+/* Pages légales : texte long, défilable dans la carte (le body ne défile pas). */
+.page-legale {
+  max-width: 42rem;
+  margin: 0 auto;
+  max-height: calc(100dvh - 5.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  line-height: 1.5;
+}
+
+.page-legale h2 {
+  font-size: 1rem;
+  margin: 16px 0 4px;
+}
+
+.page-legale p,
+.page-legale li {
+  font-size: 0.92rem;
+  margin: 4px 0;
+}
+
+.page-legale ul {
+  padding-left: 1.2rem;
+  margin: 4px 0;
+}
+
+.page-legale mark {
+  background: #ffe066;
+  outline: 2px dashed var(--accent);
+  padding: 0 2px;
+}
+
+.page-legale .mise-a-jour {
+  margin-top: 16px;
+  color: #666;
+  font-size: 0.8rem;
+}
+
+/* Action principale en bas de l'écran, à portée de pouce sur mobile. */
+#interface > .action {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  /* Au-dessus du pied de page légal (#17). */
+  bottom: calc(max(6px, env(safe-area-inset-bottom)) + 4rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.action > * {
+  pointer-events: auto;
+}
+
+button.rejoindre {
+  min-height: 48px;
+  padding: 12px 28px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.25);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button.rejoindre:disabled {
+  opacity: 0.6;
+}
+
+/* Action secondaire, discrète mais assez grande pour le doigt. */
+button.retirer,
+button.rappel {
+  min-height: 44px;
+  padding: 10px 20px;
+  border: 1px solid #999;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.92);
+  color: var(--texte);
+  font: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button.retirer:disabled {
+  opacity: 0.6;
+}
+
+.message:empty {
+  display: none;
+}
+
+.message {
+  margin: 0;
+  max-width: 28rem;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.92);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* Panneau de composition avant d'entrer (#11 pancarte, #10 apparence) : feuille en bas
+   d'écran sur mobile, défilable au doigt, boutons toujours visibles en bas. */
+#interface > .composition {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  margin: 0 auto;
+  max-width: 32rem;
+  max-height: 82dvh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -2px 10px rgb(0 0 0 / 0.2);
+}
+
+.composition-contenu {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 12px 14px 4px;
+}
+
+.composition h2 {
+  font-size: 1.05rem;
+  margin: 0 0 8px;
+}
+
+.composition h3 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555;
+  margin: 12px 0 6px;
+}
+
+.composition > .message {
+  margin: 6px 14px 0;
+  max-width: none;
+  padding: 0;
+}
+
+.composition-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 10px 14px max(10px, env(safe-area-inset-bottom));
+  border-top: 1px solid #eee;
+}
+
+.composition-actions button.rejoindre {
+  flex: 1;
+  padding: 12px 16px;
+}
+
+button.secondaire {
+  min-height: 48px;
+  padding: 12px 18px;
+  border: 1px solid #ccc;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--texte);
+  font: inherit;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.choix {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.choix button {
+  min-height: 44px;
+  min-width: 44px;
+  border: 2px solid #ddd;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--texte);
+  font: inherit;
+  font-size: 0.92rem;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.choix button[aria-pressed='true'] {
+  border-color: var(--texte);
+  box-shadow: 0 0 0 2px #fff inset;
+}
+
+.choix-slogans button {
+  padding: 6px 12px;
+}
+
+.choix-slogans button[aria-pressed='true'] {
+  background: #f1efe8;
+  font-weight: 600;
+}
+
+.choix-couleurs button {
+  width: 44px;
+  background: var(--fond);
+}
+
+.choix-formes button {
+  width: 56px;
+  display: grid;
+  place-items: center;
+}
+
+/* Avatar : aperçu et vignettes en pixels Kenney agrandis sans lissage (#10). */
+.cadre-apercu-apparence {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0;
+}
+
+.apercu-apparence,
+.vignette-apparence {
+  image-rendering: pixelated;
+}
+
+.apercu-apparence {
+  width: 144px;
+  height: 96px;
+}
+
+.section-apparence .choix + .choix {
+  margin-top: 8px;
+}
+
+.choix-vignettes button {
+  padding: 2px;
+  display: grid;
+  place-items: center;
+}
+
+.vignette-apparence {
+  width: 48px;
+  height: 32px;
+}
+
+/* Pancarte en HTML : aperçu et vignettes des formes, mêmes proportions que dans la scène. */
+.apercu-pancarte {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0 18px;
+}
+
+.pancarte {
+  --fond: #f5f2e8;
+  --texte: #222;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 9.6rem;
+  aspect-ratio: 1.6 / 1;
+  padding: 8%;
+  background: var(--fond);
+  color: var(--texte);
+  border: 2px solid rgb(34 34 34 / 0.7);
+  font-weight: 700;
+  font-size: 1.05rem;
+  line-height: 1.15;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+/* Le manche. */
+.apercu-pancarte .pancarte::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: calc(50% - 3px);
+  width: 6px;
+  height: 18px;
+  background: #7a5530;
+}
+
+.pancarte[data-forme='portrait'] {
+  width: 6.6rem;
+  aspect-ratio: 1.1 / 1.4;
+}
+
+.pancarte[data-forme='rond'] {
+  width: 7.8rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  padding: 14%;
+}
+
+.pancarte[data-forme='losange'] {
+  width: 9rem;
+  aspect-ratio: 1;
+  padding: 24%;
+  border: 0;
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  font-size: 0.9rem;
+}
+
+.pancarte.mini {
+  width: 26px;
+  padding: 0;
+  background: #888;
+  border: 0;
+}
+
+.pancarte.mini[data-forme='portrait'] {
+  width: 18px;
+}
+
+.pancarte.mini[data-forme='rond'] {
+  width: 22px;
+}
+
+.pancarte.mini[data-forme='losange'] {
+  width: 24px;
+}
+
+/* Mention des données cartographiques (ODbL), toujours visible sur la vue d'une manif. */
+#interface > .attribution {
+  position: fixed;
+  right: 0;
+  bottom: calc(max(6px, env(safe-area-inset-bottom)) + 2.6rem);
+  margin: 0;
+  padding: 1px 6px;
+  font-size: 0.7rem;
+  background: rgb(255 255 255 / 0.8);
+  border-radius: 4px 0 0 4px;
+}
+
+#interface > .attribution a {
+  color: inherit;
+}
+
+/* Image finale d'une manif terminée (#15) : carte puis image, défilables. */
+.vue-image-finale {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-height: calc(100dvh - 4.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding-bottom: 12px;
+}
+
+.vue-image-finale .carte {
+  width: 100%;
+}
+
+.partage-image {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  width: min(100%, 28rem);
+}
+
+.partage-image button {
+  padding-inline: 16px;
+  flex: 1 1 10rem;
+}
+
+canvas.image-finale {
+  display: block;
+  width: min(100%, 28rem, calc((100dvh - 12rem) * 0.8));
+  height: auto;
+  border-radius: 6px;
+  box-shadow: 0 1px 6px rgb(0 0 0 / 0.25);
+}
+
+.carte h2.sous-titre {
+  font-size: 0.95rem;
+  margin: 14px 0 0;
+}
