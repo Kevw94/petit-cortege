@@ -17,11 +17,19 @@ export const LONGUEUR_TRONCON_M = 20;
  */
 export const SEUIL_DENSITE_PAR_TUILE = 1;
 /**
- * Part des avatars d'un tronçon en masse dessinés au premier plan : ceux dont le hachage
- * de l'identifiant (32 bits) est sous `FRACTION_PREMIER_PLAN × 2³²`. Le seuil ne dépend
- * pas du nombre d'avatars : un avatar qui arrive ou part ne change le tirage de personne.
+ * Densité visée pour le premier plan d'un tronçon en masse, en avatars dessinés par tuile.
+ * Les avatars dessinés sont ceux dont le tirage (hachage de l'identifiant, 32 bits) est sous
+ * `fraction × 2³²`, la fraction étant la puissance de 2 qui ramène la densité du tronçon à
+ * cette cible (entre la moitié et la cible). Par paliers : un avatar qui arrive ou part ne
+ * change le tirage de personne, sauf si la densité du tronçon double ou diminue de moitié ;
+ * même alors, les ensembles tirés restent emboîtés (on retire ou ajoute, on ne rebat pas).
  */
-export const FRACTION_PREMIER_PLAN = 1 / 8;
+export const DENSITE_PREMIER_PLAN = 0.5;
+
+/** Part tirée au premier plan pour un tronçon de cette densité (puissance de 2). */
+function fractionPremierPlan(densite: number): number {
+  return 2 ** -Math.max(1, Math.ceil(Math.log2(densite / DENSITE_PREMIER_PLAN)));
+}
 
 /** Tuiles d'un tronçon : sa longueur × la largeur de la rue (`COLONNES_FOULE` de front). */
 const TUILES_PAR_TRONCON = (LONGUEUR_TRONCON_M / PAS_FOULE_M) * COLONNES_FOULE;
@@ -92,7 +100,6 @@ export function composerFoule<A extends AvatarAComposer>(
   }
   const troncons = [...parTroncon.entries()].sort(([a], [b]) => a - b).map(([, t]) => t);
   // Candidats au premier plan : tout le monde hors masse, les tirés dans la masse.
-  const seuilPremierPlan = FRACTION_PREMIER_PLAN * 2 ** 32;
   const propres: A[] = [];
   const candidats: { avatar: A; tirage: number }[] = [];
   for (const avatar of avatars) {
@@ -102,7 +109,8 @@ export function composerFoule<A extends AvatarAComposer>(
       continue;
     }
     const tirage = tirageIdentifiant(avatar.id);
-    if (!parTroncon.get(numeroDe(avatar))!.enMasse || tirage < seuilPremierPlan) candidats.push({ avatar, tirage });
+    const troncon = parTroncon.get(numeroDe(avatar))!;
+    if (!troncon.enMasse || tirage < fractionPremierPlan(troncon.densite) * 2 ** 32) candidats.push({ avatar, tirage });
   }
 
   // Budget : seuil de tirage divisé par 2 jusqu'à tenir. Par paliers, pour que le tirage reste
