@@ -19,6 +19,13 @@ export interface Vue {
   attendre<T>(promesse: Promise<T> | T): Promise<T>;
   /** Arrêt à faire en quittant la vue (minuterie, jeu) ; aussitôt si elle est déjà quittée. */
   surQuitter(arreter: () => void): void;
+  /**
+   * Rafraîchissement périodique tant que la vue est courante : `charger` puis `appliquer`,
+   * le suivant `intervalleMs` après la fin du précédent (jamais deux en même temps, donc
+   * jamais un résultat ancien appliqué après un plus récent). Un résultat arrivé après
+   * avoir quitté la vue est ignoré ; un chargement en échec est simplement retenté.
+   */
+  rafraichir<T>(options: { intervalleMs: number; charger: () => Promise<T>; appliquer: (resultat: T) => void }): void;
 }
 
 export interface Navigation {
@@ -45,6 +52,20 @@ export function creerNavigation(): Navigation {
         surQuitter(arreter) {
           if (active) arrets.push(arreter);
           else arreter();
+        },
+        rafraichir({ intervalleMs, charger, appliquer }) {
+          let minuterie: ReturnType<typeof setTimeout> | undefined;
+          const passer = async () => {
+            try {
+              const resultat = await charger();
+              if (active) appliquer(resultat);
+            } catch {
+              // réseau ou fichier indisponible : on réessaie au prochain passage
+            }
+            if (active) minuterie = setTimeout(passer, intervalleMs);
+          };
+          minuterie = setTimeout(passer, intervalleMs);
+          vue.surQuitter(() => clearTimeout(minuterie));
         },
       };
       courante = {
