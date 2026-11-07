@@ -17,6 +17,9 @@ interface MembreOverpass {
 export interface ElementOverpass {
   type: 'node' | 'way' | 'relation';
   id: number;
+  /** Position d'un nœud. */
+  lat?: number;
+  lon?: number;
   tags?: Record<string, string>;
   nodes?: number[];
   geometry?: (PointOverpass | null)[];
@@ -67,12 +70,16 @@ export function recollerAnneaux(morceaux: Position[][]): Position[][] {
   return anneaux;
 }
 
-/** Objets OSM d'un extrait Overpass (les nœuds isolés, ex. commerces, sont ignorés). */
+/** Objets OSM d'un extrait Overpass (les nœuds isolés sont ignorés, sauf les lieux nommés `place=*`). */
 export function lireExtrait(extrait: ExtraitOverpass): ObjetOsm[] {
   const objets: ObjetOsm[] = [];
   for (const e of extrait.elements) {
     const tags = e.tags ?? {};
-    if (e.type === 'way') {
+    if (e.type === 'node') {
+      if (tags.place !== undefined && e.lon !== undefined && e.lat !== undefined) {
+        objets.push({ id: `node/${e.id}`, tags, ligne: [[e.lon, e.lat]], anneaux: [] });
+      }
+    } else if (e.type === 'way') {
       const ligne = enPositions(e.geometry);
       if (ligne.length < 2) continue;
       objets.push({ id: `way/${e.id}`, tags, ligne, anneaux: estFerme(ligne) ? [ligne] : [] });
