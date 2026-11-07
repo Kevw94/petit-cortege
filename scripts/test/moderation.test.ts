@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { ListeManifs } from '@petit-cortege/shared';
+import type { ListeManifs, ReponseEntree, Retraits } from '@petit-cortege/shared';
 import { demarrerBanc, type Banc } from '../../server/test/support';
 import { executerModeration } from '../moderation';
 
@@ -384,5 +384,55 @@ describe('modération en ligne de commande', () => {
       expect(sorties.join('\n')).toMatch(/retirée/);
       expect((await manifsPubliees()).map((m) => m.id)).not.toContain(id);
     });
+  });
+
+  describe('supprimer un avatar sur signalement', () => {
+    async function retraitsPublies(): Promise<string[]> {
+      const { statut, corps } = await banc.lire<Retraits>('/publie/retraits.json');
+      expect(statut).toBe(200);
+      return corps.retraits;
+    }
+
+    it("il est ajouté au fichier des retraits et n'est plus compté", async () => {
+      const id = await nouvelleManif('signalement');
+      banc.horloge.regler('2026-06-01T08:30:00Z');
+      try {
+        const garde = await banc.poster<ReponseEntree>('/api/entree', { manif: id, apparence: 1, pancarte: 1 });
+        const signale = await banc.poster<ReponseEntree>('/api/entree', { manif: id, apparence: 2, pancarte: 2 });
+        banc.horloge.regler('2026-06-01T08:31:00Z');
+
+        expect(await moderer('supprimer-avatar', '--avatar', signale.corps.avatar)).toBe(0);
+
+        const retraits = await retraitsPublies();
+        expect(retraits).toContain(signale.corps.avatar);
+        expect(retraits).not.toContain(garde.corps.avatar);
+        expect((await manifsPubliees()).find((m) => m.id === id)?.compteur).toBe(1);
+      } finally {
+        banc.horloge.regler('2026-06-01T08:00:00Z');
+      }
+    });
+
+    it('avatar inconnu : refusé', async () => {
+      expect(await moderer('supprimer-avatar', '--avatar', 'AAAAAAAAAAAAAAAA')).toBe(1);
+      expect(sorties.join('\n')).toMatch(/avatar « AAAAAAAAAAAAAAAA » inconnu/);
+      expect(await retraitsPublies()).not.toContain('AAAAAAAAAAAAAAAA');
+    });
+  });
+
+  it('lister : les manifs avec leur état, départ, fin et soutiens', async () => {
+    const ouverte = await nouvelleManif('liste-ouverte');
+    const retiree = await nouvelleManif('liste-retiree');
+    expect(await moderer('retirer-manif', '--manif', retiree, '--motif', 'Arrêté')).toBe(0);
+    expect((await banc.poster('/api/entree', { manif: ouverte, apparence: 0, pancarte: 0 })).statut).toBe(201);
+
+    expect(await moderer('lister')).toBe(0);
+
+    const ligne = (id: string) => sorties.find((l) => l.includes(id)) ?? '';
+    // 10:00 UTC = 12:00 à Paris en juin ; fin 11:30 UTC = 13:30.
+    expect(ligne(ouverte)).toMatch(/ouverte/);
+    expect(ligne(ouverte)).toMatch(/2026-06-01 12:00/);
+    expect(ligne(ouverte)).toMatch(/13:30/);
+    expect(ligne(ouverte)).toMatch(/\b1 soutien/);
+    expect(ligne(retiree)).toMatch(/retirée/);
   });
 });

@@ -13,9 +13,11 @@ import {
   ErreurModeration,
   horlogeSysteme,
   lireParcoursGeoJson,
+  listerManifs,
   migrer,
   publier,
   retirerManif,
+  supprimerAvatar,
   type Horloge,
   type NouveauDepart,
   type Sql,
@@ -87,6 +89,30 @@ const COMMANDES: Record<string, Commande> = {
       const retiree = await retirerManif(deps.sql, deps.horloge, id, obligatoire(valeurs, 'motif'));
       await publier(deps);
       deps.ecrire(retiree ? `Manif « ${id} » retirée de la liste publiée ; entrées refusées.` : `Manif « ${id} » déjà retirée.`);
+    },
+  },
+  'supprimer-avatar': {
+    usage: 'supprimer-avatar --avatar <identifiant de l\'avatar signalé>',
+    options: { avatar: { type: 'string' } },
+    executer: async (valeurs, deps) => {
+      const avatar = obligatoire(valeurs, 'avatar');
+      await supprimerAvatar(deps.sql, avatar);
+      await publier(deps);
+      deps.ecrire(`Avatar « ${avatar} » ajouté au fichier des retraits (publié).`);
+    },
+  },
+  lister: {
+    usage: 'lister',
+    options: {},
+    executer: async (_valeurs, deps) => {
+      const manifs = await listerManifs(deps.sql, deps.horloge);
+      if (manifs.length === 0) deps.ecrire('Aucune manif.');
+      for (const m of manifs) {
+        deps.ecrire(
+          `${m.id}  [${m.etat}]  ${m.intitule} (${m.ville})  départ ${enHeureDeParis(m.depart)}  ` +
+            `fin ${enHeureDeParis(m.fin)}  ${m.soutiens} soutien${m.soutiens > 1 ? 's' : ''}`,
+        );
+      }
     },
   },
 };

@@ -8,7 +8,11 @@ export {
   ajouterManif,
   decalerDepart,
   ErreurModeration,
+  listerManifs,
   retirerManif,
+  supprimerAvatar,
+  type EtatModeration,
+  type ManifModeree,
   type NouveauDepart,
   type SaisieManif,
 } from './moderation';
