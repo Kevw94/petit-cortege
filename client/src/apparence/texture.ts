@@ -7,7 +7,7 @@ import * as Phaser from 'phaser';
 import { Emplacements } from './affichage';
 import { CELLULE_APPARENCE, dessinerApparence, URL_COUCHES_APPARENCE } from './dessin';
 
-const CLE_COUCHES = 'apparence-couches';
+export const CLE_COUCHES = 'apparence-couches';
 export const CLE_APPARENCES = 'apparences';
 /** 64 × 64 emplacements (1600 × 1088 px) : bien plus que les apparences visibles à la fois. */
 const COLONNES = 64;
