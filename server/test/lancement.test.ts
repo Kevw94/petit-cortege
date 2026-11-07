@@ -1,15 +1,17 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { CHEMIN_API_DEFI, CHEMIN_LISTE_MANIFS, lireListeManifs } from '@petit-cortege/shared';
 import { configDepuisEnv, creerManif, lancer, type PassagePublication } from '../src/index';
+import { creerAntiTriche } from '../src/anti-triche';
 import { creerBaseDeTest, HorlogeControlee } from './support';
 
 const ENV_MINIMAL = {
   DATABASE_URL: 'postgres://u:p@localhost:5432/base',
   DOSSIER_PUBLICATION: '/srv/publie',
   ALTCHA_CLE_HMAC: 'cle-secrete',
+  PROXYS_DE_CONFIANCE: '127.0.0.1,::1',
 };
 
 describe('configuration du point d’entrée de production', () => {
@@ -25,8 +27,32 @@ describe('configuration du point d’entrée de production', () => {
     expect(config.antiTriche.cleHmac).toBe('cle-secrete');
   });
 
-  it.each(['DATABASE_URL', 'DOSSIER_PUBLICATION', 'ALTCHA_CLE_HMAC'])('refuse de démarrer sans %s', (nom) => {
-    expect(() => configDepuisEnv({ ...ENV_MINIMAL, [nom]: '' })).toThrow(nom);
+  it.each(['DATABASE_URL', 'DOSSIER_PUBLICATION', 'ALTCHA_CLE_HMAC', 'PROXYS_DE_CONFIANCE'])(
+    'refuse de démarrer sans %s',
+    (nom) => {
+      expect(() => configDepuisEnv({ ...ENV_MINIMAL, [nom]: '' })).toThrow(nom);
+    },
+  );
+
+  it('les proxys de confiance (serveur web local, CDN) donnent la vraie IP de chaque soutien', () => {
+    const config = configDepuisEnv(ENV_MINIMAL);
+    const lireIp = creerAntiTriche(config.antiTriche).lireIp;
+    // Derrière le serveur web local, chaque soutien a sa propre clé de limite.
+    expect(lireIp('127.0.0.1', (nom) => (nom.toLowerCase() === 'x-forwarded-for' ? '203.0.113.7' : undefined))).toBe(
+      lireIp('203.0.113.7', () => undefined),
+    );
+  });
+
+  it('« aucun » : en-tête ignoré, choix explicite signalé au démarrage', () => {
+    const avertissements: unknown[] = [];
+    const avertir = vi.spyOn(console, 'warn').mockImplementation((...args) => void avertissements.push(...args));
+    try {
+      const config = configDepuisEnv({ ...ENV_MINIMAL, PROXYS_DE_CONFIANCE: 'aucun' });
+      expect(config.antiTriche.proxysDeConfiance).toEqual([]);
+      expect(avertissements.join(' ')).toMatch(/PROXYS_DE_CONFIANCE/);
+    } finally {
+      avertir.mockRestore();
+    }
   });
 
   it('accepte le port, l’intervalle de publication et le service des fichiers publiés', () => {

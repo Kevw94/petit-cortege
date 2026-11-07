@@ -40,7 +40,9 @@ const entierPositifOuNul = (env: Record<string, string | undefined>, nom: string
 };
 
 /**
- * Variables : `DATABASE_URL`, `DOSSIER_PUBLICATION`, `ALTCHA_CLE_HMAC` (obligatoires),
+ * Variables : `DATABASE_URL`, `DOSSIER_PUBLICATION`, `ALTCHA_CLE_HMAC`, `PROXYS_DE_CONFIANCE`
+ * (obligatoires ; pour ce dernier, typiquement `127.0.0.1,::1` + les plages du CDN si les
+ * POST passent par lui, ou `aucun`),
  * `PORT` (8787), `INTERVALLE_PUBLICATION_MS` (5000), `SERVIR_PUBLICATION` (`1` pour servir
  * /publie/), et celles de l'anti-triche (voir `antiTricheDepuisEnv`).
  */
@@ -49,6 +51,15 @@ export function configDepuisEnv(env: Record<string, string | undefined>): Config
   const dossierPublication = obligatoire(env, 'DOSSIER_PUBLICATION');
   // En production la clé est partagée et stable : pas de clé éphémère.
   obligatoire(env, 'ALTCHA_CLE_HMAC');
+  // Le serveur écoute sur 127.0.0.1 derrière le serveur web : sans proxys de confiance,
+  // toutes les requêtes viennent de 127.0.0.1 et tous les soutiens partagent la même
+  // limite par IP. Choix explicite obligatoire (« aucun » pour ignorer l'en-tête).
+  if (obligatoire(env, 'PROXYS_DE_CONFIANCE').trim() === 'aucun') {
+    console.warn(
+      "PROXYS_DE_CONFIANCE=aucun : l'en-tête d'IP est ignoré, la limite par IP porte sur l'adresse de connexion " +
+        '(derrière un serveur web local, tous les soutiens la partagent).',
+    );
+  }
   return {
     urlBase,
     dossierPublication,
