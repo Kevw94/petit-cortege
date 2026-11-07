@@ -4,7 +4,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import postgres from 'postgres';
-import { demarrerServeur, type Horloge, type Serveur, type Sql } from '../src/index';
+import { solveChallenge, type Challenge } from 'altcha-lib';
+import { deriveKey } from 'altcha-lib/algorithms/pbkdf2';
+import { CHEMIN_API_DEFI, CHEMIN_API_ENTREE } from '@petit-cortege/shared';
+import { demarrerServeur, type Horloge, type OptionsAntiTriche, type Serveur, type Sql } from '../src/index';
 
 export const URL_POSTGRES_ADMIN =
   process.env.DATABASE_ADMIN_URL ?? 'postgres://postgres:postgres@localhost:5432/postgres';
@@ -24,7 +27,7 @@ export class HorlogeControlee implements Horloge {
 }
 
 /** Base Postgres jetable, propre à un fichier de test (les agents tournent en parallèle). */
-export async function creerBaseDeTest(): Promise<{ sql: Sql; detruire: () => Promise<void> }> {
+export async function creerBaseDeTest(): Promise<{ sql: Sql; url: string; detruire: () => Promise<void> }> {
   const nom = `pc_test_${randomBytes(6).toString('hex')}`;
   const admin = postgres(URL_POSTGRES_ADMIN, { max: 1, onnotice: () => {} });
   await admin.unsafe(`create database ${nom}`);
@@ -33,6 +36,7 @@ export async function creerBaseDeTest(): Promise<{ sql: Sql; detruire: () => Pro
   const sql = postgres(url.toString(), { max: 4, onnotice: () => {} });
   return {
     sql,
+    url: url.toString(),
     detruire: async () => {
       await sql.end();
       await admin.unsafe(`drop database if exists ${nom}`);
@@ -43,23 +47,76 @@ export async function creerBaseDeTest(): Promise<{ sql: Sql; detruire: () => Pro
 
 export interface Banc {
   sql: Sql;
+  /** URL de la base jetable (ex. pour un pg_dump). */
+  urlBase: string;
   horloge: HorlogeControlee;
   serveur: Serveur;
   dossierPublication: string;
   lire: <T = unknown>(chemin: string) => Promise<{ statut: number; corps: T }>;
   /** POST JSON, comme le client (une chaîne est envoyée telle quelle). */
-  poster: <T = unknown>(chemin: string, corps: unknown) => Promise<{ statut: number; corps: T }>;
+  poster: <T = unknown>(
+    chemin: string,
+    corps: unknown,
+    entetes?: Record<string, string>,
+  ) => Promise<{ statut: number; corps: T }>;
+  /** Demande un défi ALTCHA et le résout, comme le client : preuve prête à joindre à une entrée. */
+  preuve: (entetes?: Record<string, string>) => Promise<string>;
+  /** Entrée dans un cortège avec une preuve de travail valide. */
+  entrer: <T = unknown>(corps: object, entetes?: Record<string, string>) => Promise<{ statut: number; corps: T }>;
   arreter: () => Promise<void>;
 }
 
+/**
+ * Anti-triche des tests : preuve de travail quasi gratuite, limites hautes.
+ * Un test qui vérifie une limite passe ses propres valeurs à `demarrerBanc`.
+ */
+export const ANTI_TRICHE_DE_TEST: OptionsAntiTriche = {
+  cleHmac: 'cle-hmac-de-test',
+  difficulte: { cout: 1, compteurMin: 1, compteurMax: 20 },
+  limiteParIp: { requetes: 10_000, fenetreMs: 60_000 },
+};
+
 /** Démarre un vrai serveur HTTP sur une base jetable, avec une horloge contrôlée. */
-export async function demarrerBanc(instantInitial: string): Promise<Banc> {
+export async function demarrerBanc(
+  instantInitial: string,
+  antiTriche: Partial<OptionsAntiTriche> = {},
+): Promise<Banc> {
   const base = await creerBaseDeTest();
   const horloge = new HorlogeControlee(instantInitial);
   const dossierPublication = await mkdtemp(join(tmpdir(), 'pc-publie-'));
-  const serveur = await demarrerServeur({ sql: base.sql, horloge, dossierPublication, port: 0 });
+  const serveur = await demarrerServeur({
+    sql: base.sql,
+    horloge,
+    dossierPublication,
+    port: 0,
+    antiTriche: { ...ANTI_TRICHE_DE_TEST, ...antiTriche },
+  });
+  const poster: Banc['poster'] = async (chemin, corps, entetes = {}) => {
+    const reponse = await fetch(new URL(chemin, serveur.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...entetes },
+      body: typeof corps === 'string' ? corps : JSON.stringify(corps),
+    });
+    const texte = await reponse.text();
+    let corpsLu: unknown = texte;
+    try {
+      corpsLu = JSON.parse(texte);
+    } catch {
+      // corps non JSON (ex. 404 par défaut) : gardé en texte
+    }
+    return { statut: reponse.status, corps: corpsLu as never };
+  };
+  const preuve: Banc['preuve'] = async (entetes = {}) => {
+    const reponse = await fetch(new URL(CHEMIN_API_DEFI, serveur.url), { headers: entetes });
+    if (!reponse.ok) throw new Error(`défi refusé : ${reponse.status}`);
+    const challenge = (await reponse.json()) as Challenge;
+    const solution = await solveChallenge({ challenge, deriveKey });
+    if (!solution) throw new Error('défi non résolu');
+    return Buffer.from(JSON.stringify({ challenge, solution })).toString('base64');
+  };
   return {
     sql: base.sql,
+    urlBase: base.url,
     horloge,
     serveur,
     dossierPublication,
@@ -68,21 +125,10 @@ export async function demarrerBanc(instantInitial: string): Promise<Banc> {
       const texte = await reponse.text();
       return { statut: reponse.status, corps: (reponse.ok ? JSON.parse(texte) : texte) as never };
     },
-    poster: async (chemin, corps) => {
-      const reponse = await fetch(new URL(chemin, serveur.url), {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: typeof corps === 'string' ? corps : JSON.stringify(corps),
-      });
-      const texte = await reponse.text();
-      let corpsLu: unknown = texte;
-      try {
-        corpsLu = JSON.parse(texte);
-      } catch {
-        // corps non JSON (ex. 404 par défaut) : gardé en texte
-      }
-      return { statut: reponse.status, corps: corpsLu as never };
-    },
+    poster,
+    preuve,
+    entrer: async (corps, entetes) =>
+      poster(CHEMIN_API_ENTREE, { ...corps, preuve: await preuve(entetes) }, entetes),
     arreter: async () => {
       await serveur.fermer();
       await base.detruire();

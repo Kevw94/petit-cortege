@@ -10,6 +10,16 @@ import { estIndicePancarte } from './catalogues/pancartes';
 /** Entrée d'un avatar dans un cortège. */
 export const CHEMIN_API_ENTREE = '/api/entree';
 
+/**
+ * Défi de preuve de travail ALTCHA (GET, identique pour tous : aucun identifiant
+ * de manif). La réponse est un défi ALTCHA v2 (`Challenge` d'altcha-lib), opaque
+ * pour le module partagé ; le client le résout puis joint la preuve à son entrée.
+ */
+export const CHEMIN_API_DEFI = '/api/defi';
+
+/** Longueur maximale de la preuve de travail encodée. */
+export const TAILLE_MAX_PREUVE = 4096;
+
 export interface RequeteEntree {
   /** Identifiant de la manif. */
   manif: string;
@@ -23,6 +33,11 @@ export interface RequeteEntree {
    * par le soutien (seulement par modération).
    */
   hachageRetrait?: string;
+  /**
+   * Preuve de travail ALTCHA, comme la produit le widget : `{ challenge, solution }` en JSON
+   * encodé en base64 (le défi est de l'ASCII). Vérifiée par le serveur ; absente = refusée.
+   */
+  preuve?: string;
 }
 
 /** Réponse 201 à une entrée acceptée. */
@@ -36,7 +51,14 @@ export interface ReponseEntree {
   entree: number;
 }
 
-export type CodeErreurEntree = 'requete-invalide' | 'manif-inconnue' | 'manif-terminee';
+export type CodeErreurEntree =
+  | 'requete-invalide'
+  | 'manif-inconnue'
+  | 'manif-terminee'
+  /** Preuve de travail absente, fausse, expirée ou déjà utilisée : redemander un défi. */
+  | 'preuve-invalide'
+  /** Limite de débit atteinte (429) : réessayer plus tard. */
+  | 'trop-de-requetes';
 
 /** Corps d'une réponse d'erreur (4xx). */
 export interface ReponseErreur {
@@ -51,13 +73,20 @@ const estIndice = (x: unknown): x is number => Number.isInteger(x) && (x as numb
 /** Valide un corps d'entrée reçu ; `null` s'il est invalide. Les champs inconnus sont ignorés. */
 export function lireRequeteEntree(json: unknown): RequeteEntree | null {
   if (typeof json !== 'object' || json === null) return null;
-  const { manif, apparence, pancarte } = json as Record<string, unknown>;
+  const { manif, apparence, pancarte, preuve } = json as Record<string, unknown>;
   if (typeof manif !== 'string' || manif.length === 0 || manif.length > 200) return null;
   if (!estIndice(apparence) || !estIndicePancarte(pancarte)) return null;
   const { hachageRetrait } = json as Record<string, unknown>;
-  if (hachageRetrait === undefined) return { manif, apparence, pancarte };
-  if (typeof hachageRetrait !== 'string' || !HACHAGE_RETRAIT.test(hachageRetrait)) return null;
-  return { manif, apparence, pancarte, hachageRetrait };
+  const requete: RequeteEntree = { manif, apparence, pancarte };
+  if (hachageRetrait !== undefined) {
+    if (typeof hachageRetrait !== 'string' || !HACHAGE_RETRAIT.test(hachageRetrait)) return null;
+    requete.hachageRetrait = hachageRetrait;
+  }
+  if (preuve !== undefined) {
+    if (typeof preuve !== 'string' || preuve.length > TAILLE_MAX_PREUVE) return null;
+    requete.preuve = preuve;
+  }
+  return requete;
 }
 
 /**
