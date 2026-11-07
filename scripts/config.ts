@@ -18,6 +18,15 @@ export async function assurerBase(url: string): Promise<void> {
   try {
     const [existe] = await sql`select 1 from pg_database where datname = ${nom}`;
     if (!existe) await sql.unsafe(`create database "${nom.replaceAll('"', '""')}"`);
+  } catch (erreur) {
+    if ((erreur as { code?: string }).code === 'ECONNREFUSED') {
+      throw new Error(
+        `Postgres ne répond pas sur ${cible.host}. Lance-le avec \`npm run db:start\` (Docker), ` +
+          'ou indique un Postgres existant avec DATABASE_URL. Voir « Prérequis » dans le README.',
+        { cause: erreur },
+      );
+    }
+    throw erreur;
   } finally {
     await sql.end();
   }
