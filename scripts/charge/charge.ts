@@ -104,6 +104,7 @@ const TARIFS: Tarif[] = [
 ];
 
 const alea = aleaAGraine(O.graine);
+const rond = (n: number, d = 1) => Math.round(n * 10 ** d) / 10 ** d;
 const emettre = (texte: string) => process.stdout.write(`${texte}\n`);
 
 // ---------------------------------------------------------------- manif et horloge
@@ -275,22 +276,37 @@ function ticksPostgres(): number {
   }
   return total;
 }
-const echantillons: { reel: number; virtuel: number; cpuServeur: number; cpuPostgres: number; rssMo: number }[] = [];
-let precedent = { t: performance.now(), serveur: ticksCpu(pidServeur), postgres: ticksPostgres() };
+/** CPU de toute la machine (tous cœurs) : [occupé, total] en ticks. */
+function ticksMachine(): [number, number] {
+  const champs = readFileSync('/proc/stat', 'utf8').split('\n')[0]!.trim().split(/\s+/).slice(1).map(Number);
+  const total = champs.reduce((a, b) => a + b, 0);
+  return [total - champs[3]! - (champs[4] ?? 0), total];
+}
+const echantillons: {
+  reel: number;
+  virtuel: number;
+  cpuServeur: number;
+  cpuPostgres: number;
+  cpuMachine: number;
+  rssMo: number;
+}[] = [];
+let precedent = { t: performance.now(), serveur: ticksCpu(pidServeur), postgres: ticksPostgres(), machine: ticksMachine() };
 const echantillonneur = setInterval(() => {
   try {
     const t = performance.now();
     const s = ticksCpu(pidServeur);
     const p = ticksPostgres();
+    const machine = ticksMachine();
     const dt = (t - precedent.t) / 1000;
     echantillons.push({
       reel: Date.now(),
       virtuel: horloge.maintenant().getTime(),
       cpuServeur: ((s - precedent.serveur) / TICKS_PAR_S / dt) * 100,
       cpuPostgres: ((p - precedent.postgres) / TICKS_PAR_S / dt) * 100,
+      cpuMachine: ((machine[0] - precedent.machine[0]) / Math.max(1, machine[1] - precedent.machine[1])) * 100,
       rssMo: rssMo(pidServeur),
     });
-    precedent = { t, serveur: s, postgres: p };
+    precedent = { t, serveur: s, postgres: p, machine };
   } catch {
     // serveur arrêté
   }
@@ -489,12 +505,35 @@ function tailleAppli(): { octets: number; octetsGzip: number; fichiers: number }
   return { octets, octetsGzip, fichiers };
 }
 
+/** Latence des entrées par tranche de 5 min virtuelles : où se situent les ralentissements. */
+const parTranche = new Map<number, Mesure[]>();
+for (const m of mesures) {
+  const t = Math.floor(m.virtuel / (5 * MINUTE)) * 5 * MINUTE;
+  const liste = parTranche.get(t) ?? [];
+  liste.push(m);
+  parTranche.set(t, liste);
+}
+const latenceParTranche = [...parTranche]
+  .sort(([a], [b]) => a - b)
+  .map(([t, ms]) => {
+    const c = centiles(ms.filter((m) => m.statut === 201).map((m) => m.entreeMs));
+    const machine = echantillons.filter((e) => e.virtuel >= t && e.virtuel < t + 5 * MINUTE);
+    return {
+      tranche: new Date(t).toISOString().slice(11, 16),
+      entrees: ms.length,
+      parSecondeReelle: rond(ms.length / ((5 * MINUTE) / O.acceleration / 1000)),
+      p50: rond(c.p50),
+      p95: rond(c.p95),
+      p99: rond(c.p99),
+      cpuMachine: rond(centiles(machine.map((e) => e.cpuMachine)).moyenne),
+      cpuServeur: rond(centiles(machine.map((e) => e.cpuServeur)).moyenne),
+    };
+  });
 const fichiers = Object.entries(lus.fichiers);
 const tailleDe = (cat: Categorie) => fichiers.filter(([, f]) => f.categorie === cat).map(([chemin, f]) => ({ chemin, ...f }));
 const cpuServeur = centiles(echantillons.map((e) => e.cpuServeur));
 const cpuPostgres = centiles(echantillons.map((e) => e.cpuPostgres));
 const dureesPublication = centiles(passages.map((p) => p.dureeMs));
-const rond = (n: number, d = 1) => Math.round(n * 10 ** d) / 10 ** d;
 const resume = {
   options: O,
   manif: {
@@ -526,13 +565,16 @@ const resume = {
     echecs: passages.filter((p) => !p.ok).length,
     dureeMs: dureesPublication,
     plusDe1s: passages.filter((p) => p.dureeMs > 1_000).length,
+    lents: passages.filter((p) => p.dureeMs > 500).map((p) => ({ virtuel: p.virtuel, dureeMs: Math.round(p.dureeMs) })),
     alertesPlafond,
   },
   serveur: {
     cpuPourcent: cpuServeur,
     cpuPostgresPourcent: cpuPostgres,
     rssMaxMo: Math.max(...echantillons.map((e) => e.rssMo)),
+    cpuMachinePourcent: centiles(echantillons.map((e) => e.cpuMachine)),
   },
+  latenceParTranche,
   bandePassante: {
     clientsSimules: lus.clients.length,
     sessionMoyenneMin: rond(sessionMoyenneMin),
@@ -572,6 +614,9 @@ Entrées : ${ok.length}/${mesures.length} acceptées (erreurs : ${JSON.stringify
   retraits : ${resume.entrees.retraits.ok}/${resume.entrees.retraits.n} ; boucle du générateur p99 ${rond(resume.entrees.delaiBoucleGenerateurMs.p99)} ms
 Publication : ${passages.length} passages (toutes les ${intervalleReelPublication} ms réelles), durée (ms) ${fmt(dureesPublication)}, ${resume.publication.plusDe1s} > 1 s, ${resume.publication.echecs} échecs
 Serveur : CPU % ${fmt(cpuServeur)} ; Postgres CPU % ${fmt(cpuPostgres)} ; RSS max ${rond(resume.serveur.rssMaxMo)} Mo
+  machine entière (${resume.machine.coeurs} cœurs, banc compris) CPU % ${fmt(resume.serveur.cpuMachinePourcent)}
+Latence des entrées par tranche de 5 min virtuelles (tranche : entrées/s réelles, p50/p95/p99 ms, CPU machine %) :
+${latenceParTranche.map((l) => `  ${l.tranche} : ${l.parSecondeReelle}/s, ${l.p50}/${l.p95}/${l.p99}, ${l.cpuMachine} %`).join('\n')}
 Bande passante (${lus.clients.length} clients simulés, session moyenne ${rond(sessionMoyenneMin)} min) par client (gzip) :
   liste ${ko(parClient.octetsGzip.liste)}, retraits ${ko(parClient.octetsGzip.retraits)}, minutes ${ko(parClient.octetsGzip.minute)}, heures ${ko(parClient.octetsGzip.heure)}, appli ${ko(appli.octetsGzip)}, en-têtes ${ko(total(parClient.requetes) * ENTETES_PAR_REPONSE)} (${rond(total(parClient.requetes))} requêtes)
   = ${ko(octetsParClientGzip)} gzip / ${ko(octetsParClientBruts)} brut
