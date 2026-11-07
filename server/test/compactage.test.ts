@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { rm } from 'node:fs/promises';
+import { join } from 'node:path';
 import type { EntreesHeure, EntreesMinute, ReponseEntree } from '@petit-cortege/shared';
 import { creerManif, preRemplirAvatars } from '../src/index';
 import { demarrerBanc, enregistrerFixtures, type Banc } from './support';
@@ -65,6 +67,22 @@ describe('compactage par heure', () => {
     await banc.serveur.publier();
 
     expect((await banc.lire<EntreesHeure>('/publie/entrees/2026-06-01T09.json')).corps).toEqual(avant.corps);
+  });
+
+  it("une fois l'heure compactée, la tâche ne revérifie plus ses fichiers par minute", async () => {
+    // Coût d'un passage : seulement les heures pas encore compactées (sinon, pour chaque
+    // manif listée jusqu'à 30 jours après sa fin, un accès disque par minute publiée).
+    banc.horloge.regler('2026-06-01T10:20:00Z');
+    await banc.serveur.publier();
+    await rm(join(banc.dossierPublication, 'entrees/2026-06-01T09-45.json'));
+    await rm(join(banc.dossierPublication, 'entrees/2026-06-01T10-05.json'));
+
+    banc.horloge.regler('2026-06-01T10:21:00Z');
+    await banc.serveur.publier();
+
+    expect((await banc.lire('/publie/entrees/2026-06-01T09-45.json')).statut).toBe(404);
+    // Une minute de l'heure en cours manquante est, elle, republiée.
+    expect((await banc.lire('/publie/entrees/2026-06-01T10-05.json')).statut).toBe(200);
   });
 });
 

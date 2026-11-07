@@ -11,6 +11,7 @@ import {
   cheminEntreesHeure,
   cheminEntreesMinute,
   debutDeMinute,
+  debutDHeure,
   fichiersPublies,
   lireEntreesMinute,
   longueurParcours,
@@ -205,10 +206,26 @@ async function publierMinutes(sql: Requeteur, dossier: string, manifs: ManifPubl
   const attendues = new Set<number>();
   for (const manif of manifs) for (const m of minutesPubliees(manif, maintenant)) attendues.add(m.getTime());
 
-  const aEcrire: number[] = [];
-  for (const m of [...attendues].sort((a, b) => a - b)) {
-    if (!(await existe(join(dossier, cheminEntreesMinute(new Date(m)))))) aEcrire.push(m);
-  }
+  // Une heure compactée a toutes ses minutes publiées (le compactage suit leur écriture) :
+  // un seul accès disque par heure passée, puis seulement les minutes des autres heures.
+  const heureEnCours = debutDHeure(maintenant).getTime();
+  const heuresPassees = [...new Set([...attendues].map((m) => debutDHeure(new Date(m)).getTime()))].filter(
+    (h) => h < heureEnCours,
+  );
+  const compactees = new Set(
+    (
+      await Promise.all(
+        heuresPassees.map(async (h) => ((await existe(join(dossier, cheminEntreesHeure(new Date(h))))) ? h : null)),
+      )
+    ).filter((h) => h !== null),
+  );
+  const aVerifier = [...attendues]
+    .filter((m) => !compactees.has(debutDHeure(new Date(m)).getTime()))
+    .sort((a, b) => a - b);
+  const manquantes = await Promise.all(
+    aVerifier.map(async (m) => !(await existe(join(dossier, cheminEntreesMinute(new Date(m)))))),
+  );
+  const aEcrire = aVerifier.filter((_, i) => manquantes[i]);
   if (aEcrire.length === 0) return;
 
   const parMinute = await entreesParMinute(sql, manifs, aEcrire[0]!, aEcrire[aEcrire.length - 1]! + MINUTE_MS);
