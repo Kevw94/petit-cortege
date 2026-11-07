@@ -5,6 +5,7 @@ import {
   CHEMIN_LISTE_MANIFS,
   CHEMIN_RETRAITS,
   VERSION_FORMAT,
+  CONSULTATION_APRES_FIN_MS,
   MINUTE_MS,
   calculerFin,
   cheminEntreesHeure,
@@ -67,7 +68,11 @@ const existe = (chemin: string) =>
  *   confondues, immuable, y compris vide pour que le client n'attende pas) ;
  * - compacte chaque heure terminée en un fichier horaire (immuable) ;
  * - réécrit la liste des manifs, avec le compteur des entrées publiées ;
- * - réécrit le fichier des retraits.
+ * - réécrit le fichier des retraits ;
+ * - efface les hachages de jetons de retrait des manifs terminées (ADR 0001).
+ *
+ * La liste garde les manifs terminées depuis moins de `CONSULTATION_APRES_FIN_MS`
+ * (image finale consultable plus tard) ; le fichier des retraits, les mêmes manifs.
  */
 export async function publier({ sql, horloge, dossierPublication }: DependancesPublication): Promise<void> {
   // Exclusif avec les entrées en cours (voir verrou.ts) ; l'horloge est lue une fois le verrou obtenu.
@@ -88,7 +93,7 @@ async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublic
     group by manif_id`;
   const compteurParManif = new Map(compteurs.map((c) => [c.manif_id, c.n]));
 
-  const manifs: ManifPubliee[] = lignes.map((l) => {
+  const toutes: ManifPubliee[] = lignes.map((l) => {
     const longueurM = longueurParcours(l.parcours);
     return {
       id: l.id,
@@ -103,6 +108,7 @@ async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublic
       compteur: compteurParManif.get(l.id) ?? 0,
     };
   });
+  const manifs = toutes.filter((m) => Date.parse(m.fin) + CONSULTATION_APRES_FIN_MS > maintenant.getTime());
 
   await publierMinutes(sql, dossierPublication, manifs, maintenant);
   await compacterHeures(dossierPublication, manifs, maintenant);
@@ -110,19 +116,39 @@ async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublic
   const liste: ListeManifs = { v: VERSION_FORMAT, generee: maintenant.toISOString(), manifs };
   await ecrire(dossierPublication, CHEMIN_LISTE_MANIFS, liste);
 
-  await publierRetraits(sql, dossierPublication, maintenant);
+  await publierRetraits(sql, dossierPublication, manifs, maintenant);
+  await effacerHachagesDesManifsTerminees(sql, maintenant);
 }
 
 /** Retraits des avatars des manifs publiées (mêmes manifs que la liste). */
-async function publierRetraits(sql: Requeteur, dossier: string, maintenant: Date): Promise<void> {
+async function publierRetraits(sql: Requeteur, dossier: string, manifs: ManifPubliee[], maintenant: Date): Promise<void> {
+  const ids = manifs.map((m) => m.id);
   const lignes = await sql<{ id: string }[]>`
     select r.avatar_id as id from retrait r
     join avatar a on a.id = r.avatar_id
-    join manif m on m.id = a.manif_id
-    where m.ouverture <= ${maintenant} and m.retiree is null
+    where a.manif_id = any(${ids}::text[])
     order by r.avatar_id collate "C"`;
   const retraits: Retraits = { v: VERSION_FORMAT, generee: maintenant.toISOString(), retraits: lignes.map((l) => l.id) };
   await ecrire(dossier, CHEMIN_RETRAITS, retraits);
+}
+
+/**
+ * Efface les hachages de jetons de retrait des manifs terminées, retirées comprises
+ * (ADR 0001 : au plus tard 1 h après la fin ; la tâche tourne chaque minute, donc dès la
+ * première publication après la fin). Le retrait devient impossible ; l'avatar anonyme
+ * reste. Le client, lui, efface son jeton à la fin.
+ */
+async function effacerHachagesDesManifsTerminees(sql: Requeteur, maintenant: Date): Promise<void> {
+  const avecHachages = await sql<{ id: string; depart: Date; parcours: Parcours }[]>`
+    select id, depart, parcours from manif m
+    where exists (select 1 from avatar a where a.manif_id = m.id and a.hachage_retrait is not null)`;
+  const terminees = avecHachages
+    .filter((m) => calculerFin(m.depart, longueurParcours(m.parcours)) <= maintenant)
+    .map((m) => m.id);
+  if (terminees.length === 0) return;
+  await sql`
+    update avatar set hachage_retrait = null
+    where manif_id = any(${terminees}::text[]) and hachage_retrait is not null`;
 }
 
 async function publierMinutes(sql: Requeteur, dossier: string, manifs: ManifPubliee[], maintenant: Date): Promise<void> {
