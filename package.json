@@ -23,7 +23,8 @@
     "mesure-perf": "npm run mesure-perf --workspace=@petit-cortege/scripts --",
     "serveur": "tsx server/src/principal.ts",
     "charge": "tsx scripts/charge/charge.ts",
-    "generer-apparence": "tsx scripts/generer-apparence.ts"
+    "generer-apparence": "tsx scripts/generer-apparence.ts",
+    "generer-apercu": "tsx scripts/generer-apercu.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
