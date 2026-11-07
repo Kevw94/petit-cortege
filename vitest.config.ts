@@ -23,6 +23,16 @@ export default defineConfig({
       },
       {
         test: {
+          name: 'scripts',
+          root: './scripts',
+          include: ['test/**/*.test.ts'],
+          // Vrai Postgres (base jetable) et sous-processus.
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
+        },
+      },
+      {
+        test: {
           name: 'client',
           root: './client',
           include: ['src/**/*.test.ts', 'test/**/*.test.ts'],
