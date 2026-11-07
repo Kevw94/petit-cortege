@@ -4,5 +4,5 @@ export { creerManif, preRemplirAvatars, type AvatarPreRempli, type ManifACreer }
 export { publier, type DependancesPublication } from './publication';
 export { retirerAvatar, retirerParLeSoutien, type MotifRetrait, type ResultatRetrait } from './retrait';
 export { creerApp, demarrerServeur, type OptionsServeur, type Serveur } from './serveur';
-export { ajouterManif, ErreurModeration, type SaisieManif } from './moderation';
+export { ajouterManif, decalerDepart, ErreurModeration, type NouveauDepart, type SaisieManif } from './moderation';
 export { lireParcoursGeoJson } from './umap';

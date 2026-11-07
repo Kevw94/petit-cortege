@@ -68,3 +68,36 @@ export async function ajouterManif(sql: Sql, horloge: Horloge, saisie: SaisieMan
     throw e;
   }
 }
+
+/** Nouveau départ : une heure donnée, ou un décalage en minutes (négatif = avancé). */
+export type NouveauDepart = { a: Date } | { deMinutes: number };
+
+/**
+ * Corrige le départ d'une manif, avant ou pendant la marche (stories 53-54) :
+ * la fin est recalculée, et la liste publiée (cache court) propage la correction.
+ */
+export async function decalerDepart(
+  sql: Sql,
+  horloge: Horloge,
+  id: string,
+  nouveau: NouveauDepart,
+): Promise<{ depart: Date; fin: Date }> {
+  return sql.begin(async (tx) => {
+    const maintenant = horloge.maintenant();
+    const [manif] = await tx<{ ouverture: Date; depart: Date; parcours: Parcours }[]>`
+      select ouverture, depart, parcours from manif where id = ${id} for update`;
+    if (!manif) throw new ErreurModeration(`manif « ${id} » inconnue.`);
+    const longueurM = longueurParcours(manif.parcours);
+    if (calculerFin(manif.depart, longueurM) <= maintenant) {
+      throw new ErreurModeration(`la manif « ${id} » est terminée : son départ ne peut plus être corrigé.`);
+    }
+    const depart = 'a' in nouveau ? nouveau.a : new Date(manif.depart.getTime() + nouveau.deMinutes * 60_000);
+    const fin = calculerFin(depart, longueurM);
+    if (depart < manif.ouverture) {
+      throw new ErreurModeration(`le départ ne peut pas précéder l'ouverture des entrées (${manif.ouverture.toISOString()}).`);
+    }
+    if (fin <= maintenant) throw new ErreurModeration('avec ce départ, la manif serait déjà terminée.');
+    await tx`update manif set depart = ${depart} where id = ${id}`;
+    return { depart, fin };
+  });
+}

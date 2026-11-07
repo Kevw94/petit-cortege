@@ -9,12 +9,14 @@ import { parseArgs, type ParseArgsOptionsConfig } from 'node:util';
 import {
   ajouterManif,
   connecter,
+  decalerDepart,
   ErreurModeration,
   horlogeSysteme,
   lireParcoursGeoJson,
   migrer,
   publier,
   type Horloge,
+  type NouveauDepart,
   type Sql,
 } from '@petit-cortege/server';
 import type { Source } from '@petit-cortege/shared';
@@ -55,6 +57,27 @@ const COMMANDES: Record<string, Commande> = {
     },
     executer: creerManif,
   },
+  'decaler-depart': {
+    usage: 'decaler-depart --manif <identifiant> (--depart <heure> | --minutes <retard, négatif = avance>)',
+    options: { manif: { type: 'string' }, depart: { type: 'string' }, minutes: { type: 'string' } },
+    executer: async (valeurs, deps) => {
+      const id = obligatoire(valeurs, 'manif');
+      const { depart, minutes } = valeurs;
+      if ((typeof depart === 'string') === (typeof minutes === 'string')) {
+        throw new ErreurModeration('donner --depart ou --minutes (un seul des deux).');
+      }
+      let nouveau: NouveauDepart;
+      if (typeof depart === 'string') {
+        nouveau = { a: lireHeure(depart, 'départ') };
+      } else {
+        if (!/^[+-]?\d+$/.test(String(minutes).trim())) throw new ErreurModeration(`--minutes illisible : « ${String(minutes)} ».`);
+        nouveau = { deMinutes: Number(minutes) };
+      }
+      const resultat = await decalerDepart(deps.sql, deps.horloge, id, nouveau);
+      await publier(deps);
+      deps.ecrire(`Manif « ${id} » : départ ${enHeureDeParis(resultat.depart)}, fin ${enHeureDeParis(resultat.fin)} (publié).`);
+    },
+  },
 };
 
 function aide(): string {
@@ -78,7 +101,7 @@ export async function executerModeration(argv: string[], deps: DependancesModera
   try {
     let valeurs: Valeurs;
     try {
-      valeurs = parseArgs({ args, options: commande.options, strict: true }).values;
+      valeurs = parseArgs({ args: joindreNombresNegatifs(args), options: commande.options, strict: true }).values;
     } catch (e) {
       throw new ErreurModeration(`${(e as Error).message}\nUsage : ${commande.usage}`);
     }
@@ -89,6 +112,22 @@ export async function executerModeration(argv: string[], deps: DependancesModera
     deps.ecrire(`Erreur : ${e.message}`);
     return 1;
   }
+}
+
+/** `--minutes -5` → `--minutes=-5` (sinon parseArgs prend « -5 » pour une option). */
+function joindreNombresNegatifs(args: string[]): string[] {
+  const resultat: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]!;
+    const suivant = args[i + 1];
+    if (/^--[a-z-]+$/.test(arg) && suivant !== undefined && /^-\d/.test(suivant)) {
+      resultat.push(`${arg}=${suivant}`);
+      i++;
+    } else {
+      resultat.push(arg);
+    }
+  }
+  return resultat;
 }
 
 function obligatoire(valeurs: Valeurs, nom: string): string {
@@ -150,6 +189,19 @@ export function lireHeure(texte: string, quoi: string): Date {
     if (!Number.isNaN(instant)) return new Date(instant);
   }
   throw new ErreurModeration(`${quoi} illisible : « ${texte} » (ex. 2026-11-21T14:00 ou 2026-11-21T13:00Z).`);
+}
+
+/** « 2026-06-01 12:00 (Paris) ». */
+export function enHeureDeParis(instant: Date): string {
+  const texte = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: FUSEAU_PAR_DEFAUT,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(instant);
+  return `${texte} (Paris)`;
 }
 
 /** Date du jour (AAAA-MM-JJ) à Paris. */
