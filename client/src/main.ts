@@ -259,8 +259,8 @@ async function afficherManifTerminee(
     entrees,
     propres: avatarsPropres(new Date()).filter((e) => e.m === manif.id),
     retraits,
-    // Nom de la place d'arrivée : à brancher sur le décor OSM quand il les portera (#13).
-    nomPlace: null,
+    // Nom de la place d'arrivée, porté par le décor OSM (#13).
+    nomPlace: decor?.places.find((p) => p.arrivee)?.nom ?? null,
   });
   // Les retraits de la dernière heure peuvent encore changer l'image ; ses avatars mis en
   // valeur disparaissent 1 h après la fin (purge du stockage local).
