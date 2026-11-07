@@ -247,13 +247,24 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
   jeu.scene.add('cortege', SceneCortege, true, donnees);
   vue.surQuitter(() => jeu.destroy(true));
 
-  const minuterie = window.setInterval(async () => {
-    const aJour = (await listeManifs().catch(() => null))?.manifs.find((m) => m.id === id);
-    if (aJour) donnees.manif = aJour; // départ éventuellement corrigé
-    entrees = await publication.entreesPour(donnees.manif, new Date());
-    retraitsPublies = (await publication.retraits().catch(() => null)) ?? retraitsPublies;
-  }, INTERVALLE_RAFRAICHISSEMENT_MS);
-  vue.surQuitter(() => window.clearInterval(minuterie));
+  // Sans chevauchement, et rien n'est appliqué une fois la vue quittée.
+  vue.rafraichir({
+    intervalleMs: INTERVALLE_RAFRAICHISSEMENT_MS,
+    charger: async () => {
+      // Départ éventuellement corrigé.
+      const aJour = (await listeManifs().catch(() => null))?.manifs.find((m) => m.id === id) ?? donnees.manif;
+      return {
+        manif: aJour,
+        entrees: await publication.entreesPour(aJour, new Date()),
+        retraits: await publication.retraits().catch(() => null),
+      };
+    },
+    appliquer: (aJour) => {
+      donnees.manif = aJour.manif;
+      entrees = aJour.entrees;
+      retraitsPublies = aJour.retraits ?? retraitsPublies;
+    },
+  });
 }
 
 /** Image finale d'une manif terminée (tout le cortège au point d'arrivée). */
@@ -280,14 +291,15 @@ async function afficherManifTerminee(
   interfaceEl.replaceChildren(...brouillon.childNodes);
   // Les retraits de la dernière heure peuvent encore changer l'image ; ses avatars mis en
   // valeur disparaissent 1 h après la fin (purge du stockage local).
-  const minuterie = window.setInterval(async () => {
-    const aJour = await publication.retraits().catch(() => null);
-    imageFinale.actualiser({
-      propres: avatarsPropres(new Date()).filter((e) => e.m === manif.id),
-      ...(aJour ? { retraits: aJour } : {}),
-    });
-  }, INTERVALLE_RAFRAICHISSEMENT_MS);
-  vue.surQuitter(() => window.clearInterval(minuterie));
+  vue.rafraichir({
+    intervalleMs: INTERVALLE_RAFRAICHISSEMENT_MS,
+    charger: () => publication.retraits().catch(() => null),
+    appliquer: (aJour) =>
+      imageFinale.actualiser({
+        propres: avatarsPropres(new Date()).filter((e) => e.m === manif.id),
+        ...(aJour ? { retraits: aJour } : {}),
+      }),
+  });
 }
 
 function messageErreurEntree(erreur: unknown): string {
