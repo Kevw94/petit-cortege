@@ -192,3 +192,34 @@ export function tuilesKenneyUtilisees(): TuileKenney[] {
   const pieces = [...COUPES, ...HAUTS].flatMap((p) => (p.tuile ? [p.tuile] : []));
   return [TUILE_CORPS, TUILE_BAS, TUILE_CHAUSSURES, ...pieces];
 }
+
+/**
+ * Atlas des couches d'apparence (généré par `npm run generer-apparence`, commité dans le
+ * client) : chaque couche occupe une cellule de taille fixe, plus large qu'une tuile
+ * Kenney pour laisser la place aux roues du fauteuil, à la poussette et à la canne.
+ */
+export interface DescriptionAtlasApparence {
+  version: number;
+  cellule: {
+    largeur: number;
+    hauteur: number;
+    /** Position de la tuile Kenney 16 × 16 dans la cellule (les pieds touchent le bas). */
+    origineTuile: readonly [number, number];
+  };
+  /** Coin haut-gauche de chaque couche dans l'image de l'atlas, par nom de couche. */
+  cadres: Record<string, readonly [number, number]>;
+}
+
+/**
+ * Couches d'une apparence, de l'arrière vers l'avant, par nom de couche de l'atlas :
+ * accessoire (arrière), corps, bas, chaussures, haut, cheveux, accessoire (avant).
+ */
+export function couchesApparence(apparence: CompositionApparence): string[] {
+  const { teint, couleurCheveux, coupe, haut, couleurHaut, couleurBas, accessoire } = apparence;
+  const couches: string[] = [];
+  if (accessoire !== 0) couches.push(`accessoire/${accessoire}/arriere`);
+  couches.push(`corps/${teint}`, `bas/${couleurBas}`, 'chaussures', `haut/${haut}/${couleurHaut}`);
+  if (COUPES[coupe]?.tuile) couches.push(`cheveux/${coupe}/${couleurCheveux}`);
+  if (accessoire !== 0) couches.push(`accessoire/${accessoire}/avant`);
+  return couches;
+}
