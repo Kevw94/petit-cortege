@@ -2,6 +2,7 @@ import { calculerFin, longueurParcours, type Parcours, type Source } from '@peti
 import type { Sql } from './base';
 import type { Horloge } from './horloge';
 import { creerManif } from './manifs';
+import { retirerAvatar } from './retrait';
 
 /** Refus d'une action de modération, avec un message lisible par le modérateur. */
 export class ErreurModeration extends Error {
@@ -116,4 +117,51 @@ export async function retirerManif(sql: Sql, horloge: Horloge, id: string, motif
     update manif set retiree = ${horloge.maintenant()}, motif_retrait = ${motif.trim()}
     where id = ${id} and retiree is null`;
   return retirees.count > 0;
+}
+
+/**
+ * Supprime un avatar précis sur signalement (story 56) : il est ajouté au
+ * fichier des retraits à la prochaine publication.
+ */
+export async function supprimerAvatar(sql: Sql, avatarId: string): Promise<void> {
+  if (!(await retirerAvatar(sql, avatarId, 'moderation'))) {
+    throw new ErreurModeration(`avatar « ${avatarId} » inconnu.`);
+  }
+}
+
+export type EtatModeration = 'à venir' | 'ouverte' | 'terminée' | 'retirée';
+
+export interface ManifModeree {
+  id: string;
+  intitule: string;
+  ville: string;
+  etat: EtatModeration;
+  ouverture: Date;
+  depart: Date;
+  fin: Date;
+  /** Avatars entrés et non retirés (y compris ceux pas encore publiés). */
+  soutiens: number;
+}
+
+/** Toutes les manifs, avec leur état vu du modérateur, de la plus récente à la plus ancienne. */
+export async function listerManifs(sql: Sql, horloge: Horloge): Promise<ManifModeree[]> {
+  const maintenant = horloge.maintenant();
+  const lignes = await sql<
+    { id: string; intitule: string; ville: string; ouverture: Date; depart: Date; parcours: Parcours; retiree: Date | null; soutiens: number }[]
+  >`
+    select m.id, m.intitule, m.ville, m.ouverture, m.depart, m.parcours, m.retiree,
+      (select count(*)::int from avatar a
+       where a.manif_id = m.id and not exists (select 1 from retrait r where r.avatar_id = a.id)) as soutiens
+    from manif m order by m.depart desc, m.id`;
+  return lignes.map((l) => {
+    const fin = calculerFin(l.depart, longueurParcours(l.parcours));
+    const etat: EtatModeration = l.retiree
+      ? 'retirée'
+      : fin <= maintenant
+        ? 'terminée'
+        : l.ouverture > maintenant
+          ? 'à venir'
+          : 'ouverte';
+    return { id: l.id, intitule: l.intitule, ville: l.ville, etat, ouverture: l.ouverture, depart: l.depart, fin, soutiens: l.soutiens };
+  });
 }
