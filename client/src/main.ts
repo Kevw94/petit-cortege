@@ -14,6 +14,8 @@ import { pancarteAuHasard, sectionPancarte } from './composition/section-pancart
 import type { Cortege } from './cortege/cortege';
 import { EntreeRefusee, rejoindreLeCortege } from './entree';
 import { afficherImageFinale } from './image-finale/vue';
+import { telechargerDansLeNavigateur } from './partage/partage';
+import { NOM_FICHIER_RAPPEL, rappelIcs } from './partage/rappel';
 import { Publication } from './publication';
 import { hacherJetonRetrait, nouveauJetonRetrait, RetraitRefuse, retirerMonAvatar } from './retrait';
 import { pageLegale, piedDePage } from './pages/pages-legales';
@@ -113,6 +115,7 @@ async function afficherManif(id: string): Promise<void> {
     <section class="action">
       <button type="button" class="rejoindre" data-rejoindre hidden>Rejoindre le cortège</button>
       <button type="button" class="retirer" data-retirer hidden>Retirer mon avatar</button>
+      <button type="button" class="rappel" data-rappel hidden>Rappel pour voir l’image finale</button>
       <p class="message" data-message role="status"></p>
     </section>
     <p class="attribution">${ATTRIBUTION_OSM.replace('OpenStreetMap', '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>')}</p>`;
@@ -120,6 +123,19 @@ async function afficherManif(id: string): Promise<void> {
   const boutonEl = interfaceEl.querySelector<HTMLButtonElement>('[data-rejoindre]')!;
   const retirerEl = interfaceEl.querySelector<HTMLButtonElement>('[data-retirer]')!;
   const messageEl = interfaceEl.querySelector<HTMLParagraphElement>('[data-message]')!;
+  const rappelEl = interfaceEl.querySelector<HTMLButtonElement>('[data-rappel]')!;
+
+  // Rappel d'agenda (.ics) généré ici, au titre neutre, à l'heure de fin (ADR 0002 : seul
+  // le fragment désigne la manif, jamais envoyé au serveur).
+  rappelEl.addEventListener('click', () => {
+    const ics = rappelIcs({
+      fin: new Date(donnees.manif.fin),
+      url: `${window.location.origin}${window.location.pathname}${lienManif(id)}`,
+      maintenant: new Date(),
+    });
+    telechargerDansLeNavigateur(new Blob([ics], { type: 'text/calendar;charset=utf-8' }), NOM_FICHIER_RAPPEL);
+    messageEl.textContent = 'Rappel ajouté à tes téléchargements : ouvre-le pour l’ajouter à ton agenda.';
+  });
 
   // Avatars de ce soutien : relus du localStorage (purgé 1 h après la fin), mis en valeur.
   let propres = avatarsPropres(new Date()).filter((e) => e.m === id);
@@ -146,6 +162,8 @@ async function afficherManif(id: string): Promise<void> {
     // Le jeton est effacé à la fin de la manif : le retrait n'est possible que tant qu'elle est ouverte.
     const peutRetirer = cortege.etat === 'ouverte' && propresRetirables.length > 0 && !envoiEnCours;
     if (retirerEl.hidden === peutRetirer) retirerEl.hidden = !peutRetirer;
+    const peutRappeler = cortege.etat === 'ouverte' && !composition;
+    if (rappelEl.hidden === peutRappeler) rappelEl.hidden = !peutRappeler;
     if (propres.length > 0 && !envoiEnCours && !messageEl.textContent) {
       messageEl.textContent = 'Tu marches avec le cortège. Tu peux fermer la page : ton avatar continue.';
     }

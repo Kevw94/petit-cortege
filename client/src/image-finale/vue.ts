@@ -7,9 +7,17 @@
 import type { Decor, EntreePubliee, FichierEntrees, ManifPubliee } from '@petit-cortege/shared';
 import { composerImageFinale } from '../cortege/image-finale';
 import {
+  partagerImage,
+  peutPartagerUneImage,
+  telechargerDansLeNavigateur,
+  telechargerImage,
+  type EnvironnementPartage,
+} from '../partage/partage';
+import {
   chargerRessourcesImageFinale,
   dessinerImageFinale,
   HAUTEUR_IMAGE_FINALE,
+  imageFinaleEnPng,
   LARGEUR_IMAGE_FINALE,
   type RessourcesImageFinale,
 } from './rendu';
@@ -53,14 +61,27 @@ export async function afficherImageFinale(conteneur: HTMLElement, depart: Donnee
         <a class="retour" href="#/">← Toutes les manifs</a>
         <h1>${echapper(donnees.manif.intitule)}</h1>
         <p data-etat></p>
-        <p data-toi hidden>Ton avatar est mis en valeur, sur cet appareil seulement.</p>
+        <p data-toi hidden>Ton avatar est mis en valeur, sur cet appareil seulement (et dans l’image si tu la
+          télécharges ou la partages).</p>
       </section>
       <canvas class="image-finale" width="${LARGEUR_IMAGE_FINALE}" height="${HAUTEUR_IMAGE_FINALE}"
         role="img"></canvas>
+      <div class="partage-image">
+        <button type="button" class="rejoindre" data-partager hidden>Partager</button>
+        <button type="button" class="secondaire" data-telecharger>Télécharger</button>
+      </div>
+      <p class="message" data-message-partage role="status"></p>
     </div>`;
   const canvas = conteneur.querySelector<HTMLCanvasElement>('canvas.image-finale')!;
   const etatEl = conteneur.querySelector<HTMLParagraphElement>('[data-etat]')!;
   const toiEl = conteneur.querySelector<HTMLParagraphElement>('[data-toi]')!;
+  const partagerEl = conteneur.querySelector<HTMLButtonElement>('[data-partager]')!;
+  const telechargerEl = conteneur.querySelector<HTMLButtonElement>('[data-telecharger]')!;
+  const messageEl = conteneur.querySelector<HTMLParagraphElement>('[data-message-partage]')!;
+  // PNG préparé à chaque dessin : au clic, le partage part sans attente (le partage natif
+  // exige d'être appelé juste après le geste du soutien). Rien n'est envoyé au serveur.
+  let png!: Promise<Blob>;
+  const environnement: EnvironnementPartage = { navigateur: navigator, telecharger: telechargerDansLeNavigateur };
 
   let signature = '';
   const dessiner = () => {
@@ -70,6 +91,8 @@ export async function afficherImageFinale(conteneur: HTMLElement, depart: Donnee
     if (nouvelle === signature) return;
     signature = nouvelle;
     dessinerImageFinale(canvas, { ...donnees, image, ressources: chargees });
+    png = imageFinaleEnPng(canvas);
+    png.catch(() => {}); // erreur signalée au clic
     const n = image.compteur;
     etatEl.textContent = `Terminée · ${n.toLocaleString('fr-FR')} ${n > 1 ? 'soutiens' : 'soutien'}`;
     canvas.setAttribute(
@@ -79,6 +102,30 @@ export async function afficherImageFinale(conteneur: HTMLElement, depart: Donnee
     toiEl.hidden = !image.premierPlan.some((a) => a.propre);
   };
   dessiner();
+
+  partagerEl.hidden = !peutPartagerUneImage(environnement.navigateur);
+  const agir = async (bouton: HTMLButtonElement, action: (fichier: Blob) => Promise<string | null>) => {
+    bouton.disabled = true;
+    messageEl.textContent = '';
+    try {
+      messageEl.textContent = (await action(await png)) ?? '';
+    } catch {
+      messageEl.textContent = 'Impossible de préparer l’image. Réessaie dans un instant.';
+    } finally {
+      bouton.disabled = false;
+    }
+  };
+  partagerEl.addEventListener('click', () =>
+    void agir(partagerEl, async (fichier) =>
+      (await partagerImage(fichier, environnement)) === 'telechargement' ? 'Image téléchargée.' : null,
+    ),
+  );
+  telechargerEl.addEventListener('click', () =>
+    void agir(telechargerEl, async (fichier) => {
+      telechargerImage(fichier, environnement);
+      return 'Image téléchargée.';
+    }),
+  );
 
   return {
     canvas,

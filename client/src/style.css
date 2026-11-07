@@ -175,7 +175,8 @@ button.rejoindre:disabled {
 }
 
 /* Action secondaire, discrète mais assez grande pour le doigt. */
-button.retirer {
+button.retirer,
+button.rappel {
   min-height: 44px;
   padding: 10px 20px;
   border: 1px solid #999;
@@ -458,6 +459,19 @@ button.secondaire {
 
 .vue-image-finale .carte {
   width: 100%;
+}
+
+.partage-image {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  width: min(100%, 28rem);
+}
+
+.partage-image button {
+  padding-inline: 16px;
+  flex: 1 1 10rem;
 }
 
 canvas.image-finale {
