@@ -19,3 +19,11 @@ export {
   type SaisieManif,
 } from './moderation';
 export { lireParcoursGeoJson } from './umap';
+export {
+  configDepuisEnv,
+  lancer,
+  type ConfigPrincipale,
+  type OptionsLancement,
+  type PassagePublication,
+  type ServeurLance,
+} from './lancement';
