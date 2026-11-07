@@ -15,6 +15,7 @@ import {
   lireParcoursGeoJson,
   migrer,
   publier,
+  retirerManif,
   type Horloge,
   type NouveauDepart,
   type Sql,
@@ -76,6 +77,16 @@ const COMMANDES: Record<string, Commande> = {
       const resultat = await decalerDepart(deps.sql, deps.horloge, id, nouveau);
       await publier(deps);
       deps.ecrire(`Manif « ${id} » : départ ${enHeureDeParis(resultat.depart)}, fin ${enHeureDeParis(resultat.fin)} (publié).`);
+    },
+  },
+  'retirer-manif': {
+    usage: "retirer-manif --manif <identifiant> --motif <ex. référence de l'arrêté d'interdiction>",
+    options: { manif: { type: 'string' }, motif: { type: 'string' } },
+    executer: async (valeurs, deps) => {
+      const id = obligatoire(valeurs, 'manif');
+      const retiree = await retirerManif(deps.sql, deps.horloge, id, obligatoire(valeurs, 'motif'));
+      await publier(deps);
+      deps.ecrire(retiree ? `Manif « ${id} » retirée de la liste publiée ; entrées refusées.` : `Manif « ${id} » déjà retirée.`);
     },
   },
 };

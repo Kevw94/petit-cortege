@@ -31,7 +31,8 @@ export async function entrer(sql: Sql, horloge: Horloge, requete: RequeteEntree)
     await verrouillerContrePublication(tx);
     const maintenant = horloge.maintenant();
     const [manif] = await tx<{ ouverture: Date; depart: Date; parcours: Parcours }[]>`
-      select ouverture, depart, parcours from manif where id = ${requete.manif}`;
+      select ouverture, depart, parcours from manif where id = ${requete.manif} and retiree is null`;
+    // Une manif retirée par la modération est traitée comme inconnue.
     if (!manif || manif.ouverture > maintenant) return { ok: false, erreur: 'manif-inconnue' } as const;
     if (maintenant >= calculerFin(manif.depart, longueurParcours(manif.parcours))) {
       return { ok: false, erreur: 'manif-terminee' } as const;

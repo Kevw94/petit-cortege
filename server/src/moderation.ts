@@ -84,9 +84,10 @@ export async function decalerDepart(
 ): Promise<{ depart: Date; fin: Date }> {
   return sql.begin(async (tx) => {
     const maintenant = horloge.maintenant();
-    const [manif] = await tx<{ ouverture: Date; depart: Date; parcours: Parcours }[]>`
-      select ouverture, depart, parcours from manif where id = ${id} for update`;
+    const [manif] = await tx<{ ouverture: Date; depart: Date; parcours: Parcours; retiree: Date | null }[]>`
+      select ouverture, depart, parcours, retiree from manif where id = ${id} for update`;
     if (!manif) throw new ErreurModeration(`manif « ${id} » inconnue.`);
+    if (manif.retiree) throw new ErreurModeration(`la manif « ${id} » a été retirée.`);
     const longueurM = longueurParcours(manif.parcours);
     if (calculerFin(manif.depart, longueurM) <= maintenant) {
       throw new ErreurModeration(`la manif « ${id} » est terminée : son départ ne peut plus être corrigé.`);
@@ -100,4 +101,19 @@ export async function decalerDepart(
     await tx`update manif set depart = ${depart} where id = ${id}`;
     return { depart, fin };
   });
+}
+
+/**
+ * Retire une manif (story 55 ; ex. arrêté d'interdiction, ADR 0003) : elle
+ * disparaît de la liste publiée et les entrées sont refusées. Le motif est
+ * conservé pour la trace. Renvoie `false` si elle était déjà retirée.
+ */
+export async function retirerManif(sql: Sql, horloge: Horloge, id: string, motif: string): Promise<boolean> {
+  if (!motif.trim()) throw new ErreurModeration("motif obligatoire (ex. référence de l'arrêté).");
+  const [manif] = await sql<{ retiree: Date | null }[]>`select retiree from manif where id = ${id}`;
+  if (!manif) throw new ErreurModeration(`manif « ${id} » inconnue.`);
+  const retirees = await sql`
+    update manif set retiree = ${horloge.maintenant()}, motif_retrait = ${motif.trim()}
+    where id = ${id} and retiree is null`;
+  return retirees.count > 0;
 }

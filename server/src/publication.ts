@@ -81,7 +81,7 @@ async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublic
   const minuteEnCours = debutDeMinute(maintenant);
   const lignes = await sql<LigneManif[]>`
     select id, intitule, ville, ouverture, depart, parcours, sources
-    from manif where ouverture <= ${maintenant} order by depart, id`;
+    from manif where ouverture <= ${maintenant} and retiree is null order by depart, id`;
   const compteurs = await sql<{ manif_id: string; n: number }[]>`
     select manif_id, count(*)::int as n from avatar
     where entree < ${minuteEnCours} and not exists (select 1 from retrait where avatar_id = avatar.id)
@@ -119,7 +119,7 @@ async function publierRetraits(sql: Requeteur, dossier: string, maintenant: Date
     select r.avatar_id as id from retrait r
     join avatar a on a.id = r.avatar_id
     join manif m on m.id = a.manif_id
-    where m.ouverture <= ${maintenant}
+    where m.ouverture <= ${maintenant} and m.retiree is null
     order by r.avatar_id collate "C"`;
   const retraits: Retraits = { v: VERSION_FORMAT, generee: maintenant.toISOString(), retraits: lignes.map((l) => l.id) };
   await ecrire(dossier, CHEMIN_RETRAITS, retraits);

@@ -333,4 +333,56 @@ describe('modération en ligne de commande', () => {
       }
     });
   });
+
+  describe('retirer une manif', () => {
+    const entrer = (manif: string) => banc.poster('/api/entree', { manif, apparence: 0, pancarte: 0 });
+
+    it('elle disparaît de la liste publiée et les entrées sont refusées ; les autres manifs ne bougent pas', async () => {
+      const retiree = await nouvelleManif('interdite');
+      const autre = await nouvelleManif('autorisee');
+      expect((await entrer(retiree)).statut).toBe(201);
+
+      const code = await moderer('retirer-manif', '--manif', retiree, '--motif', 'Arrêté préfectoral n° 2026-123 du 31 mai');
+
+      expect(code).toBe(0);
+      const ids = (await manifsPubliees()).map((m) => m.id);
+      expect(ids).not.toContain(retiree);
+      expect(ids).toContain(autre);
+      expect(await entrer(retiree)).toEqual({ statut: 404, corps: { erreur: 'manif-inconnue' } });
+      expect((await entrer(autre)).statut).toBe(201);
+    });
+
+    it('motif obligatoire', async () => {
+      const id = await nouvelleManif('sans-motif');
+
+      expect(await moderer('retirer-manif', '--manif', id)).toBe(1);
+
+      expect(sorties.join('\n')).toMatch(/--motif/);
+      expect((await manifsPubliees()).map((m) => m.id)).toContain(id);
+    });
+
+    it('manif inconnue : refusé', async () => {
+      expect(await moderer('retirer-manif', '--manif', 'inconnue', '--motif', 'Arrêté')).toBe(1);
+      expect(sorties.join('\n')).toMatch(/« inconnue » inconnue/);
+    });
+
+    it('retirer deux fois : sans effet la seconde fois', async () => {
+      const id = await nouvelleManif('deux-fois');
+      expect(await moderer('retirer-manif', '--manif', id, '--motif', 'Arrêté')).toBe(0);
+
+      expect(await moderer('retirer-manif', '--manif', id, '--motif', 'Arrêté')).toBe(0);
+
+      expect(sorties.join('\n')).toMatch(/déjà retirée/);
+    });
+
+    it('une manif retirée ne peut plus être décalée', async () => {
+      const id = await nouvelleManif('retiree-decalee');
+      expect(await moderer('retirer-manif', '--manif', id, '--motif', 'Arrêté')).toBe(0);
+
+      expect(await moderer('decaler-depart', '--manif', id, '--minutes', '10')).toBe(1);
+
+      expect(sorties.join('\n')).toMatch(/retirée/);
+      expect((await manifsPubliees()).map((m) => m.id)).not.toContain(id);
+    });
+  });
 });
