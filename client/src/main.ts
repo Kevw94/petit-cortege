@@ -18,6 +18,7 @@ import { NOM_FICHIER_RAPPEL, rappelIcs } from './partage/rappel';
 import { Publication } from './publication';
 import { hacherJetonRetrait, nouveauJetonRetrait, RetraitRefuse, retirerMesAvatars } from './retrait';
 import { pageLegale, piedDePage } from './pages/pages-legales';
+import { creerNavigation, VuePerimee, type Vue } from './navigation';
 import { lienManif, lireRoute } from './routage';
 import { SceneCortege, type DonneesScene } from './scene-cortege';
 
@@ -26,8 +27,8 @@ const INTERVALLE_RAFRAICHISSEMENT_MS = 20_000;
 
 const publication = new Publication();
 const interfaceEl = document.querySelector<HTMLDivElement>('#interface')!;
-let jeu: Phaser.Game | null = null;
-let arreterRafraichissement: () => void = () => {};
+/** Chaque navigation périme la vue précédente : ses chargements en cours n'écrivent plus rien. */
+const navigation = creerNavigation();
 
 const heure = (iso: string) =>
   new Date(iso).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
@@ -36,14 +37,6 @@ function echapper(texte: string): string {
   const div = document.createElement('div');
   div.textContent = texte;
   return div.innerHTML;
-}
-
-function quitterVue(): void {
-  arreterRafraichissement();
-  arreterRafraichissement = () => {};
-  jeu?.destroy(true);
-  jeu = null;
-  interfaceEl.innerHTML = '';
 }
 
 /**
@@ -59,8 +52,8 @@ async function listeManifs() {
 
 const estTerminee = (manif: { fin: string }, maintenant = new Date()) => maintenant.getTime() >= Date.parse(manif.fin);
 
-async function afficherListe(): Promise<void> {
-  const { manifs } = await listeManifs();
+async function afficherListe(vue: Vue): Promise<void> {
+  const { manifs } = await vue.attendre(listeManifs());
   const ouvertes = manifs.filter((m) => !estTerminee(m));
   const terminees = manifs.filter((m) => estTerminee(m)).reverse(); // les plus récentes d'abord
   const element = (m: (typeof manifs)[number], detail: string) => `<li><a href="${lienManif(m.id)}">
@@ -85,8 +78,8 @@ async function afficherListe(): Promise<void> {
     </section>`;
 }
 
-async function afficherManif(id: string): Promise<void> {
-  const manif = (await listeManifs()).manifs.find((m) => m.id === id);
+async function afficherManif(id: string, vue: Vue): Promise<void> {
+  const manif = (await vue.attendre(listeManifs())).manifs.find((m) => m.id === id);
   if (!manif) {
     interfaceEl.innerHTML = `<section class="carte"><p>Cette manif n'existe pas ou n'est plus publiée.</p>
       <a class="retour" href="#/">← Toutes les manifs</a></section>`;
@@ -94,13 +87,13 @@ async function afficherManif(id: string): Promise<void> {
   }
   // Décor OSM : tous les décors publiés sont demandés, quelle que soit la manif (ADR 0002).
   const decor = chargerDecor(manif.parcours.coordinates);
-  let entrees: FichierEntrees[] = await publication.entreesPour(manif, new Date());
-  let retraitsPublies: string[] = await publication.retraits().catch(() => []);
+  let entrees: FichierEntrees[] = await vue.attendre(publication.entreesPour(manif, new Date()));
+  let retraitsPublies: string[] = await vue.attendre(publication.retraits().catch(() => []));
   // Retirés depuis cet appareil : effacés tout de suite, sans attendre le fichier des retraits.
   const retiresIci = new Set<string>();
 
   if (estTerminee(manif)) {
-    await afficherManifTerminee(manif, await decor, entrees, retraitsPublies);
+    await afficherManifTerminee(vue, manif, await vue.attendre(decor), entrees, retraitsPublies);
     return;
   }
 
@@ -238,13 +231,13 @@ async function afficherManif(id: string): Promise<void> {
 
   const donnees: DonneesScene = {
     manif,
-    decor: await decor,
+    decor: await vue.attendre(decor),
     entrees: () => entrees,
     propres: () => propres,
     retraits: () => (retiresIci.size === 0 ? retraitsPublies : [...retraitsPublies, ...retiresIci]),
     surCortege,
   };
-  jeu = new Phaser.Game({
+  const jeu = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'jeu',
     backgroundColor: '#f4f1ea',
@@ -252,6 +245,7 @@ async function afficherManif(id: string): Promise<void> {
     scene: [],
   });
   jeu.scene.add('cortege', SceneCortege, true, donnees);
+  vue.surQuitter(() => jeu.destroy(true));
 
   const minuterie = window.setInterval(async () => {
     const aJour = (await listeManifs().catch(() => null))?.manifs.find((m) => m.id === id);
@@ -259,35 +253,41 @@ async function afficherManif(id: string): Promise<void> {
     entrees = await publication.entreesPour(donnees.manif, new Date());
     retraitsPublies = (await publication.retraits().catch(() => null)) ?? retraitsPublies;
   }, INTERVALLE_RAFRAICHISSEMENT_MS);
-  arreterRafraichissement = () => window.clearInterval(minuterie);
+  vue.surQuitter(() => window.clearInterval(minuterie));
 }
 
 /** Image finale d'une manif terminée (tout le cortège au point d'arrivée). */
 async function afficherManifTerminee(
+  vue: Vue,
   manif: Parameters<typeof afficherImageFinale>[1]['manif'],
   decor: Parameters<typeof afficherImageFinale>[1]['decor'],
   entrees: FichierEntrees[],
   retraits: string[],
 ): Promise<void> {
-  const vue = await afficherImageFinale(interfaceEl, {
-    manif,
-    decor,
-    entrees,
-    propres: avatarsPropres(new Date()).filter((e) => e.m === manif.id),
-    retraits,
-    // Nom de la place d'arrivée, porté par le décor OSM (#13).
-    nomPlace: decor?.places.find((p) => p.arrivee)?.nom ?? null,
-  });
+  // Composée hors de la page, insérée seulement si la vue est encore courante.
+  const brouillon = document.createElement('div');
+  const imageFinale = await vue.attendre(
+    afficherImageFinale(brouillon, {
+      manif,
+      decor,
+      entrees,
+      propres: avatarsPropres(new Date()).filter((e) => e.m === manif.id),
+      retraits,
+      // Nom de la place d'arrivée, porté par le décor OSM (#13).
+      nomPlace: decor?.places.find((p) => p.arrivee)?.nom ?? null,
+    }),
+  );
+  interfaceEl.replaceChildren(...brouillon.childNodes);
   // Les retraits de la dernière heure peuvent encore changer l'image ; ses avatars mis en
   // valeur disparaissent 1 h après la fin (purge du stockage local).
   const minuterie = window.setInterval(async () => {
     const aJour = await publication.retraits().catch(() => null);
-    vue.actualiser({
+    imageFinale.actualiser({
       propres: avatarsPropres(new Date()).filter((e) => e.m === manif.id),
       ...(aJour ? { retraits: aJour } : {}),
     });
   }, INTERVALLE_RAFRAICHISSEMENT_MS);
-  arreterRafraichissement = () => window.clearInterval(minuterie);
+  vue.surQuitter(() => window.clearInterval(minuterie));
 }
 
 function messageErreurEntree(erreur: unknown): string {
@@ -312,13 +312,16 @@ function messageErreurRetrait(erreur: unknown): string {
 }
 
 async function naviguer(): Promise<void> {
-  quitterVue();
+  const vue = navigation.nouvelleVue(); // arrête le jeu et les minuteries de la vue quittée
+  interfaceEl.innerHTML = '';
   const route = lireRoute(window.location.hash);
   try {
-    if (route.page === 'manif') await afficherManif(route.id);
+    if (route.page === 'manif') await afficherManif(route.id, vue);
     else if (route.page === 'legale') interfaceEl.innerHTML = pageLegale(route.id);
-    else await afficherListe();
+    else await afficherListe(vue);
   } catch (erreur) {
+    // Vue quittée pendant un chargement : la nouvelle vue s'affiche, rien à faire.
+    if (erreur instanceof VuePerimee || !vue.courante) return;
     interfaceEl.innerHTML = `<section class="carte"><p>Impossible de charger le cortège. Réessaie dans un instant.</p></section>`;
     console.error(erreur);
   }
