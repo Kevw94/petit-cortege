@@ -100,3 +100,14 @@ export function suivreFinsDesManifs(manifs: readonly { id: string; fin: string }
 export function oublierAvatarPropre(avatar: string): void {
   ecrire(lire().filter((e) => e.a !== avatar));
 }
+
+/** Oublie le jeton de retrait d'un avatar (retrait refusé pour de bon) ; l'avatar reste mis en valeur. */
+export function oublierJetonDeRetrait(avatar: string): void {
+  ecrire(
+    lire().map((e) => {
+      if (e.a !== avatar) return e;
+      const { jeton: _oublie, ...sansJeton } = e;
+      return sansJeton;
+    }),
+  );
+}

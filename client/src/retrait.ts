@@ -7,6 +7,7 @@
  * du retrait. Il est distinct de tout jeton anti-triche.
  */
 import { CHEMIN_API_RETRAIT, type CodeErreurRetrait, type RequeteRetrait } from '@petit-cortege/shared';
+import { jetonDeRetrait, oublierAvatarPropre, oublierJetonDeRetrait } from './avatars-propres';
 
 const hex = (octets: Uint8Array) => Array.from(octets, (o) => o.toString(16).padStart(2, '0')).join('');
 
@@ -39,4 +40,34 @@ export async function retirerMonAvatar(requete: RequeteRetrait): Promise<void> {
   if (reponse.ok) return;
   const corps = (await reponse.json().catch(() => null)) as { erreur?: CodeErreurRetrait } | null;
   throw new RetraitRefuse(corps?.erreur ?? 'reseau');
+}
+
+/**
+ * Retire ses avatars depuis cet appareil. Retiré : avatar et jeton oubliés. Refusé pour
+ * de bon (`retrait-refuse` : hachage effacé à la fin de la manif, ou jeton déjà effacé
+ * ici) : seul le jeton est oublié, pour ne plus proposer un retrait voué à l'échec ;
+ * l'avatar reste mis en valeur. Erreur passagère (réseau…) : on s'arrête, `erreur` la
+ * porte et les jetons restants sont gardés pour réessayer.
+ */
+export async function retirerMesAvatars(
+  avatars: readonly string[],
+  maintenant: Date,
+): Promise<{ retires: string[]; refuses: string[]; erreur?: unknown }> {
+  const retires: string[] = [];
+  const refuses: string[] = [];
+  for (const avatar of avatars) {
+    const jeton = jetonDeRetrait(avatar, maintenant);
+    try {
+      if (jeton === undefined) throw new RetraitRefuse('retrait-refuse');
+      await retirerMonAvatar({ avatar, jeton });
+    } catch (erreur) {
+      if (!(erreur instanceof RetraitRefuse && erreur.code === 'retrait-refuse')) return { retires, refuses, erreur };
+      oublierJetonDeRetrait(avatar);
+      refuses.push(avatar);
+      continue;
+    }
+    oublierAvatarPropre(avatar);
+    retires.push(avatar);
+  }
+  return { retires, refuses };
 }
