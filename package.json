@@ -20,7 +20,8 @@
     "test:watch": "vitest",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "build": "npm run build --workspace=@petit-cortege/client",
-    "mesure-perf": "npm run mesure-perf --workspace=@petit-cortege/scripts --"
+    "mesure-perf": "npm run mesure-perf --workspace=@petit-cortege/scripts --",
+    "generer-apparence": "tsx scripts/generer-apparence.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

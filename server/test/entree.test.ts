@@ -134,6 +134,9 @@ describe('rejoindre le cortège', () => {
     ['manif absente', { apparence: 0, pancarte: 0 }],
     ['indice négatif', { manif: 'manif-paris', apparence: -1, pancarte: 0 }],
     ['indice non entier', { manif: 'manif-paris', apparence: 1.5, pancarte: 0 }],
+    // Teint 7 : hors du catalogue d'apparence (shared/src/catalogues/apparence.ts).
+    ['apparence hors catalogue', { manif: 'manif-paris', apparence: 7, pancarte: 0 }],
+    ['apparence au-delà des champs', { manif: 'manif-paris', apparence: 1 << 25, pancarte: 0 }],
     // Couleur 15 : hors du catalogue des pancartes (shared/src/catalogues/pancartes.ts).
     ['pancarte hors catalogue', { manif: 'manif-paris', apparence: 0, pancarte: 15 }],
     ['pancarte au slogan inexistant', { manif: 'manif-paris', apparence: 0, pancarte: 255 << 6 }],
