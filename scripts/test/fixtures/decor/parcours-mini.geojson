@@ -1,0 +1,19 @@
+{
+ "type": "Feature",
+ "properties": {
+  "name": "Parcours test"
+ },
+ "geometry": {
+  "type": "LineString",
+  "coordinates": [
+   [
+    2.36,
+    48.87
+   ],
+   [
+    2.3654628,
+    48.87
+   ]
+  ]
+ }
+}
