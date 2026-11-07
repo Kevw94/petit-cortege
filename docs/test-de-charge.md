@@ -143,7 +143,10 @@ la cause : `verifierEtConsommer` parcourait à chaque preuve **toute** la table 
    toutes les 20 s par chaque client, passe de 2,6 à 1,25 Ko gzip pour un parcours de 150 points. Test :
    `server/test/umap.test.ts`.
 3. **Point d'entrée de production** `npm run serveur` (`server/src/lancement.ts`, `principal.ts`). Il exige
-   `DATABASE_URL`, `DOSSIER_PUBLICATION` et `ALTCHA_CLE_HMAC`, et accepte `PORT`, `INTERVALLE_PUBLICATION_MS`
+   `DATABASE_URL`, `DOSSIER_PUBLICATION`, `ALTCHA_CLE_HMAC` et `PROXYS_DE_CONFIANCE` (ex. `127.0.0.1,::1`,
+   plus les plages du CDN si les POST passent par lui : le serveur écoute sur 127.0.0.1 derrière le serveur
+   web, sans cela tous les soutiens partageraient la même limite par IP ; `aucun` pour s'en passer, avec un
+   avertissement au démarrage), et accepte `PORT`, `INTERVALLE_PUBLICATION_MS`
    (5 000 par défaut) et `SERVIR_PUBLICATION=1`. La publication tourne en boucle sans chevauchement, et un
    passage plus long que l'intervalle produit un avertissement. Test : `server/test/lancement.test.ts`.
 

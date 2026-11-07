@@ -30,7 +30,11 @@ export interface OptionsAntiTriche {
    * Défaut : `X-Forwarded-For`. Lu seulement si la connexion vient d'un proxy de confiance.
    */
   enteteIp?: string;
-  /** Adresses ou CIDR du CDN. Vide (défaut) : l'en-tête est ignoré, on prend l'adresse de connexion. */
+  /**
+   * Adresses ou CIDR des proxys (serveur web local, CDN). Vide (défaut) : l'en-tête est ignoré,
+   * on prend l'adresse de connexion — derrière un serveur web local, la même pour tout le monde :
+   * la production l'exige donc explicitement (`configDepuisEnv`).
+   */
   proxysDeConfiance?: readonly string[];
   /** Plafond global d'entrées acceptées par fenêtre, au-delà duquel le porteur est alerté. */
   plafondGlobal?: { entrees: number; fenetreMs: number };
@@ -103,7 +107,10 @@ const entier = (texte: string | undefined): number | undefined => {
  * - `LIMITE_ENTREES_PAR_IP` : entrées par IP et par minute (défaut 60).
  * - `PLAFOND_ENTREES_GLOBAL` : entrées acceptées par minute avant alerte (défaut 1000).
  * - `ENTETE_IP_CLIENT` : en-tête de la vraie IP (ex. `CDN-RequestClientIP` ; défaut `X-Forwarded-For`).
- * - `PROXYS_DE_CONFIANCE` : adresses ou CIDR du CDN, séparés par des virgules (défaut : aucun).
+ * - `PROXYS_DE_CONFIANCE` : adresses ou CIDR des proxys (serveur web local, CDN), séparés par des
+ *   virgules, ou `aucun`. Défaut ici (dev) : aucun ; **obligatoire en production** (`configDepuisEnv`) :
+ *   le serveur y écoute sur 127.0.0.1 derrière le serveur web, et sans `127.0.0.1,::1` toutes les
+ *   requêtes partageraient la même clé de limite par IP.
  * - `ALERTE_WEBHOOK_URL` : webhook appelé en plus du journal quand le plafond est dépassé.
  */
 export function antiTricheDepuisEnv(env: Record<string, string | undefined>): OptionsAntiTriche {
@@ -114,7 +121,7 @@ export function antiTricheDepuisEnv(env: Record<string, string | undefined>): Op
   const compteurMax = entier(env.ALTCHA_COMPTEUR_MAX) ?? Math.max(compteurMin, DIFFICULTE_PAR_DEFAUT.compteurMax);
   const parIp = entier(env.LIMITE_ENTREES_PAR_IP);
   const global = entier(env.PLAFOND_ENTREES_GLOBAL);
-  const proxys = (env.PROXYS_DE_CONFIANCE ?? '')
+  const proxys = (env.PROXYS_DE_CONFIANCE?.trim() === 'aucun' ? '' : (env.PROXYS_DE_CONFIANCE ?? ''))
     .split(',')
     .map((x) => x.trim())
     .filter(Boolean);
