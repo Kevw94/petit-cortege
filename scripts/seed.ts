@@ -16,7 +16,15 @@ import {
   type AvatarPreRempli,
   type Sql,
 } from '@petit-cortege/server';
-import { COULEURS_PANCARTE, encoderPancarte, FORMES_PANCARTE, SLOGANS } from '@petit-cortege/shared';
+import {
+  ACCESSOIRES,
+  apparenceAuHasard,
+  COULEURS_PANCARTE,
+  encoderApparence,
+  encoderPancarte,
+  FORMES_PANCARTE,
+  SLOGANS,
+} from '@petit-cortege/shared';
 import { assurerBase, DOSSIER_PUBLICATION_DEV, RACINE, URL_BASE_DEV } from './config';
 
 export const ID_MANIF_DEMO = 'demo-republique-nation';
@@ -30,6 +38,12 @@ const pancarteAuHasard = () =>
     slogan: auHasard(SLOGANS.length),
     couleur: auHasard(COULEURS_PANCARTE.length),
     forme: auHasard(FORMES_PANCARTE.length),
+  });
+/** Une apparence quelconque du catalogue ; un avatar sur dix avec un accessoire. */
+const apparenceDeLaFoule = () =>
+  encoderApparence({
+    ...apparenceAuHasard(),
+    accessoire: Math.random() < 0.1 ? 1 + auHasard(ACCESSOIRES.length - 1) : 0,
   });
 
 /** Parcours de la démo : celui du décor publié dans client/public/decors/republique-nation.json. */
@@ -64,7 +78,7 @@ export async function semerManifDemo(sql: Sql, dossierPublication: string): Prom
 }
 
 function avatar(entree: number): AvatarPreRempli {
-  return { id: identifiant(), manifId: ID_MANIF_DEMO, entree: new Date(entree), apparence: auHasard(8), pancarte: pancarteAuHasard() };
+  return { id: identifiant(), manifId: ID_MANIF_DEMO, entree: new Date(entree), apparence: apparenceDeLaFoule(), pancarte: pancarteAuHasard() };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
