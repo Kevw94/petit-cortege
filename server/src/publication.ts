@@ -163,9 +163,12 @@ async function publierMinutes(sql: Requeteur, dossier: string, manifs: ManifPubl
 
   const debut = new Date(aEcrire[0]!);
   const fin = new Date(aEcrire[aEcrire.length - 1]! + MINUTE_MS);
+  // Seulement les manifs publiées : une manif retirée par la modération ne publie plus d'entrées.
+  const ids = manifs.map((m) => m.id);
   const avatars = await sql<{ id: string; manif_id: string; entree: Date; apparence: number; pancarte: number }[]>`
     select id, manif_id, entree, apparence, pancarte from avatar
-    where entree >= ${debut} and entree < ${fin} order by entree, id`;
+    where entree >= ${debut} and entree < ${fin} and manif_id = any(${ids}::text[])
+    order by entree, id`;
   const parMinute = new Map<number, EntreePubliee[]>();
   for (const a of avatars) {
     const m = debutDeMinute(a.entree).getTime();
