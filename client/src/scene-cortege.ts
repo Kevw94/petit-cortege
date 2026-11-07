@@ -1,23 +1,36 @@
 /**
  * Rendu Phaser du cortège : se contente d'afficher les sorties du Cortège.
- * Squelette : parcours en simple ligne sur fond vide, un point par avatar
- * portant sa pancarte. Zoom et déplacement au doigt (pincer, glisser) ou à la souris.
+ * Décor OSM (tilemap chargée par blocs) et tracé du parcours au sol, un point
+ * par avatar portant sa pancarte. Zoom et déplacement au doigt (pincer, glisser)
+ * ou à la souris.
+ *
+ * Projection : mètres depuis l'origine du décor (tuile de 16 px = 2 m, voir
+ * shared/src/decor.ts), la même pour le décor et les avatars ; le cadrage
+ * projette ces mètres à l'écran. Profondeur = position y à l'écran.
  */
 import * as Phaser from 'phaser';
 import {
+  METRES_PAR_TUILE,
   positionDansLeCortege,
+  versTuiles,
+  type Decor,
   type EntreePubliee,
+  type Georeference,
   type FichierEntrees,
   type ManifPubliee,
   type Position,
 } from '@petit-cortege/shared';
 import { cadrerSur, deplacer, versEcran, zoomerAutour, type Cadrage, type PointM, type PointPx } from './cadrage';
 import { calculerCortege, type Cortege } from './cortege/cortege';
+import { DecorAffiche, prechargerDecor } from './decor/rendu';
+import { TraceAuSol } from './decor/trace';
 import { pancartesAffichees, type PorteurDePancarte } from './pancartes/affichage';
 import { dessinerPancarte, SlogansAffiches } from './pancartes/dessin';
 
 export interface DonneesScene {
   manif: ManifPubliee;
+  /** Décor OSM couvrant le parcours (null : pas de décor, fond uni). */
+  decor: Decor | null;
   /** Fichiers d'entrées chargés à ce jour (mis à jour par le chargement périodique). */
   entrees: () => FichierEntrees[];
   /** Avatars du soutien sur cet appareil (affichés tout de suite, mis en valeur). */
@@ -29,23 +42,24 @@ export interface DonneesScene {
 }
 
 const MARGE_PX = 32;
-const COULEUR_PARCOURS = 0x8a8a8a;
 const COULEUR_AVATAR = 0xc0392b;
 const COULEUR_TOI = 0xf1c40f;
 
 /** Ordre d'affichage : foule, slogans de la foule, sa pancarte, son slogan, étiquette « toi ». */
 const PROFONDEUR = { foule: 1, slogans: 2, toi: 3, sloganToi: 4, etiquette: 5 } as const;
 
-/** Projection locale équirectangulaire en mètres (y vers le bas), suffisante à l'échelle d'une ville. */
-function projeteur(origine: Position) {
-  const kx = 111_320 * Math.cos((origine[1] * Math.PI) / 180);
-  const ky = 110_540;
-  return (p: Position): PointM => ({ x: (p[0] - origine[0]) * kx, y: -(p[1] - origine[1]) * ky });
+/** Projection en mètres (y vers le bas) depuis l'origine du décor : celle de la tilemap. */
+function projeteur(georef: Georeference) {
+  return (p: Position): PointM => {
+    const t = versTuiles(georef, p);
+    return { x: t.x * METRES_PAR_TUILE, y: t.y * METRES_PAR_TUILE };
+  };
 }
 
 export class SceneCortege extends Phaser.Scene {
   #donnees!: DonneesScene;
-  #parcours!: Phaser.GameObjects.Graphics;
+  #decor: DecorAffiche | null = null;
+  #trace!: TraceAuSol;
   #foule!: Phaser.GameObjects.Graphics;
   #avatarsPropres!: Phaser.GameObjects.Graphics;
   #slogans!: SlogansAffiches;
@@ -55,7 +69,7 @@ export class SceneCortege extends Phaser.Scene {
   /** Vrai dès que le soutien a zoomé ou déplacé la vue : on ne recadre plus au redimensionnement. */
   #cadrageManuel = false;
   #parcoursADessiner = true;
-  #ecartPincement: number | null = null;
+  #pincement: { ecart: number; milieu: PointPx } | null = null;
 
   constructor() {
     super('cortege');
@@ -65,8 +79,11 @@ export class SceneCortege extends Phaser.Scene {
     this.#donnees = donnees;
   }
 
+  preload(): void {
+    prechargerDecor(this);
+  }
+
   create(): void {
-    this.#parcours = this.add.graphics();
     this.#foule = this.add.graphics().setDepth(PROFONDEUR.foule);
     this.#avatarsPropres = this.add.graphics().setDepth(PROFONDEUR.toi);
     this.#slogans = new SlogansAffiches(this);
@@ -77,7 +94,10 @@ export class SceneCortege extends Phaser.Scene {
       .setPadding(4, 1, 4, 1)
       .setDepth(PROFONDEUR.etiquette)
       .setVisible(false);
-    this.#projeter = projeteur(this.#donnees.manif.parcours.coordinates[0]!);
+    const { decor, manif } = this.#donnees;
+    this.#projeter = projeteur(decor?.georef ?? { origine: manif.parcours.coordinates[0]! });
+    if (decor) this.#decor = new DecorAffiche(this, decor);
+    this.#trace = new TraceAuSol(this, manif.parcours.coordinates.map(this.#projeter));
     this.#cadrerSurLeParcours();
     this.scale.on(Phaser.Scale.Events.RESIZE, () => {
       if (!this.#cadrageManuel) this.#cadrerSurLeParcours();
@@ -87,6 +107,7 @@ export class SceneCortege extends Phaser.Scene {
   }
 
   override update(): void {
+    this.#suivrePincement();
     const cortege = calculerCortege({
       manif: this.#donnees.manif,
       entrees: this.#donnees.entrees(),
@@ -96,7 +117,11 @@ export class SceneCortege extends Phaser.Scene {
     });
     const ecran = this.#ecran();
     const vers = versEcran(this.#cadrage!, ecran);
-    if (this.#parcoursADessiner) this.#dessinerParcours(vers);
+    this.#decor?.afficher(this.#cadrage!, ecran, vers);
+    if (this.#parcoursADessiner) {
+      this.#parcoursADessiner = false;
+      this.#trace.dessiner(this.#cadrage!.echelle, vers);
+    }
 
     const porteurs: PorteurDePancarte[] = cortege.avatars.map((avatar) => {
       const position = positionDansLeCortege(this.#donnees.manif.parcours, avatar.distanceM, avatar.decalageM);
@@ -150,45 +175,40 @@ export class SceneCortege extends Phaser.Scene {
     this.#parcoursADessiner = true;
   }
 
+  /**
+   * Pincement : écart et milieu des deux doigts lus une fois par image (les deux
+   * doigts bougent dans le même événement tactile, mais Phaser les met à jour un par
+   * un : traiter chaque événement décentrait le zoom). Le milieu suit aussi le glissement.
+   */
+  #suivrePincement(): void {
+    const [a, b] = [this.input.pointer1, this.input.pointer2];
+    if (!a.isDown || !b.isDown) {
+      this.#pincement = null;
+      return;
+    }
+    const ecart = Phaser.Math.Distance.Between(a.x, a.y, b.x, b.y);
+    const milieu: PointPx = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    const avant = this.#pincement;
+    this.#pincement = { ecart, milieu };
+    if (!avant || ecart <= 0 || (ecart === avant.ecart && milieu.x === avant.milieu.x && milieu.y === avant.milieu.y)) return;
+    const deplace = deplacer(this.#cadrage!, { x: milieu.x - avant.milieu.x, y: milieu.y - avant.milieu.y });
+    this.#changerCadrage(zoomerAutour(deplace, ecart / avant.ecart, milieu, this.#ecran()));
+  }
+
   /** Glisser pour déplacer, pincer (deux doigts) ou molette pour zoomer. */
   #brancherGestes(): void {
     this.input.addPointer(1);
     this.input.on(Phaser.Input.Events.POINTER_MOVE, (pointeur: Phaser.Input.Pointer) => {
-      const [a, b] = [this.input.pointer1, this.input.pointer2];
-      if (a.isDown && b.isDown) {
-        const ecart = Phaser.Math.Distance.Between(a.x, a.y, b.x, b.y);
-        const milieu: PointPx = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-        if (this.#ecartPincement !== null && ecart > 0) {
-          this.#changerCadrage(zoomerAutour(this.#cadrage!, ecart / this.#ecartPincement, milieu, this.#ecran()));
-        }
-        this.#ecartPincement = ecart;
-        return;
-      }
-      this.#ecartPincement = null;
-      if (!pointeur.isDown) return;
+      // À deux doigts : pincement, traité une fois par image (#suivrePincement).
+      if (!pointeur.isDown || (this.input.pointer1.isDown && this.input.pointer2.isDown)) return;
       const glissement = { x: pointeur.x - pointeur.prevPosition.x, y: pointeur.y - pointeur.prevPosition.y };
       if (glissement.x !== 0 || glissement.y !== 0) this.#changerCadrage(deplacer(this.#cadrage!, glissement));
     });
-    this.input.on(Phaser.Input.Events.POINTER_UP, () => (this.#ecartPincement = null));
     this.input.on(
       Phaser.Input.Events.POINTER_WHEEL,
       (pointeur: Phaser.Input.Pointer, _objets: unknown, _dx: number, dy: number) => {
         this.#changerCadrage(zoomerAutour(this.#cadrage!, Math.exp(-dy * 0.0015), pointeur, this.#ecran()));
       },
     );
-  }
-
-  #dessinerParcours(vers: (p: PointM) => PointPx): void {
-    this.#parcoursADessiner = false;
-    const ecran = this.#donnees.manif.parcours.coordinates.map((p) => vers(this.#projeter(p)));
-    this.#parcours.clear();
-    this.#parcours.lineStyle(4, COULEUR_PARCOURS, 1);
-    this.#parcours.beginPath();
-    ecran.forEach((p, i) => (i === 0 ? this.#parcours.moveTo(p.x, p.y) : this.#parcours.lineTo(p.x, p.y)));
-    this.#parcours.strokePath();
-    const depart = ecran[0]!;
-    const arrivee = ecran[ecran.length - 1]!;
-    this.#parcours.fillStyle(0x2e7d32, 1).fillCircle(depart.x, depart.y, 7);
-    this.#parcours.fillStyle(0x1f3a93, 1).fillCircle(arrivee.x, arrivee.y, 7);
   }
 }
