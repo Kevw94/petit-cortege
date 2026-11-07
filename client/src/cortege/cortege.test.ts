@@ -72,6 +72,20 @@ describe('Cortège', () => {
     expect(avant.etat).toBe('ouverte');
     expect(apres.etat).toBe('terminee');
   });
+
+  it("une fois terminée, tout le cortège est arrivé, même un retardataire entré juste avant la fin", () => {
+    // Entré à 15:29:00, une minute avant la fin (≈ 15:30:01) : il n'aurait marché que ≈ 33 m.
+    const retardataire = minuteAvec(['av-dernier'], '2026-05-01T15:29:00Z');
+
+    const cortege = calculerCortege({
+      manif,
+      entrees: [...entrees, retardataire],
+      maintenant: new Date('2026-05-01T15:30:30Z'),
+    });
+
+    expect(distanceDe(cortege, 'av-dernier')).toBeCloseTo(1000.75, 0);
+    expect(distanceDe(cortege, 'av-tard')).toBeCloseTo(1000.75, 0);
+  });
 });
 
 /** Fichier de minute fabriqué pour un test : avatars de manif-a entrés à `iso`. */

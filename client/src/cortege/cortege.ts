@@ -84,9 +84,13 @@ export function calculerCortege({ manif, entrees, propres = [], retraits = [], m
   for (const fichier of entrees) for (const e of fichier.entrees) ajouter(e);
   for (const e of propres) ajouter(e);
 
+  // À la fin, tout le cortège est considéré arrivé (ADR 0004), retardataires compris.
+  const terminee = t >= Date.parse(manif.fin);
   const avatars: AvatarDuCortege[] = [];
   for (const [debutMarcheMs, groupe] of groupes) {
-    const distanceM = Math.min(manif.longueurM, Math.max(0, t - debutMarcheMs) * VITESSE_M_PAR_MS);
+    const distanceM = terminee
+      ? manif.longueurM
+      : Math.min(manif.longueurM, Math.max(0, t - debutMarcheMs) * VITESSE_M_PAR_MS);
     for (const { marcheur, rang, colonne } of placerEnRangees(groupe)) {
       avatars.push({
         id: marcheur.id,
@@ -99,7 +103,7 @@ export function calculerCortege({ manif, entrees, propres = [], retraits = [], m
     }
   }
   const avanceeM = Math.min(manif.longueurM, Math.max(0, t - depart) * VITESSE_M_PAR_MS);
-  return { etat: t < Date.parse(manif.fin) ? 'ouverte' : 'terminee', avatars, avanceeM };
+  return { etat: terminee ? 'terminee' : 'ouverte', avatars, avanceeM };
 }
 
 /**
