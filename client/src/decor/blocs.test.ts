@@ -11,7 +11,7 @@ function decor(): Decor {
       blocs.set(cleBloc(bx, by), { x: bx * 32, y: by * 32, couches: {} });
     }
   }
-  return { georef: { origine: [2.36, 48.87] }, largeur: 128, hauteur: 96, tilesets: [], nomsCouches: ['sol'], blocs };
+  return { georef: { origine: [2.36, 48.87] }, largeur: 128, hauteur: 96, tilesets: [], nomsCouches: ['sol'], blocs, places: [] };
 }
 const cles = (blocs: BlocDecor[]) => blocs.map((b) => cleBloc(b.x / 32, b.y / 32)).sort();
 

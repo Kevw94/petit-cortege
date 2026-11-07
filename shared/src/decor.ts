@@ -17,6 +17,14 @@ export const TAILLE_BLOC = 32;
 export const FORMAT_DECOR = 'petit-cortege-decor';
 export const VERSION_FORMAT_DECOR = 1;
 export const ATTRIBUTION_OSM = '© les contributeurs d’OpenStreetMap';
+/**
+ * Couches de tuiles des bâtiments (toits et murs, puis fenêtres et portes) : le
+ * client ne les cuit pas avec le sol, il les dessine par rangées, profondeur = y,
+ * pour qu'une façade passe devant les avatars qui sont derrière elle.
+ */
+export const COUCHES_BATIMENTS: readonly string[] = ['batiments', 'facades'];
+/** Couche d'objets des noms de places traversées (objets ponctuels : `name` = nom, propriété `arrivee`). */
+export const COUCHE_PLACES = 'places';
 
 /** Géoréférencement : position du coin haut-gauche de la tuile (0, 0). */
 export interface Georeference {
@@ -162,6 +170,7 @@ export interface ObjetTiled {
   visible: true;
   point?: true;
   polyline?: { x: number; y: number }[];
+  properties?: ProprieteTiled[];
 }
 
 export interface CoucheObjetsTiled {
@@ -252,6 +261,17 @@ export interface Decor {
   nomsCouches: string[];
   /** Blocs existants (ceux qui touchent la bande autour du parcours), indexés par `cleBloc`. */
   blocs: Map<string, BlocDecor>;
+  /** Noms des places traversées par le parcours, à afficher (dont la place d'arrivée). */
+  places: PlaceDecor[];
+}
+
+export interface PlaceDecor {
+  nom: string;
+  /** Centre de la place, en tuiles. */
+  x: number;
+  y: number;
+  /** Vrai pour la place d'arrivée du parcours. */
+  arrivee: boolean;
 }
 
 /** Clé d'un bloc à partir de ses indices (coin en tuiles ÷ TAILLE_BLOC). */
@@ -289,6 +309,15 @@ export async function lireDecor(carte: CarteTiled): Promise<Decor> {
       b.couches[couche.name] = await decompresser(bloc.data);
     }
   }
+  const places = carte.layers
+    .filter((c): c is CoucheObjetsTiled => c.type === 'objectgroup' && c.name === COUCHE_PLACES)
+    .flatMap((c) => c.objects)
+    .map((o) => ({
+      nom: o.name,
+      x: o.x / TAILLE_TUILE_PX,
+      y: o.y / TAILLE_TUILE_PX,
+      arrivee: o.properties?.find((p) => p.name === 'arrivee')?.value === true,
+    }));
   return {
     georef: { origine: [lon, lat] },
     largeur: carte.width,
@@ -296,6 +325,7 @@ export async function lireDecor(carte: CarteTiled): Promise<Decor> {
     tilesets: carte.tilesets,
     nomsCouches: couches.map((c) => c.name),
     blocs,
+    places,
   };
 }
 
