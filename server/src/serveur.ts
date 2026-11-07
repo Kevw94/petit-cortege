@@ -79,6 +79,7 @@ export function creerApp(
   };
   app.use(CHEMIN_API_DEFI, limiter(antiTriche.limiteDefi));
   app.use(CHEMIN_API_ENTREE, limiter(antiTriche.limiteEntree));
+  app.use(CHEMIN_API_RETRAIT, limiter(antiTriche.limiteRetrait));
   app.use('/api/*', bodyLimit({ maxSize: TAILLE_MAX_CORPS, onError: () => erreur('requete-invalide') }));
 
   // Défi ALTCHA : le même pour tous, sans identifiant de manif (ADR 0002), jamais mis en cache.
