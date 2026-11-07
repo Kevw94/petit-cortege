@@ -33,8 +33,12 @@ function lirePosition(p: unknown, rang: number): Position {
   ) {
     throw new ErreurModeration(`GeoJSON : coordonnées invalides au point n° ${rang + 1} (attendu [longitude, latitude]).`);
   }
-  return [lon, lat]; // l'altitude éventuelle est ignorée
+  // L'altitude éventuelle est ignorée ; 6 décimales ≈ 10 cm, bien assez pour un cortège,
+  // et deux fois moins d'octets dans la liste des manifs que la pleine précision d'uMap (#19).
+  return [arrondir(lon), arrondir(lat)];
 }
+
+const arrondir = (x: number) => Math.round(x * 1e6) / 1e6;
 
 /**
  * Lit le parcours d'un GeoJSON exporté par uMap : une LineString seule, une

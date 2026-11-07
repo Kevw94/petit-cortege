@@ -1,7 +1,7 @@
 /**
  * Ce que le décor retient d'un objet OSM : rues selon leur type, espaces
- * verts, eau. Tout le reste (commerces, POI, noms, mobilier, bâtiments en
- * attendant #13) est ignoré.
+ * verts, eau ; les emprises de bâtiments (`estBatiment`). Tout le reste
+ * (commerces, POI, noms, mobilier) est ignoré.
  */
 import type { ObjetOsm } from './osm';
 
@@ -113,4 +113,10 @@ export function classer(objet: ObjetOsm): Classement | null {
     return { sorte: 'cours-d-eau', largeurM: nombre(t.width) ?? COURS_D_EAU[t.waterway]! };
   }
   return null;
+}
+
+/** Emprise de bâtiment visible depuis la rue (les auvents `building=roof` et le souterrain sont exclus). */
+export function estBatiment(objet: ObjetOsm): boolean {
+  const b = objet.tags.building;
+  return objet.anneaux.length > 0 && b !== undefined && b !== 'no' && b !== 'roof' && !estCache(objet.tags);
 }
