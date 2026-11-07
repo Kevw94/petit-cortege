@@ -38,7 +38,7 @@ describe('retrait de son avatar', () => {
   });
 
   async function entrerAvecJeton(jeton: string): Promise<string> {
-    const reponse = await banc.poster<ReponseEntree>('/api/entree', {
+    const reponse = await banc.entrer<ReponseEntree>({
       manif: 'manif-paris',
       apparence: 1,
       pancarte: 1,
@@ -81,7 +81,7 @@ describe('retrait de son avatar', () => {
 
   it("avatar inconnu ou entré sans jeton : même refus, qui ne dit rien de l'existence de l'avatar", async () => {
     banc.horloge.regler('2026-06-01T09:15:20Z');
-    const sansJeton = await banc.poster<ReponseEntree>('/api/entree', { manif: 'manif-paris', apparence: 0, pancarte: 0 });
+    const sansJeton = await banc.entrer<ReponseEntree>({ manif: 'manif-paris', apparence: 0, pancarte: 0 });
 
     const inconnu = await banc.poster('/api/retrait', { avatar: 'avatar-fantome', jeton: nouveauJeton() });
     const nonRetirable = await banc.poster('/api/retrait', { avatar: sansJeton.corps.avatar, jeton: nouveauJeton() });

@@ -115,7 +115,8 @@ async function afficherManif(id: string): Promise<void> {
   const entrer = async (pancarte: number) => {
     envoiEnCours = true;
     composition?.occupe(true);
-    composition?.annoncer('Entrée dans le cortège…');
+    // Preuve de travail anti-robots (#8) : quelques secondes de calcul, attente affichée.
+    composition?.annoncer('Vérification anti-robots, quelques secondes…');
     try {
       // Jeton de retrait : gardé sur cet appareil, seul son SHA-256 part au serveur (ADR 0001).
       const jeton = nouveauJetonRetrait();
@@ -208,6 +209,8 @@ function messageErreurEntree(erreur: unknown): string {
       return 'Cette manif est terminée : on ne peut plus la rejoindre.';
     case 'manif-inconnue':
       return "Cette manif n'est pas ouverte.";
+    case 'trop-de-requetes':
+      return 'Beaucoup d’entrées depuis ta connexion : réessaie dans une minute.';
     default:
       return 'Impossible de rejoindre le cortège pour le moment. Réessaie dans un instant.';
   }

@@ -33,7 +33,7 @@ describe('compactage par heure', () => {
 
   it("une entrée apparaît dans le fichier de sa minute, puis dans le fichier de l'heure une fois l'heure terminée", async () => {
     banc.horloge.regler('2026-06-01T09:45:10Z');
-    const reponse = await banc.poster<ReponseEntree>('/api/entree', { manif: 'manif-paris', apparence: 5, pancarte: 3 });
+    const reponse = await banc.entrer<ReponseEntree>({ manif: 'manif-paris', apparence: 5, pancarte: 3 });
     expect(reponse.statut).toBe(201);
     const attendue = { a: reponse.corps.avatar, m: 'manif-paris', t: reponse.corps.entree, ap: 5, pa: 3 };
 
