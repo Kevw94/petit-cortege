@@ -77,6 +77,25 @@ export function memoriserAvatarPropre(entree: EntreePubliee, finManif: string, j
   ecrire([...lire().filter((e) => e.a !== entree.a), { ...entree, efface, jeton }]);
 }
 
+/**
+ * Recale les effacements sur la fin publiée de chaque manif (départ corrigé par un
+ * modérateur, #9), puis purge : jamais plus d'1 h après la vraie fin (ADR 0001).
+ * À appeler à chaque lecture de la liste des manifs.
+ */
+export function suivreFinsDesManifs(manifs: readonly { id: string; fin: string }[], maintenant: Date): void {
+  const fins = new Map(manifs.map((m) => [m.id, Date.parse(m.fin)]));
+  const enregistrements = lire();
+  let change = false;
+  for (const e of enregistrements) {
+    const fin = fins.get(e.m);
+    if (fin === undefined || e.efface === fin + CONSERVATION_APRES_FIN_MS) continue;
+    e.efface = fin + CONSERVATION_APRES_FIN_MS;
+    change = true;
+  }
+  if (change) ecrire(enregistrements);
+  lirePurge(maintenant);
+}
+
 /** Oublie un avatar retiré : plus de mise en valeur, plus de jeton. */
 export function oublierAvatarPropre(avatar: string): void {
   ecrire(lire().filter((e) => e.a !== avatar));

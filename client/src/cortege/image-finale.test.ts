@@ -86,6 +86,15 @@ describe("Cortège : image finale", () => {
     expect(grande.masse.length).toBeGreaterThan(1000);
   });
 
+  it('les avatars du premier plan sont répartis sur toute la place, pas regroupés au centre', () => {
+    const image = composerImageFinale({ manif, entrees: [fichier(avatars('av', 20_000))] });
+
+    // Sur un disque uniforme, la moitié des avatars est au-delà de R/√2 ≈ 0,71 R.
+    const auBord = image.premierPlan.filter((a) => distanceAuPointDArrivee(a) > image.rayonM / Math.SQRT2);
+    expect(auBord.length / image.premierPlan.length).toBeGreaterThan(0.4);
+    expect(auBord.length / image.premierPlan.length).toBeLessThan(0.6);
+  });
+
   it('le premier plan respecte le budget', () => {
     const image = composerImageFinale({ manif, entrees: [fichier(avatars('av', 300))] }, { budget: 100 });
 

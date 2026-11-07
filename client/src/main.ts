@@ -1,12 +1,19 @@
 import * as Phaser from 'phaser';
 import { apparenceAuHasard, ATTRIBUTION_OSM, type FichierEntrees } from '@petit-cortege/shared';
-import { avatarsPropres, jetonDeRetrait, memoriserAvatarPropre, oublierAvatarPropre } from './avatars-propres';
+import {
+  avatarsPropres,
+  jetonDeRetrait,
+  memoriserAvatarPropre,
+  oublierAvatarPropre,
+  suivreFinsDesManifs,
+} from './avatars-propres';
 import { chargerDecor } from './decor/chargement';
 import { creerPanneauComposition, type PanneauComposition } from './composition/panneau';
 import { sectionApparence } from './composition/section-apparence';
 import { pancarteAuHasard, sectionPancarte } from './composition/section-pancarte';
 import type { Cortege } from './cortege/cortege';
 import { EntreeRefusee, rejoindreLeCortege } from './entree';
+import { afficherImageFinale } from './image-finale/vue';
 import { Publication } from './publication';
 import { hacherJetonRetrait, nouveauJetonRetrait, RetraitRefuse, retirerMonAvatar } from './retrait';
 import { pageLegale, piedDePage } from './pages/pages-legales';
@@ -38,27 +45,47 @@ function quitterVue(): void {
   interfaceEl.innerHTML = '';
 }
 
+/**
+ * Liste des manifs publiée (ouvertes et terminées récentes). À chaque lecture, les
+ * avatars gardés sur l'appareil suivent la fin publiée (départ corrigé) et sont purgés :
+ * jetons de retrait effacés à la fin, avatars 1 h après (ADR 0001).
+ */
+async function listeManifs() {
+  const liste = await publication.listeManifs();
+  suivreFinsDesManifs(liste.manifs, new Date());
+  return liste;
+}
+
+const estTerminee = (manif: { fin: string }, maintenant = new Date()) => maintenant.getTime() >= Date.parse(manif.fin);
+
 async function afficherListe(): Promise<void> {
-  const { manifs } = await publication.listeManifs();
+  const { manifs } = await listeManifs();
+  const ouvertes = manifs.filter((m) => !estTerminee(m));
+  const terminees = manifs.filter((m) => estTerminee(m)).reverse(); // les plus récentes d'abord
+  const element = (m: (typeof manifs)[number], detail: string) => `<li><a href="${lienManif(m.id)}">
+              <strong>${echapper(m.intitule)}</strong>
+              ${echapper(m.ville)} · ${detail}
+            </a></li>`;
   interfaceEl.innerHTML = `
     <section class="carte">
       <h1>Petit Cortège</h1>
-      <p>Choisis un cortège à rejoindre.</p>
+      <p>${ouvertes.length > 0 ? 'Choisis un cortège à rejoindre.' : 'Aucun cortège ouvert pour le moment.'}</p>
       <ul class="liste">
-        ${manifs
-          .map(
-            (m) => `<li><a href="${lienManif(m.id)}">
-              <strong>${echapper(m.intitule)}</strong>
-              ${echapper(m.ville)} · départ ${heure(m.depart)} · fin ${heure(m.fin)}
-            </a></li>`,
-          )
-          .join('')}
+        ${ouvertes.map((m) => element(m, `départ ${heure(m.depart)} · fin ${heure(m.fin)}`)).join('')}
       </ul>
+      ${
+        terminees.length === 0
+          ? ''
+          : `<h2 class="sous-titre">Terminées : revoir l’image finale</h2>
+      <ul class="liste">
+        ${terminees.map((m) => element(m, `terminée ${heure(m.fin)}`)).join('')}
+      </ul>`
+      }
     </section>`;
 }
 
 async function afficherManif(id: string): Promise<void> {
-  const manif = (await publication.listeManifs()).manifs.find((m) => m.id === id);
+  const manif = (await listeManifs()).manifs.find((m) => m.id === id);
   if (!manif) {
     interfaceEl.innerHTML = `<section class="carte"><p>Cette manif n'existe pas ou n'est plus publiée.</p>
       <a class="retour" href="#/">← Toutes les manifs</a></section>`;
@@ -70,6 +97,11 @@ async function afficherManif(id: string): Promise<void> {
   let retraitsPublies: string[] = await publication.retraits().catch(() => []);
   // Retirés depuis cet appareil : effacés tout de suite, sans attendre le fichier des retraits.
   const retiresIci = new Set<string>();
+
+  if (estTerminee(manif)) {
+    await afficherManifTerminee(manif, await decor, entrees, retraitsPublies);
+    return;
+  }
 
   interfaceEl.innerHTML = `
     <section class="carte">
@@ -95,9 +127,17 @@ async function afficherManif(id: string): Promise<void> {
   // Avatars propres dont on garde le jeton (relu à chaque changement, pas à chaque image).
   let propresRetirables = propres.filter((e) => jetonDeRetrait(e.a, new Date()) !== undefined);
   let dernierTexte = '';
+  let finAnnoncee = false;
   const surCortege = (cortege: Cortege) => {
     // Compteur : avatars du cortège à l'heure locale (publiés et entrés, plus les siens) ;
     // c'est ce qui est dessiné. Le `compteur` de la liste des manifs sert à la liste.
+    if (cortege.etat === 'terminee') {
+      // Fin de la manif pendant qu'on regarde : place à l'image finale (une seule fois).
+      // Le jeton de retrait est effacé par la lecture de la liste, à l'affichage de la vue.
+      if (!finAnnoncee) void naviguer();
+      finAnnoncee = true;
+      return;
+    }
     const n = cortege.avatars.length;
     const texte = `${cortege.etat === 'ouverte' ? 'Ouverte' : 'Terminée'} · ${n} ${n > 1 ? 'soutiens' : 'soutien'}`;
     if (texte !== dernierTexte) etatEl.textContent = dernierTexte = texte;
@@ -198,10 +238,38 @@ async function afficherManif(id: string): Promise<void> {
   jeu.scene.add('cortege', SceneCortege, true, donnees);
 
   const minuterie = window.setInterval(async () => {
-    const aJour = (await publication.listeManifs().catch(() => null))?.manifs.find((m) => m.id === id);
+    const aJour = (await listeManifs().catch(() => null))?.manifs.find((m) => m.id === id);
     if (aJour) donnees.manif = aJour; // départ éventuellement corrigé
     entrees = await publication.entreesPour(donnees.manif, new Date());
     retraitsPublies = (await publication.retraits().catch(() => null)) ?? retraitsPublies;
+  }, INTERVALLE_RAFRAICHISSEMENT_MS);
+  arreterRafraichissement = () => window.clearInterval(minuterie);
+}
+
+/** Image finale d'une manif terminée (tout le cortège au point d'arrivée). */
+async function afficherManifTerminee(
+  manif: Parameters<typeof afficherImageFinale>[1]['manif'],
+  decor: Parameters<typeof afficherImageFinale>[1]['decor'],
+  entrees: FichierEntrees[],
+  retraits: string[],
+): Promise<void> {
+  const vue = await afficherImageFinale(interfaceEl, {
+    manif,
+    decor,
+    entrees,
+    propres: avatarsPropres(new Date()).filter((e) => e.m === manif.id),
+    retraits,
+    // Nom de la place d'arrivée : à brancher sur le décor OSM quand il les portera (#13).
+    nomPlace: null,
+  });
+  // Les retraits de la dernière heure peuvent encore changer l'image ; ses avatars mis en
+  // valeur disparaissent 1 h après la fin (purge du stockage local).
+  const minuterie = window.setInterval(async () => {
+    const aJour = await publication.retraits().catch(() => null);
+    vue.actualiser({
+      propres: avatarsPropres(new Date()).filter((e) => e.m === manif.id),
+      ...(aJour ? { retraits: aJour } : {}),
+    });
   }, INTERVALLE_RAFRAICHISSEMENT_MS);
   arreterRafraichissement = () => window.clearInterval(minuterie);
 }

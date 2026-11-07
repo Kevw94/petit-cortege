@@ -442,3 +442,33 @@ button.secondaire {
 #interface > .attribution a {
   color: inherit;
 }
+
+/* Image finale d'une manif terminée (#15) : carte puis image, défilables. */
+.vue-image-finale {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-height: calc(100dvh - 4.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding-bottom: 12px;
+}
+
+.vue-image-finale .carte {
+  width: 100%;
+}
+
+canvas.image-finale {
+  display: block;
+  width: min(100%, 28rem, calc((100dvh - 12rem) * 0.8));
+  height: auto;
+  border-radius: 6px;
+  box-shadow: 0 1px 6px rgb(0 0 0 / 0.25);
+}
+
+.carte h2.sous-titre {
+  font-size: 0.95rem;
+  margin: 14px 0 0;
+}

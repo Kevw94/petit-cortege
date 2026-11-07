@@ -1,0 +1,90 @@
+/**
+ * Vue d'une manif terminée : son image finale (tout le cortège au point d'arrivée),
+ * consultable tant que la manif est dans la liste publiée (30 jours après la fin).
+ * Ses propres avatars y sont mis en valeur tant qu'ils sont gardés sur l'appareil
+ * (au plus 1 h après la fin, ADR 0001).
+ */
+import type { Decor, EntreePubliee, FichierEntrees, ManifPubliee } from '@petit-cortege/shared';
+import { composerImageFinale } from '../cortege/image-finale';
+import {
+  chargerRessourcesImageFinale,
+  dessinerImageFinale,
+  HAUTEUR_IMAGE_FINALE,
+  LARGEUR_IMAGE_FINALE,
+  type RessourcesImageFinale,
+} from './rendu';
+
+export interface DonneesVueImageFinale {
+  manif: ManifPubliee;
+  decor: Decor | null;
+  entrees: FichierEntrees[];
+  propres: EntreePubliee[];
+  retraits: readonly string[];
+  /** Nom de la place d'arrivée, s'il est connu (décor OSM, #13). */
+  nomPlace: string | null;
+}
+
+export interface VueImageFinale {
+  /** Le canvas de l'image finale (PNG à télécharger ou partager : #16). */
+  canvas: HTMLCanvasElement;
+  /** Redessine avec des données à jour (retraits de la dernière heure, par exemple). */
+  actualiser: (donnees: Partial<DonneesVueImageFinale>) => void;
+}
+
+let ressources: Promise<RessourcesImageFinale> | null = null;
+
+function echapper(texte: string): string {
+  const div = document.createElement('div');
+  div.textContent = texte;
+  return div.innerHTML;
+}
+
+export async function afficherImageFinale(conteneur: HTMLElement, depart: DonneesVueImageFinale): Promise<VueImageFinale> {
+  ressources ??= chargerRessourcesImageFinale().catch((erreur: unknown) => {
+    ressources = null;
+    throw erreur;
+  });
+  const chargees = await ressources;
+  let donnees = depart;
+
+  conteneur.innerHTML = `
+    <div class="vue-image-finale">
+      <section class="carte">
+        <a class="retour" href="#/">← Toutes les manifs</a>
+        <h1>${echapper(donnees.manif.intitule)}</h1>
+        <p data-etat></p>
+        <p data-toi hidden>Ton avatar est mis en valeur, sur cet appareil seulement.</p>
+      </section>
+      <canvas class="image-finale" width="${LARGEUR_IMAGE_FINALE}" height="${HAUTEUR_IMAGE_FINALE}"
+        role="img"></canvas>
+    </div>`;
+  const canvas = conteneur.querySelector<HTMLCanvasElement>('canvas.image-finale')!;
+  const etatEl = conteneur.querySelector<HTMLParagraphElement>('[data-etat]')!;
+  const toiEl = conteneur.querySelector<HTMLParagraphElement>('[data-toi]')!;
+
+  let signature = '';
+  const dessiner = () => {
+    const image = composerImageFinale(donnees);
+    // Ne redessine que si la composition change (un retrait dans l'heure qui suit la fin).
+    const nouvelle = `${image.compteur}|${image.premierPlan.length}|${image.premierPlan.map((a) => a.id).join()}`;
+    if (nouvelle === signature) return;
+    signature = nouvelle;
+    dessinerImageFinale(canvas, { ...donnees, image, ressources: chargees });
+    const n = image.compteur;
+    etatEl.textContent = `Terminée · ${n.toLocaleString('fr-FR')} ${n > 1 ? 'soutiens' : 'soutien'}`;
+    canvas.setAttribute(
+      'aria-label',
+      `Image finale : ${n} ${n > 1 ? 'soutiens rassemblés' : 'soutien rassemblé'} au point d'arrivée${donnees.nomPlace ? `, ${donnees.nomPlace}` : ''}.`,
+    );
+    toiEl.hidden = !image.premierPlan.some((a) => a.propre);
+  };
+  dessiner();
+
+  return {
+    canvas,
+    actualiser: (changements) => {
+      donnees = { ...donnees, ...changements };
+      dessiner();
+    },
+  };
+}
