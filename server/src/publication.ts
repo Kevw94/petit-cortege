@@ -64,25 +64,46 @@ const existe = (chemin: string) =>
 
 /**
  * Tâche de publication, idempotente :
+ * - efface les hachages de jetons de retrait des manifs terminées (ADR 0001) ;
  * - écrit le fichier de chaque minute écoulée pas encore publiée (toutes manifs
  *   confondues, immuable, y compris vide pour que le client n'attende pas) ;
  * - compacte chaque heure terminée en un fichier horaire (immuable) ;
  * - réécrit la liste des manifs, avec le compteur des entrées publiées ;
- * - réécrit le fichier des retraits ;
- * - efface les hachages de jetons de retrait des manifs terminées (ADR 0001).
+ * - réécrit le fichier des retraits.
+ * Un incident sur une étape n'empêche pas les suivantes ; le passage échoue ensuite
+ * (`AggregateError`) pour être journalisé et retenté au passage suivant.
  *
  * La liste garde les manifs terminées depuis moins de `CONSULTATION_APRES_FIN_MS`
  * (image finale consultable plus tard) ; le fichier des retraits, les mêmes manifs.
  */
 export async function publier({ sql, horloge, dossierPublication }: DependancesPublication): Promise<void> {
   // Exclusif avec les entrées en cours (voir verrou.ts) ; l'horloge est lue une fois le verrou obtenu.
-  await sql.begin(async (tx) => {
+  const incidents = await sql.begin(async (tx) => {
     await verrouillerPourPublication(tx);
-    await publierSousVerrou(tx, horloge.maintenant(), dossierPublication);
+    return publierSousVerrou(tx, horloge.maintenant(), dossierPublication);
   });
+  // Signalé après la validation de la transaction : l'effacement des hachages est gardé.
+  if (incidents.length > 0) throw new AggregateError(incidents, 'Publication incomplète');
 }
 
-async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublication: string): Promise<void> {
+/**
+ * Chaque étape est isolée : un incident sur un fichier (disque, fichier abîmé) est
+ * journalisé et n'empêche pas les suivantes. L'effacement des hachages (ADR 0001)
+ * passe en premier. Renvoie les incidents.
+ */
+async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublication: string): Promise<unknown[]> {
+  const incidents: unknown[] = [];
+  const etape = async (nom: string, faire: () => Promise<void>) => {
+    try {
+      await faire();
+    } catch (e) {
+      incidents.push(e);
+      console.error(`Publication, ${nom} en échec :`, e instanceof Error ? e.message : e);
+    }
+  };
+
+  await etape('effacement des hachages', () => effacerHachagesDesManifsTerminees(sql, maintenant));
+
   const minuteEnCours = debutDeMinute(maintenant);
   const lignes = await sql<LigneManif[]>`
     select id, intitule, ville, ouverture, depart, parcours, sources
@@ -110,15 +131,19 @@ async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublic
   });
   const manifs = toutes.filter((m) => Date.parse(m.fin) + CONSULTATION_APRES_FIN_MS > maintenant.getTime());
 
-  await publierMinutes(sql, dossierPublication, manifs, maintenant);
-  await compacterHeures(dossierPublication, manifs, maintenant);
-
-  const liste: ListeManifs = { v: VERSION_FORMAT, generee: maintenant.toISOString(), manifs };
-  await ecrire(dossierPublication, CHEMIN_LISTE_MANIFS, liste);
-
-  await publierRetraits(sql, dossierPublication, manifs, maintenant);
-  await effacerHachagesDesManifsTerminees(sql, maintenant);
+  await etape('fichiers par minute', () => publierMinutes(sql, dossierPublication, manifs, maintenant));
+  await etape('compactage par heure', () => compacterHeures(sql, dossierPublication, manifs, maintenant));
+  await etape('liste des manifs', () =>
+    ecrire(dossierPublication, CHEMIN_LISTE_MANIFS, {
+      v: VERSION_FORMAT,
+      generee: maintenant.toISOString(),
+      manifs,
+    } satisfies ListeManifs),
+  );
+  await etape('retraits', () => publierRetraits(sql, dossierPublication, manifs, maintenant));
+  return incidents;
 }
+
 
 /** Retraits des avatars des manifs publiées (mêmes manifs que la liste). */
 async function publierRetraits(sql: Requeteur, dossier: string, manifs: ManifPubliee[], maintenant: Date): Promise<void> {
@@ -151,6 +176,31 @@ async function effacerHachagesDesManifsTerminees(sql: Requeteur, maintenant: Dat
     where manif_id = any(${terminees}::text[]) and hachage_retrait is not null`;
 }
 
+/**
+ * Entrées en base de `[debut, fin[` (ms), regroupées par minute, dans l'ordre de publication.
+ * Seulement les manifs publiées : une manif retirée par la modération ne publie plus d'entrées.
+ */
+async function entreesParMinute(
+  sql: Requeteur,
+  manifs: ManifPubliee[],
+  debut: number,
+  fin: number,
+): Promise<Map<number, EntreePubliee[]>> {
+  const ids = manifs.map((m) => m.id);
+  const avatars = await sql<{ id: string; manif_id: string; entree: Date; apparence: number; pancarte: number }[]>`
+    select id, manif_id, entree, apparence, pancarte from avatar
+    where entree >= ${new Date(debut)} and entree < ${new Date(fin)} and manif_id = any(${ids}::text[])
+    order by entree, id`;
+  const parMinute = new Map<number, EntreePubliee[]>();
+  for (const a of avatars) {
+    const m = debutDeMinute(a.entree).getTime();
+    const liste = parMinute.get(m) ?? [];
+    liste.push({ a: a.id, m: a.manif_id, t: Math.floor(a.entree.getTime() / 1000), ap: a.apparence, pa: a.pancarte });
+    parMinute.set(m, liste);
+  }
+  return parMinute;
+}
+
 async function publierMinutes(sql: Requeteur, dossier: string, manifs: ManifPubliee[], maintenant: Date): Promise<void> {
   const attendues = new Set<number>();
   for (const manif of manifs) for (const m of minutesPubliees(manif, maintenant)) attendues.add(m.getTime());
@@ -161,21 +211,7 @@ async function publierMinutes(sql: Requeteur, dossier: string, manifs: ManifPubl
   }
   if (aEcrire.length === 0) return;
 
-  const debut = new Date(aEcrire[0]!);
-  const fin = new Date(aEcrire[aEcrire.length - 1]! + MINUTE_MS);
-  // Seulement les manifs publiées : une manif retirée par la modération ne publie plus d'entrées.
-  const ids = manifs.map((m) => m.id);
-  const avatars = await sql<{ id: string; manif_id: string; entree: Date; apparence: number; pancarte: number }[]>`
-    select id, manif_id, entree, apparence, pancarte from avatar
-    where entree >= ${debut} and entree < ${fin} and manif_id = any(${ids}::text[])
-    order by entree, id`;
-  const parMinute = new Map<number, EntreePubliee[]>();
-  for (const a of avatars) {
-    const m = debutDeMinute(a.entree).getTime();
-    const liste = parMinute.get(m) ?? [];
-    liste.push({ a: a.id, m: a.manif_id, t: Math.floor(a.entree.getTime() / 1000), ap: a.apparence, pa: a.pancarte });
-    parMinute.set(m, liste);
-  }
+  const parMinute = await entreesParMinute(sql, manifs, aEcrire[0]!, aEcrire[aEcrire.length - 1]! + MINUTE_MS);
 
   for (const m of aEcrire) {
     const fichier: EntreesMinute = {
@@ -191,9 +227,11 @@ async function publierMinutes(sql: Requeteur, dossier: string, manifs: ManifPubl
  * Écrit le fichier de chaque heure terminée pas encore compactée : la
  * concaténation, dans l'ordre, des fichiers par minute publiés de cette heure.
  * Construit depuis les fichiers déjà publiés (et non depuis la base), il
- * contient exactement les mêmes entrées : le client voit la même foule.
+ * contient exactement les mêmes entrées : le client voit la même foule. Un fichier
+ * par minute manquant ou abîmé est reconstitué depuis la base (même requête que
+ * sa publication), avec une ligne de journal.
  */
-async function compacterHeures(dossier: string, manifs: ManifPubliee[], maintenant: Date): Promise<void> {
+async function compacterHeures(sql: Requeteur, dossier: string, manifs: ManifPubliee[], maintenant: Date): Promise<void> {
   const heures = new Map<number, Set<number>>();
   for (const manif of manifs) {
     for (const { heure, minutes } of fichiersPublies(manif, maintenant).heures) {
@@ -207,11 +245,23 @@ async function compacterHeures(dossier: string, manifs: ManifPubliee[], maintena
     const chemin = cheminEntreesHeure(new Date(heure));
     if (await existe(join(dossier, chemin))) continue;
     const entrees: EntreePubliee[] = [];
-    for (const m of [...minutes].sort((a, b) => a - b)) {
-      const contenu = await readFile(join(dossier, cheminEntreesMinute(new Date(m))), 'utf8');
-      entrees.push(...lireEntreesMinute(JSON.parse(contenu)).entrees);
-    }
+    for (const m of [...minutes].sort((a, b) => a - b)) entrees.push(...(await entreesDeLaMinute(sql, dossier, manifs, m)));
     const fichier: EntreesHeure = { v: VERSION_FORMAT, heure: new Date(heure).toISOString(), entrees };
     await ecrire(dossier, chemin, fichier);
+  }
+}
+
+async function entreesDeLaMinute(
+  sql: Requeteur,
+  dossier: string,
+  manifs: ManifPubliee[],
+  minute: number,
+): Promise<EntreePubliee[]> {
+  const chemin = cheminEntreesMinute(new Date(minute));
+  try {
+    return lireEntreesMinute(JSON.parse(await readFile(join(dossier, chemin), 'utf8'))).entrees;
+  } catch (e) {
+    console.error(`Fichier ${chemin} illisible, reconstitué depuis la base :`, e instanceof Error ? e.message : e);
+    return (await entreesParMinute(sql, manifs, minute, minute + MINUTE_MS)).get(minute) ?? [];
   }
 }
