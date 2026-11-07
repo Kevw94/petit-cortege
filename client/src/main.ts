@@ -1,7 +1,8 @@
 import * as Phaser from 'phaser';
-import type { FichierEntrees } from '@petit-cortege/shared';
 import { avatarsPropres, jetonDeRetrait, memoriserAvatarPropre, oublierAvatarPropre } from './avatars-propres';
+import { apparenceAuHasard, type FichierEntrees } from '@petit-cortege/shared';
 import { creerPanneauComposition, type PanneauComposition } from './composition/panneau';
+import { sectionApparence } from './composition/section-apparence';
 import { pancarteAuHasard, sectionPancarte } from './composition/section-pancarte';
 import type { Cortege } from './cortege/cortege';
 import { EntreeRefusee, rejoindreLeCortege } from './entree';
@@ -106,13 +107,13 @@ async function afficherManif(id: string): Promise<void> {
     }
   };
 
-  // Composition (pancarte ; l'apparence #10 ajoutera sa section) avant d'entrer.
+  // Composition de l'apparence et de la pancarte avant d'entrer.
   let composition: PanneauComposition | null = null;
   const fermerComposition = () => {
     composition?.element.remove();
     composition = null;
   };
-  const entrer = async (pancarte: number) => {
+  const entrer = async (apparence: number, pancarte: number) => {
     envoiEnCours = true;
     composition?.occupe(true);
     // Preuve de travail anti-robots (#8) : quelques secondes de calcul, attente affichée.
@@ -120,10 +121,9 @@ async function afficherManif(id: string): Promise<void> {
     try {
       // Jeton de retrait : gardé sur cet appareil, seul son SHA-256 part au serveur (ADR 0001).
       const jeton = nouveauJetonRetrait();
-      // Apparence tirée au hasard en attendant sa composition (#10).
       const entree = await rejoindreLeCortege({
         manif: id,
-        apparence: auHasard(8),
+        apparence,
         pancarte,
         hachageRetrait: await hacherJetonRetrait(jeton),
       });
@@ -141,11 +141,12 @@ async function afficherManif(id: string): Promise<void> {
   boutonEl.addEventListener('click', () => {
     if (composition) return;
     messageEl.textContent = '';
+    const apparence = sectionApparence(apparenceAuHasard());
     const pancarte = sectionPancarte(pancarteAuHasard());
     composition = creerPanneauComposition({
-      sections: [pancarte.section],
+      sections: [apparence.section, pancarte.section],
       libelleValider: 'Rejoindre le cortège',
-      surValider: () => void entrer(pancarte.indice()),
+      surValider: () => void entrer(apparence.indice(), pancarte.indice()),
       surAnnuler: fermerComposition,
     });
     interfaceEl.append(composition.element);
@@ -199,8 +200,6 @@ async function afficherManif(id: string): Promise<void> {
   }, INTERVALLE_RAFRAICHISSEMENT_MS);
   arreterRafraichissement = () => window.clearInterval(minuterie);
 }
-
-const auHasard = (n: number) => Math.floor(Math.random() * n);
 
 function messageErreurEntree(erreur: unknown): string {
   const code = erreur instanceof EntreeRefusee ? erreur.code : 'reseau';
