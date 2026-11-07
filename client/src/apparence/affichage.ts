@@ -4,7 +4,7 @@
  *
  * Technique retenue par le prototype de performance (#4) : un `Image` par avatar
  * visible, apparence précomposée dans une texture (un seul quad par avatar),
- * au plus `BUDGET_AVATARS_DESSINES` par image.
+ * au plus `BUDGET_AVATARS_DESSINES` par image (au-delà : masse de foule).
  */
 import { couchesApparence, decoderApparence } from '@petit-cortege/shared';
 
@@ -15,41 +15,28 @@ export interface AvatarAPlacer {
   /** Pieds de l'avatar à l'écran (pixels) : milieu du bas du sprite. */
   x: number;
   y: number;
-  propre: boolean;
 }
 
-export interface OptionsDessin {
+export interface OptionsEcran {
   /** Écran, en pixels. */
   largeur: number;
   hauteur: number;
   /** Taille d'un sprite à l'écran, en pixels. */
   largeurSprite: number;
   hauteurSprite: number;
-  budget: number;
 }
 
 /**
- * Avatars à dessiner : ceux dont le sprite touche l'écran, dans l'ordre reçu, au plus
- * `budget` pour la foule ; ses propres avatars sont toujours dessinés en plus.
+ * Le sprite de l'avatar touche-t-il l'écran ? Les autres ne sont pas dessinés.
+ * Le choix des avatars dessinés au-delà du budget est fait par le Cortège
+ * (`composerFoule` : tirage par hachage de l'identifiant, masse de foule).
  */
-export function avatarsADessiner<A extends AvatarAPlacer>(
-  avatars: readonly A[],
-  { largeur, hauteur, largeurSprite, hauteurSprite, budget }: OptionsDessin,
-): A[] {
+export function aLEcran(
+  avatar: AvatarAPlacer,
+  { largeur, hauteur, largeurSprite, hauteurSprite }: OptionsEcran,
+): boolean {
   const demiLargeur = largeurSprite / 2;
-  const dessines: A[] = [];
-  let foule = 0;
-  for (const avatar of avatars) {
-    const aLEcran =
-      avatar.x + demiLargeur >= 0 && avatar.x - demiLargeur <= largeur && avatar.y >= 0 && avatar.y - hauteurSprite <= hauteur;
-    if (!aLEcran) continue;
-    if (!avatar.propre) {
-      if (foule >= budget) continue;
-      foule++;
-    }
-    dessines.push(avatar);
-  }
-  return dessines;
+  return avatar.x + demiLargeur >= 0 && avatar.x - demiLargeur <= largeur && avatar.y >= 0 && avatar.y - hauteurSprite <= hauteur;
 }
 
 /** Couches de l'atlas pour un indice ; un indice hors catalogue prend l'apparence par défaut. */

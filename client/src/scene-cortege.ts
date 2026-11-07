@@ -21,11 +21,13 @@ import {
   type ManifPubliee,
   type Position,
 } from '@petit-cortege/shared';
-import { avatarsADessiner, BUDGET_AVATARS_DESSINES } from './apparence/affichage';
+import { aLEcran, BUDGET_AVATARS_DESSINES } from './apparence/affichage';
 import { CELLULE_APPARENCE, HAUTEUR_TETE_PX } from './apparence/dessin';
 import { chargerCouchesApparence, CLE_APPARENCES, TextureApparences } from './apparence/texture';
 import { cadrerSur, deplacer, versEcran, zoomerAutour, type Cadrage, type PointM, type PointPx } from './cadrage';
 import { calculerCortege, type Cortege } from './cortege/cortege';
+import { composerFoule } from './cortege/foule';
+import { MasseDeFoule } from './foule/masse';
 import { DecorAffiche, prechargerDecor } from './decor/rendu';
 import { TraceAuSol } from './decor/trace';
 import { pancartesAffichees, type PorteurDePancarte } from './pancartes/affichage';
@@ -53,10 +55,11 @@ const METRES_PAR_PX_ATLAS = 2 / 16;
 const ECHELLE_SPRITE_MIN = 0.375;
 
 /**
- * Ordre d'affichage : sprites de la foule (profondeur 1 à 2 selon y, les plus bas devant),
+ * Ordre d'affichage : masse de foule (0,5 à 0,99 selon y), sprites de la foule (profondeur 1 à 2 selon y, les plus bas devant),
  * pancartes et slogans de la foule, halo « toi », son avatar, sa pancarte, son slogan, étiquette.
  */
 const PROFONDEUR = {
+  masse: 0.5,
   foule: 1,
   pancartes: 2,
   slogans: 3,
@@ -83,6 +86,7 @@ export class SceneCortege extends Phaser.Scene {
   #avatarsPropres!: Phaser.GameObjects.Graphics;
   #pancartesPropres!: Phaser.GameObjects.Graphics;
   #apparences!: TextureApparences;
+  #masse!: MasseDeFoule;
   /** Réservoir de sprites d'avatars, réutilisés d'une image à l'autre. */
   readonly #sprites: Phaser.GameObjects.Image[] = [];
   #slogans!: SlogansAffiches;
@@ -109,6 +113,7 @@ export class SceneCortege extends Phaser.Scene {
 
   create(): void {
     this.#apparences = new TextureApparences(this);
+    this.#masse = new MasseDeFoule(this);
     this.#foule = this.add.graphics().setDepth(PROFONDEUR.pancartes);
     this.#avatarsPropres = this.add.graphics().setDepth(PROFONDEUR.halo);
     this.#pancartesPropres = this.add.graphics().setDepth(PROFONDEUR.pancarteToi);
@@ -151,16 +156,28 @@ export class SceneCortege extends Phaser.Scene {
 
     // Avatars en sprites, pieds sur leur position dans le cortège.
     const echelleSprite = Math.max(this.#cadrage!.echelle * METRES_PAR_PX_ATLAS, ECHELLE_SPRITE_MIN);
-    const places = cortege.avatars.map((avatar) => {
-      const position = positionDansLeCortege(this.#donnees.manif.parcours, avatar.distanceM, avatar.decalageM);
-      const { x, y } = vers(this.#projeter(position));
-      return { x, y, apparence: avatar.apparence, pancarte: avatar.pancarte, propre: avatar.propre };
-    });
-    const dessines = avatarsADessiner(places, {
-      ...ecran,
+    const placer = (distanceM: number, decalageM: number) =>
+      vers(this.#projeter(positionDansLeCortege(this.#donnees.manif.parcours, distanceM, decalageM)));
+    const places = cortege.avatars.map((avatar) => ({ ...avatar, ...placer(avatar.distanceM, avatar.decalageM) }));
+    const tailleSprite = {
       largeurSprite: CELLULE_APPARENCE.largeur * echelleSprite,
       hauteurSprite: CELLULE_APPARENCE.hauteur * echelleSprite,
+    };
+    // Masse de foule au-delà du seuil de densité ou du budget ; avatars tirés par-dessus.
+    const foule = composerFoule(places, {
+      repereM: cortege.avanceeM,
       budget: BUDGET_AVATARS_DESSINES,
+      visible: (avatar) => aLEcran(avatar, { ...ecran, ...tailleSprite }),
+    });
+    const dessines = foule.dessines;
+    this.#masse.afficherLeLong(foule.troncons, {
+      repereM: cortege.avanceeM,
+      placer,
+      echelle: this.#cadrage!.echelle,
+      echelleSprite,
+      ...ecran,
+      profondeurMin: PROFONDEUR.masse,
+      profondeurMax: PROFONDEUR.foule - 0.01,
     });
     this.#placerSprites(dessines, echelleSprite);
 
