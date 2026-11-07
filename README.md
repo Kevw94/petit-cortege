@@ -17,12 +17,20 @@ Un seul dépôt TypeScript, workspaces npm :
 ## Prérequis
 
 - Node ≥ 22.12
-- Postgres local (par défaut `postgres://postgres:postgres@localhost:5432`)
+- Postgres 16 accessible sur `postgres://postgres:postgres@localhost:5432` (dev et tests). Le plus simple, avec Docker :
+
+  ```sh
+  npm run db:start   # docker compose : Postgres 16, utilisateur et mot de passe « postgres »
+  npm run db:stop
+  ```
+
+  Sans Docker (ex. Homebrew sur macOS) : `brew install postgresql@16 && brew services start postgresql@16`, puis créer le rôle attendu : `createuser -s postgres` et `psql -d postgres -c "alter role postgres password 'postgres'"`. Ou pointer vers un Postgres existant avec `DATABASE_URL` (dev) et `DATABASE_ADMIN_URL` (tests).
 
 ## Commandes
 
 ```sh
 npm install
+npm run db:start   # si Postgres n'est pas déjà lancé
 npm run dev        # base de dev + manif pré-remplie + serveur (8787) + client Vite (5173)
 npm run seed       # resème seulement la manif de démo
 npm test           # Vitest : serveur (vrai Postgres) + Cortège

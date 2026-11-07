@@ -13,6 +13,8 @@
   },
   "scripts": {
     "dev": "npm run dev --workspace=@petit-cortege/scripts",
+    "db:start": "docker compose up -d --wait postgres",
+    "db:stop": "docker compose stop postgres",
     "seed": "npm run seed --workspace=@petit-cortege/scripts",
     "moderation": "tsx scripts/moderation.ts",
     "decor": "tsx scripts/decor.ts",
