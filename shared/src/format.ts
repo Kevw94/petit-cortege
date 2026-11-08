@@ -44,6 +44,29 @@ export interface ManifPubliee {
   sources: Source[];
   /** Nombre de soutiens publiés (entrées des minutes déjà publiées). */
   compteur: number;
+  /**
+   * Temps qu'il fait au départ du parcours, relevé par le serveur (au plus toutes les
+   * 15 min) tant que la manif est ouverte. Absent si inconnu ou après la fin.
+   */
+  meteo?: MeteoPubliee;
+}
+
+/** État du ciel, du plus clair au plus bouché. */
+export type Ciel = 'degage' | 'peu-nuageux' | 'nuageux' | 'couvert' | 'brouillard';
+export type Precipitation = 'aucune' | 'bruine' | 'pluie' | 'neige' | 'orage';
+
+/**
+ * Météo publiée d'une manif. Relevée par le serveur, jamais par le client : aucun service
+ * tiers ne voit l'IP d'un soutien avec le lieu d'une manif (ADR 0002, ADR 0008).
+ */
+export interface MeteoPubliee {
+  /** Heure du relevé par la source. */
+  releve: Instant;
+  ciel: Ciel;
+  precipitation: Precipitation;
+  /** Force de la précipitation : 0 faible, 1 modérée, 2 forte (0 sans précipitation). */
+  intensite: 0 | 1 | 2;
+  temperatureC: number;
 }
 
 /** Fichier « liste des manifs » (cache court). */

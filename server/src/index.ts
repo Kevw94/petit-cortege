@@ -1,6 +1,8 @@
 export { connecter, migrer, type Sql } from './base';
 export { horlogeSysteme, type Horloge } from './horloge';
 export { creerManif, preRemplirAvatars, type AvatarPreRempli, type ManifACreer } from './manifs';
+export { CacheMeteo, RELEVE_METEO_MS, type SourceMeteo } from './meteo';
+export { lireReponseOpenMeteo, meteoDepuisEnv, sourceOpenMeteo, URL_OPEN_METEO } from './open-meteo';
 export { publier, type DependancesPublication } from './publication';
 export { retirerAvatar, retirerParLeSoutien, type MotifRetrait, type ResultatRetrait } from './retrait';
 export { creerApp, demarrerServeur, type OptionsServeur, type Serveur } from './serveur';

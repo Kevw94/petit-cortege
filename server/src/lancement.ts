@@ -8,6 +8,8 @@ import { performance } from 'node:perf_hooks';
 import { antiTricheDepuisEnv, type OptionsAntiTriche } from './anti-triche';
 import { connecter } from './base';
 import { horlogeSysteme, type Horloge } from './horloge';
+import type { SourceMeteo } from './meteo';
+import { meteoDepuisEnv } from './open-meteo';
 import { demarrerServeur } from './serveur';
 
 export interface ConfigPrincipale {
@@ -20,6 +22,8 @@ export interface ConfigPrincipale {
   /** Servir le dossier de publication sous /publie/ (origine du CDN) ; sinon le serveur web s'en charge. */
   servirPublication: boolean;
   antiTriche: OptionsAntiTriche;
+  /** Météo publiée des manifs ouvertes (`METEO`, voir `meteoDepuisEnv`) ; null = aucune. */
+  meteo: SourceMeteo | null;
 }
 
 export const PORT_PAR_DEFAUT = 8787;
@@ -44,7 +48,8 @@ const entierPositifOuNul = (env: Record<string, string | undefined>, nom: string
  * (obligatoires ; pour ce dernier, typiquement `127.0.0.1,::1` + les plages du CDN si les
  * POST passent par lui, ou `aucun`),
  * `PORT` (8787), `INTERVALLE_PUBLICATION_MS` (5000), `SERVIR_PUBLICATION` (`1` pour servir
- * /publie/), et celles de l'anti-triche (voir `antiTricheDepuisEnv`).
+ * /publie/), `METEO` (source météo, voir `meteoDepuisEnv`) et celles de l'anti-triche
+ * (voir `antiTricheDepuisEnv`).
  */
 export function configDepuisEnv(env: Record<string, string | undefined>): ConfigPrincipale {
   const urlBase = obligatoire(env, 'DATABASE_URL');
@@ -67,6 +72,7 @@ export function configDepuisEnv(env: Record<string, string | undefined>): Config
     intervallePublicationMs: entierPositifOuNul(env, 'INTERVALLE_PUBLICATION_MS', INTERVALLE_PUBLICATION_PAR_DEFAUT_MS),
     servirPublication: env.SERVIR_PUBLICATION === '1',
     antiTriche: antiTricheDepuisEnv(env),
+    meteo: meteoDepuisEnv(env),
   };
 }
 
@@ -99,6 +105,7 @@ export async function lancer(config: ConfigPrincipale, options: OptionsLancement
     port: config.port,
     servirPublication: config.servirPublication,
     antiTriche: config.antiTriche,
+    ...(config.meteo ? { meteo: config.meteo } : {}),
   });
 
   // Passages successifs, jamais simultanés : le suivant part `intervalle` après la fin du précédent.

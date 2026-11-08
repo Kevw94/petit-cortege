@@ -28,12 +28,15 @@ import {
 import type postgres from 'postgres';
 import type { Sql } from './base';
 import type { Horloge } from './horloge';
+import type { CacheMeteo } from './meteo';
 import { verrouillerPourPublication } from './verrou';
 
 export interface DependancesPublication {
   sql: Sql;
   horloge: Horloge;
   dossierPublication: string;
+  /** Météo des manifs ouvertes ; sans elle, la liste est publiée sans météo. */
+  meteo?: CacheMeteo;
 }
 
 /** Écrit un fichier publié de façon atomique (jamais lu à moitié écrit). */
@@ -77,11 +80,14 @@ const existe = (chemin: string) =>
  * La liste garde les manifs terminées depuis moins de `CONSULTATION_APRES_FIN_MS`
  * (image finale consultable plus tard) ; le fichier des retraits, les mêmes manifs.
  */
-export async function publier({ sql, horloge, dossierPublication }: DependancesPublication): Promise<void> {
+export async function publier({ sql, horloge, dossierPublication, meteo }: DependancesPublication): Promise<void> {
+  // Météo relevée avant la transaction : jamais d'appel réseau pendant le verrou.
+  const incidentMeteo = meteo ? await releverMeteo(sql, meteo, horloge.maintenant()).then(() => null, (e: unknown) => e) : null;
+  if (incidentMeteo) console.error('Publication, météo en échec :', incidentMeteo instanceof Error ? incidentMeteo.message : incidentMeteo);
   // Exclusif avec les entrées en cours (voir verrou.ts) ; l'horloge est lue une fois le verrou obtenu.
   const incidents = await sql.begin(async (tx) => {
     await verrouillerPourPublication(tx);
-    return publierSousVerrou(tx, horloge.maintenant(), dossierPublication);
+    return publierSousVerrou(tx, horloge.maintenant(), dossierPublication, meteo);
   });
   // Signalé après la validation de la transaction : l'effacement des hachages est gardé.
   if (incidents.length > 0) throw new AggregateError(incidents, 'Publication incomplète');
@@ -92,7 +98,12 @@ export async function publier({ sql, horloge, dossierPublication }: DependancesP
  * journalisé et n'empêche pas les suivantes. L'effacement des hachages (ADR 0001)
  * passe en premier. Renvoie les incidents.
  */
-async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublication: string): Promise<unknown[]> {
+async function publierSousVerrou(
+  sql: Requeteur,
+  maintenant: Date,
+  dossierPublication: string,
+  meteo: CacheMeteo | undefined,
+): Promise<unknown[]> {
   const incidents: unknown[] = [];
   const etape = async (nom: string, faire: () => Promise<void>) => {
     try {
@@ -130,17 +141,20 @@ async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublic
 
   const manifs: ManifPubliee[] = lignes.map((l) => {
     const longueurM = longueurParcours(l.parcours);
+    const fin = calculerFin(l.depart, longueurM);
+    const meteoDeLaManif = fin > maintenant ? meteo?.lire(l.id) : undefined;
     return {
       id: l.id,
       intitule: l.intitule,
       ville: l.ville,
       ouverture: l.ouverture.toISOString(),
       depart: l.depart.toISOString(),
-      fin: calculerFin(l.depart, longueurM).toISOString(),
+      fin: fin.toISOString(),
       parcours: l.parcours,
       longueurM,
       sources: l.sources,
       compteur: compteurParManif.get(l.id) ?? 0,
+      ...(meteoDeLaManif ? { meteo: meteoDeLaManif } : {}),
     };
   });
 
@@ -157,6 +171,16 @@ async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublic
   return incidents;
 }
 
+/** Relève la météo des manifs ouvertes (publiées, pas encore terminées), au départ de leur parcours. */
+async function releverMeteo(sql: Sql, meteo: CacheMeteo, maintenant: Date): Promise<void> {
+  const lignes = await sql<{ id: string; depart: Date; parcours: Parcours }[]>`
+    select id, depart, parcours from manif where ouverture <= ${maintenant} and retiree is null`;
+  const ouvertes = lignes.filter((l) => calculerFin(l.depart, longueurParcours(l.parcours)) > maintenant);
+  await meteo.actualiser(
+    ouvertes.map((l) => ({ id: l.id, position: l.parcours.coordinates[0]! })),
+    maintenant,
+  );
+}
 
 /** Retraits des avatars des manifs publiées (mêmes manifs que la liste). */
 async function publierRetraits(sql: Requeteur, dossier: string, manifs: ManifPubliee[], maintenant: Date): Promise<void> {

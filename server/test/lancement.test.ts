@@ -25,6 +25,8 @@ describe('configuration du point d’entrée de production', () => {
       servirPublication: false,
     });
     expect(config.antiTriche.cleHmac).toBe('cle-secrete');
+    // Météo des manifs ouvertes : Open-Meteo par défaut (METEO=aucune pour s'en passer).
+    expect(config.meteo).toBeTypeOf('function');
   });
 
   it.each(['DATABASE_URL', 'DOSSIER_PUBLICATION', 'ALTCHA_CLE_HMAC', 'PROXYS_DE_CONFIANCE'])(
@@ -96,6 +98,7 @@ describe('lancement du serveur de production', () => {
       DOSSIER_PUBLICATION: dossierPublication,
       PORT: '0',
       INTERVALLE_PUBLICATION_MS: '20',
+      METEO: 'aucune',
     });
     const serveur = await lancer(config, { horloge, surPublication: (p) => passages.push(p) });
     try {

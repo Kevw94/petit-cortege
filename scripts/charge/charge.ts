@@ -229,6 +229,8 @@ const serveur = lancerProcessus('serveur-accelere.ts', [], {
   ALTCHA_COMPTEUR_MAX: '2',
   // Chaque soutien a sa propre IP, transmise par un proxy de confiance comme le ferait le CDN.
   PROXYS_DE_CONFIANCE: '127.0.0.1',
+  // Horloge accélérée : pas de service météo tiers interrogé à chaque quart d'heure virtuel.
+  METEO: 'aucune',
   CHARGE_T0_REEL: String(horloge.t0Reel),
   CHARGE_T0_VIRTUEL: String(horloge.t0Virtuel),
   CHARGE_FACTEUR: String(O.acceleration),

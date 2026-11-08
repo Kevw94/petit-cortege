@@ -7,7 +7,7 @@ import postgres from 'postgres';
 import { solveChallenge, type Challenge } from 'altcha-lib';
 import { deriveKey } from 'altcha-lib/algorithms/pbkdf2';
 import { CHEMIN_API_DEFI, CHEMIN_API_ENTREE } from '@petit-cortege/shared';
-import { demarrerServeur, type Horloge, type OptionsAntiTriche, type Serveur, type Sql } from '../src/index';
+import { demarrerServeur, type Horloge, type OptionsAntiTriche, type Serveur, type SourceMeteo, type Sql } from '../src/index';
 
 export const URL_POSTGRES_ADMIN =
   process.env.DATABASE_ADMIN_URL ?? 'postgres://postgres:postgres@localhost:5432/postgres';
@@ -80,6 +80,7 @@ export const ANTI_TRICHE_DE_TEST: OptionsAntiTriche = {
 export async function demarrerBanc(
   instantInitial: string,
   antiTriche: Partial<OptionsAntiTriche> = {},
+  options: { meteo?: SourceMeteo } = {},
 ): Promise<Banc> {
   const base = await creerBaseDeTest();
   const horloge = new HorlogeControlee(instantInitial);
@@ -90,6 +91,7 @@ export async function demarrerBanc(
     dossierPublication,
     port: 0,
     antiTriche: { ...ANTI_TRICHE_DE_TEST, ...antiTriche },
+    ...(options.meteo ? { meteo: options.meteo } : {}),
   });
   const poster: Banc['poster'] = async (chemin, corps, entetes = {}) => {
     const reponse = await fetch(new URL(chemin, serveur.url), {

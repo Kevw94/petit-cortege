@@ -40,7 +40,7 @@ npm run build      # build du client
 
 Puis ouvrir http://localhost:5173/#/manif/demo-republique-nation (départ 2 min après le lancement).
 
-Variables utiles : `DATABASE_URL` (base de dev), `DATABASE_ADMIN_URL` (tests : une base jetable par fichier de test y est créée), `PORT_SERVEUR`, `PORT_CLIENT`, `DOSSIER_PUBLICATION`.
+Variables utiles : `DATABASE_URL` (base de dev), `DATABASE_ADMIN_URL` (tests : une base jetable par fichier de test y est créée), `PORT_SERVEUR`, `PORT_CLIENT`, `DOSSIER_PUBLICATION`, `METEO` (météo des manifs, ADR 0008 : Open-Meteo par défaut, `aucune`, une URL, ou `fictive:<code WMO>` pour voir la pluie sans réseau, ex. `METEO=fictive:63 npm run dev`), `SEED_DEPART_MIN` (départ de la manif de démo, en minutes).
 
 ## Tests
 

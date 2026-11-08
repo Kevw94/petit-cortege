@@ -4,7 +4,7 @@
  * les 5 s) et client Vite (qui relaie /publie et /api vers le serveur).
  */
 import { spawn } from 'node:child_process';
-import { antiTricheDepuisEnv, connecter, demarrerServeur, horlogeSysteme, migrer } from '@petit-cortege/server';
+import { antiTricheDepuisEnv, connecter, demarrerServeur, horlogeSysteme, meteoDepuisEnv, migrer } from '@petit-cortege/server';
 import { assurerBase, DOSSIER_PUBLICATION_DEV, PORT_CLIENT, PORT_SERVEUR, RACINE, URL_BASE_DEV } from './config';
 import { ID_MANIF_DEMO, semerManifDemo } from './seed';
 
@@ -15,12 +15,15 @@ const sql = connecter(URL_BASE_DEV);
 await migrer(sql);
 if (!process.argv.includes('--sans-seed')) await semerManifDemo(sql, DOSSIER_PUBLICATION_DEV);
 
+const meteo = meteoDepuisEnv(process.env);
 const serveur = await demarrerServeur({
   sql,
   horloge: horlogeSysteme,
   dossierPublication: DOSSIER_PUBLICATION_DEV,
   port: PORT_SERVEUR,
   antiTriche: antiTricheDepuisEnv(process.env),
+  // Météo réelle (Open-Meteo) par défaut ; METEO=fictive:61 pour voir la pluie sans réseau.
+  ...(meteo ? { meteo } : {}),
 });
 await serveur.publier();
 const minuterie = setInterval(() => {

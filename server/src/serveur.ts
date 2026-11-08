@@ -22,6 +22,7 @@ import type { Limiteur } from './limite-debit';
 import { migrer, type Sql } from './base';
 import { entrer } from './entree';
 import type { Horloge } from './horloge';
+import { CacheMeteo, type SourceMeteo } from './meteo';
 import { publier } from './publication';
 import { retirerParLeSoutien } from './retrait';
 
@@ -36,6 +37,8 @@ export interface OptionsServeur {
   servirPublication?: boolean;
   /** Preuve de travail, limites de débit, alerte (voir `antiTricheDepuisEnv`). */
   antiTriche: OptionsAntiTriche;
+  /** Source de la météo publiée des manifs ouvertes (ADR 0008) ; sans elle, pas de météo. */
+  meteo?: SourceMeteo;
 }
 
 export interface Serveur {
@@ -133,9 +136,11 @@ export async function demarrerServeur(options: OptionsServeur): Promise<Serveur>
     const s = serve({ fetch: app.fetch, port: options.port, hostname: '127.0.0.1' }, () => resolve(s));
   });
   const { port } = http.address() as AddressInfo;
+  const meteo = options.meteo ? new CacheMeteo(options.meteo) : undefined;
   return {
     url: `http://127.0.0.1:${port}`,
-    publier: () => publier(options),
+    publier: () =>
+      publier({ sql: options.sql, horloge: options.horloge, dossierPublication: options.dossierPublication, ...(meteo ? { meteo } : {}) }),
     fermer: () => new Promise<void>((resolve, reject) => http.close((e) => (e ? reject(e) : resolve()))),
   };
 }
