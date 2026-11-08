@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { lireDecor, lireIndexDecors, type CarteTiled } from '@petit-cortege/shared';
+import { lirePng } from '../apparence/atlas';
 import { executerDecor } from '../decor';
 
 const FIXTURES = join(import.meta.dirname, 'fixtures/decor');
@@ -77,6 +78,42 @@ describe('npm run decor', () => {
     expect(requetesRecues.at(-1)).toContain('around:150');
     const index = lireIndexDecors(await lireJson(join(dossier, 'decors/index.json')));
     expect(index.decors.map((d) => d.fichier)).toEqual(['mini.json']);
+  });
+
+  it('génère le plan de la ville autour du parcours (PNG) et l’attache au décor dans l’index', async () => {
+    await executer('plan', '--parcours', PARCOURS, '--osm', EXTRAIT, '--decor', 'decors/mini.json', '--rayon', '200', '--metres-par-pixel', '4');
+    const index = lireIndexDecors(await lireJson(join(dossier, 'decors/index.json')));
+    const plan = index.decors[0]!.plan!;
+    expect(plan).toMatchObject({ fichier: 'mini-plan.png', metresParPixel: 4 });
+    const image = lirePng(await readFile(join(dossier, 'decors/mini-plan.png')));
+    expect([image.largeur, image.hauteur]).toEqual([plan.largeur, plan.hauteur]);
+    // 400 m de parcours + 2 × 200 m, à 4 m par pixel.
+    expect(plan.largeur).toBeCloseTo(200, -1);
+  });
+
+  it('assemble le plan depuis plusieurs extraits (grande zone téléchargée par morceaux)', async () => {
+    await executer('plan', '--parcours', PARCOURS, '--osm', EXTRAIT, '--osm', EXTRAIT, '--decor', 'decors/mini.json');
+    const index = lireIndexDecors(await lireJson(join(dossier, 'decors/index.json')));
+    expect(index.decors[0]!.plan!.metresParPixel).toBe(4);
+  });
+
+  it('le plan peut venir directement d’Overpass : rues, verts et eau de l’emprise élargie', async () => {
+    await executer('plan', '--parcours', PARCOURS, '--overpass', urlOverpass, '--decor', 'decors/mini.json', '--rayon', '500');
+    const requete = requetesRecues.at(-1)!;
+    expect(requete).toContain('["highway"');
+    expect(requete).toContain('["leisure"');
+    // Boîte sud, ouest, nord, est : le parcours (48.87 ; 2.36 → 2.3655) élargi de 500 m.
+    expect(requete).toMatch(/\(48\.865\d*,2\.353\d*,48\.874\d*,2\.372\d*\)/);
+  });
+
+  it('regénérer la tilemap garde le plan attaché au décor', async () => {
+    await executer('tilemap', '--parcours', PARCOURS, '--osm', EXTRAIT, '--sortie', 'decors/mini.json');
+    const index = lireIndexDecors(await lireJson(join(dossier, 'decors/index.json')));
+    expect(index.decors[0]!.plan?.fichier).toBe('mini-plan.png');
+  });
+
+  it('refuse un plan pour un décor absent de l’index', async () => {
+    await expect(executer('plan', '--parcours', PARCOURS, '--osm', EXTRAIT, '--decor', 'decors/inconnu.json')).rejects.toThrow(/inconnu\.json/);
   });
 
   it('trace un parcours le long d’une rue de l’extrait, en GeoJSON', async () => {

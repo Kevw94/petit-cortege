@@ -218,7 +218,38 @@ export interface EntreeIndexDecors {
   fichier: string;
   /** Emprise géographique : [lon min, lat min, lon max, lat max]. */
   emprise: [number, number, number, number];
+  /** Plan de la ville autour du décor, vu quand on dézoome (ADR 0008). */
+  plan?: PlanDecor;
 }
+
+/**
+ * Plan de la ville autour du parcours : image PNG à basse résolution (rues, verts, eau sur
+ * un fond d'îlots), bien plus large que la bande du décor, posée dessous. Dérivée d'OSM (ODbL).
+ */
+export interface PlanDecor {
+  /** Image PNG, relative à l'index. */
+  fichier: string;
+  /** Position du coin nord-ouest du pixel (0, 0). */
+  origine: Position;
+  metresParPixel: number;
+  /** Taille de l'image, en pixels. */
+  largeur: number;
+  hauteur: number;
+}
+
+/**
+ * Couleurs du plan (0xRRGGBB), en sourdine par rapport au décor détaillé. Les îlots servent
+ * aussi de sol au-delà du plan : son bord s'y fond sans coupure.
+ */
+export const COULEURS_PLAN = {
+  ilot: 0xa49d92,
+  trottoir: 0xbdb7ad,
+  rue: 0x5e6266,
+  pieton: 0xcdc5b4,
+  vert: 0x75a35f,
+  eau: 0x5f93c4,
+  rail: 0x847a70,
+} as const;
 
 export interface IndexDecors {
   v: typeof VERSION_INDEX_DECORS;

@@ -18,12 +18,15 @@ import {
   type CarteTiled,
   type IndexDecors,
   type Parcours,
+  type PlanDecor,
   type Position,
 } from '@petit-cortege/shared';
+import { ecrirePng } from './apparence/atlas';
 import { DEMI_LARGEUR_PAR_DEFAUT_M, genererDecor } from './decor/carte';
 import { itineraireLeLongDe } from './decor/itineraire';
 import type { ExtraitOverpass } from './decor/osm';
-import { RAYON_EXTRACTION_M, requeteBande, telechargerExtrait } from './decor/overpass';
+import { RAYON_EXTRACTION_M, requeteBande, requetePlan, telechargerExtrait } from './decor/overpass';
+import { genererPlan, METRES_PAR_PIXEL_PAR_DEFAUT, RAYON_PLAN_PAR_DEFAUT_M } from './decor/plan';
 import { RACINE } from './config';
 
 export interface DependancesDecor {
@@ -38,12 +41,18 @@ const AIDE = `Commandes :
   tilemap --parcours <geojson> (--osm <extrait.json> | --overpass <url>) --sortie <carte.json>
           [--demi-largeur <m>] [--rayon <m>]
       Génère la tilemap Tiled (ODbL) et l'inscrit dans l'index.json de son dossier.
+  plan --parcours <geojson> (--osm <extrait.json>… | --overpass <url>) --decor <carte.json>
+       [--rayon <m>] [--metres-par-pixel <m>]
+      Génère le plan de la ville autour du parcours (PNG à côté de la carte, ODbL) et l'attache au
+      décor dans index.json. Plusieurs --osm s'assemblent (grande zone téléchargée par morceaux).
   parcours (--osm <extrait.json> | --overpass <url>) --rue <nom> [--rue <place traversée>…] --depart <lon,lat> --arrivee <lon,lat> --sortie <geojson>
       Trace un parcours le long des chemins OSM d'une rue (avec --overpass : chemins de ce nom autour des deux points).`;
 
 const OPTIONS = {
   parcours: { type: 'string' },
-  osm: { type: 'string' },
+  osm: { type: 'string', multiple: true },
+  decor: { type: 'string' },
+  'metres-par-pixel': { type: 'string' },
   overpass: { type: 'string' },
   sortie: { type: 'string' },
   rayon: { type: 'string' },
@@ -56,7 +65,7 @@ const OPTIONS = {
 export async function executerDecor(argv: string[], deps: DependancesDecor): Promise<void> {
   const [commande, ...reste] = argv;
   const { values: v } = parseArgs({ args: reste, options: OPTIONS, strict: true });
-  type OptionTexte = Exclude<keyof typeof OPTIONS, 'rue'>;
+  type OptionTexte = Exclude<keyof typeof OPTIONS, 'rue' | 'osm'>;
   const chemin = (nom: OptionTexte) => {
     const valeur = v[nom];
     if (!valeur) throw new Error(`option --${nom} manquante.\n\n${AIDE}`);
@@ -74,7 +83,21 @@ export async function executerDecor(argv: string[], deps: DependancesDecor): Pro
     deps.ecrire(`Écrit : ${relative(deps.dossierCourant, fichier) || fichier}`);
   };
   const extraitOsm = async (requete: () => string): Promise<ExtraitOverpass> => {
-    if (v.osm) return JSON.parse(await readFile(chemin('osm'), 'utf8')) as ExtraitOverpass;
+    if (v.osm?.length) {
+      // Plusieurs extraits (morceaux d'une grande zone) : éléments assemblés, doublons ignorés.
+      const vus = new Set<string>();
+      const elements: ExtraitOverpass['elements'] = [];
+      for (const fichier of v.osm) {
+        const extrait = JSON.parse(await readFile(resolve(deps.dossierCourant, fichier), 'utf8')) as ExtraitOverpass;
+        for (const e of extrait.elements) {
+          const cle = `${e.type}/${e.id}`;
+          if (vus.has(cle)) continue;
+          vus.add(cle);
+          elements.push(e);
+        }
+      }
+      return { elements };
+    }
     if (v.overpass) return (await telechargerExtrait(v.overpass, requete())).extrait;
     throw new Error(`donner --osm ou --overpass.\n\n${AIDE}`);
   };
@@ -100,6 +123,25 @@ export async function executerDecor(argv: string[], deps: DependancesDecor): Pro
       });
       await ecrireFichier(sortie, `${JSON.stringify(carte)}\n`);
       await inscrireDansIndex(join(dirname(sortie), CHEMIN_INDEX_DECORS), basename(sortie), carte, ecrireFichier);
+      return;
+    }
+    case 'plan': {
+      const parcours = await lireParcours();
+      const rayonM = nombre('rayon', RAYON_PLAN_PAR_DEFAUT_M);
+      const carte = chemin('decor');
+      const fichierIndex = join(dirname(carte), CHEMIN_INDEX_DECORS);
+      const index = lireIndexDecors(JSON.parse(await readFile(fichierIndex, 'utf8')));
+      const entree = index.decors.find((d) => d.fichier === basename(carte));
+      if (!entree) throw new Error(`${basename(carte)} n'est pas dans ${relative(deps.dossierCourant, fichierIndex)} : générer d'abord sa tilemap.`);
+      const osm = await extraitOsm(() => requetePlan(boiteElargie(parcours, rayonM)));
+      const { image, plan } = genererPlan({ osm, parcours, rayonM, metresParPixel: nombre('metres-par-pixel', METRES_PAR_PIXEL_PAR_DEFAUT) });
+      const fichierPlan = `${basename(carte, '.json')}-plan.png`;
+      await mkdir(dirname(carte), { recursive: true });
+      await writeFile(join(dirname(carte), fichierPlan), ecrirePng(image));
+      deps.ecrire(`Écrit : ${relative(deps.dossierCourant, join(dirname(carte), fichierPlan))} (${image.largeur} × ${image.hauteur} px)`);
+      const avecPlan: PlanDecor = { fichier: fichierPlan, ...plan };
+      index.decors = index.decors.map((d) => (d === entree ? { ...d, plan: avecPlan } : d));
+      await ecrireFichier(fichierIndex, `${JSON.stringify(index, null, 1)}\n`);
       return;
     }
     case 'parcours': {
@@ -141,6 +183,16 @@ function requeteRues(rues: string[], a: Position, b: Position): string {
   return `[out:json][timeout:60];way["highway"]["name"~${JSON.stringify(`^(${filtre})$`)}](${sud},${ouest},${nord},${est});out geom;`;
 }
 
+/** Boîte [sud, ouest, nord, est] du parcours élargie de `rayonM`. */
+function boiteElargie(parcours: Parcours, rayonM: number): [number, number, number, number] {
+  const lons = parcours.coordinates.map((p) => p[0]);
+  const lats = parcours.coordinates.map((p) => p[1]);
+  const lat = (Math.min(...lats) + Math.max(...lats)) / 2;
+  const dLat = rayonM / 110_540;
+  const dLon = rayonM / (111_320 * Math.cos((lat * Math.PI) / 180));
+  return [Math.min(...lats) - dLat, Math.min(...lons) - dLon, Math.max(...lats) + dLat, Math.max(...lons) + dLon];
+}
+
 /** Ajoute (ou remplace) la carte dans l'index des décors de son dossier. */
 async function inscrireDansIndex(
   fichierIndex: string,
@@ -158,7 +210,9 @@ async function inscrireDansIndex(
   const georef = { origine: [valeur('origine_lon'), valeur('origine_lat')] as Position };
   const [lonMax, latMin] = versPosition(georef, { x: carte.width, y: carte.height });
   const emprise: [number, number, number, number] = [georef.origine[0], latMin, lonMax, georef.origine[1]];
-  index.decors = [...index.decors.filter((d) => d.fichier !== fichier), { fichier, emprise }];
+  // Le plan de la ville déjà attaché au décor est gardé.
+  const plan = index.decors.find((d) => d.fichier === fichier)?.plan;
+  index.decors = [...index.decors.filter((d) => d.fichier !== fichier), { fichier, emprise, ...(plan ? { plan } : {}) }];
   await ecrireFichier(fichierIndex, `${JSON.stringify(index, null, 1)}\n`);
 }
 

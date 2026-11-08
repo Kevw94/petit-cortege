@@ -42,3 +42,25 @@ export async function telechargerExtrait(url: string, requete: string): Promise<
   if (!Array.isArray(extrait.elements)) throw new Error(`Overpass (${url}) : réponse sans « elements »`);
   return { texte, extrait };
 }
+
+/**
+ * Requête Overpass QL du plan de la ville (ADR 0008) : sur une boîte [sud, ouest, nord, est],
+ * seulement ce que le plan dessine (rues carrossables et piétonnes, verts, eau, voies ferrées) ;
+ * ni bâtiments ni chemins, trop lourds sur plusieurs kilomètres.
+ */
+export function requetePlan([sud, ouest, nord, est]: [number, number, number, number]): string {
+  const boite = `(${[sud, ouest, nord, est].map((n) => n.toFixed(6)).join(',')})`;
+  return [
+    '[out:json][timeout:300];',
+    '(',
+    `  way${boite}["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|pedestrian)(_link)?$"];`,
+    `  way${boite}["leisure"~"^(park|garden|playground|pitch|dog_park)$"];`,
+    `  way${boite}["landuse"~"^(grass|recreation_ground|village_green|cemetery|forest|meadow|allotments|basin|reservoir)$"];`,
+    `  way${boite}["natural"~"^(water|wood|scrub|grassland)$"];`,
+    `  way${boite}["waterway"~"^(river|canal|riverbank|dock)$"];`,
+    `  way${boite}["railway"="rail"];`,
+    `  relation${boite}["type"="multipolygon"][~"^(leisure|landuse|natural|waterway)$"~"."];`,
+    ');',
+    'out geom;',
+  ].join('\n');
+}
