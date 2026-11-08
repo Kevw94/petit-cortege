@@ -22,14 +22,14 @@ const ECHELLE_PROPRE_PX_PAR_M = 60;
 const ECHELLE_MIN_PX_PAR_M = 5;
 
 /** Taille réelle du panneau selon sa forme, en mètres (largeur, hauteur). */
-const DIMENSIONS_M: Record<FormePancarte, [number, number]> = {
+export const DIMENSIONS_M: Record<FormePancarte, [number, number]> = {
   rectangle: [1.6, 1],
   portrait: [1.1, 1.4],
   rond: [1.3, 1.3],
   losange: [1.5, 1.5],
 };
 /** Hauteur du manche entre la tête de l'avatar et le bas du panneau. */
-const MANCHE_M = 0.6;
+export const MANCHE_M = 0.6;
 
 export interface PorteurDePancarte {
   /** Position de l'avatar à l'écran (pixels). */

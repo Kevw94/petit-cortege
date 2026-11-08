@@ -27,7 +27,7 @@ Notifications push, réactions, mini-jeu de chants, météo, prises de parole, c
 
 Un seul langage partout : TypeScript.
 
-- Client : TypeScript + Phaser + Vite.
+- Client : TypeScript + Vite ; vue de la manif en semi-3D avec Three.js (importé à la demande), vue 2D et repli sans WebGL avec Phaser (ADR 0007).
 - Serveur : TypeScript sur Node LTS, framework HTTP minimal, Postgres.
 - Scripts (conversion OSM → tilemap Tiled, variantes de palette, génération des accessoires) : TypeScript, exécutés avec Node.
 - Un seul dépôt, avec un module partagé qui définit une seule fois le format des fichiers publiés et les catalogues (apparence, pancartes, slogans), importé par le client, le serveur et les scripts.
@@ -39,6 +39,7 @@ Discret, sur une grande journée nationale, sans démarchage des organisateurs. 
 ## Notes de mise en œuvre
 
 - Vue 3/4 (style Stardew) ; tuile 16 px ≈ 2 m ; avatar 16 × 16 px, soit une tuile (taille Kenney, sans redimensionnement) ; carte chargée par blocs ; profondeur = position y.
+- Vue semi-3D (ADR 0007, `client/src/vue3d/`, par défaut si WebGL est disponible, choix 2D / 3D mémorisé sur l'appareil) : caméra derrière son avatar (ou la tête du cortège), orientée selon la corde du parcours un peu devant (elle tourne avant les virages, lissée), dézoom en échelle logarithmique jusqu'à la vue de haut sur tout le parcours (inclinaison de 30° à la verticale) ; glisser, tourner à deux doigts ou au clic droit détache la caméra, « Suivre » la rattache. Sol : tilemap cuite par blocs autour de la caméra, vue d'ensemble 1 px/tuile au-delà ; bâtiments : groupes de tuiles de bâtiment extrudés (maillage glouton, 15 à 24 m) ; avatars, pancartes et masse de foule en billboards instanciés (taille minimale à l'écran de loin) ; slogans écrits sur les pancartes vues de près seulement ; ses propres avatar et pancarte toujours visibles, avec halo et étiquette « toi ». Mesuré en émulation Pixel 5 (WebGL logiciel SwiftShader, 3 000 avatars) : 11 à 14 images/s de près et à mi-hauteur, 8 en vue de haut, contre 12 à 17 pour la 2D dans les mêmes conditions ; à confirmer sur de vrais téléphones.
 - Décor depuis OSM (bande ≈ 200 m) : rues selon leur type, emprises de bâtiments en façades génériques, espaces verts, eau, ponts, noms des places traversées. Tracé du parcours au sol (ligne, flèches, départ, arrivée). Pas de commerces, POI, noms de rues ni mobilier.
 - Décor (#12) : `npm run decor -- extraire | tilemap | parcours` (Overpass à URL configurable, ou extrait JSON local) → carte Tiled infinie en blocs de 32 × 32 dans `client/public/decors/` (ODbL), extraits bruts dans `donnees/osm/`. Le client demande l'index puis **tous** les décors listés, pour ne pas révéler la manif consultée (ADR 0002).
 - Chantier délicat : autotiling des emprises OSM (polygones quelconques) vers les pièces de bâtiment à taille fixe du tileset.
