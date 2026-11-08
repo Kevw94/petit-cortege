@@ -60,10 +60,27 @@ async function listeManifs() {
 const estTerminee = (manif: { fin: string }, maintenant = new Date()) => maintenant.getTime() >= Date.parse(manif.fin);
 
 async function afficherListe(vue: Vue): Promise<void> {
+  let affichees = '';
   const afficher = (manifs: ManifPubliee[]) => {
     const maintenant = new Date();
     const ouvertes = manifs.filter((m) => !estTerminee(m, maintenant));
     const terminees = manifs.filter((m) => estTerminee(m, maintenant)).reverse(); // les plus récentes d'abord
+    // Mêmes manifs qu'à l'affichage précédent : seuls l'état, les soutiens et la météo changent
+    // (le tracé ne se redessine pas, le focus clavier reste en place).
+    const cles = JSON.stringify([ouvertes.map((m) => m.id), terminees.map((m) => m.id)]);
+    if (cles === affichees) {
+      for (const m of ouvertes) {
+        const carton = interfaceEl.querySelector<HTMLElement>(`[data-manif="${CSS.escape(m.id)}"]`);
+        if (!carton) continue;
+        const etat = etatDeLaManif(m, maintenant);
+        const etatEl = carton.querySelector<HTMLElement>('.carton-etat')!;
+        etatEl.textContent = etat.texte;
+        etatEl.dataset.phase = etat.phase;
+        carton.querySelector('.carton-details')!.innerHTML = detailsDeManif(m, maintenant);
+      }
+      return;
+    }
+    affichees = cles;
     interfaceEl.innerHTML = `
     <main class="accueil">
       <header class="accueil-tete">
@@ -74,7 +91,7 @@ async function afficherListe(vue: Vue): Promise<void> {
         <h2 id="titre-ouvertes" class="accueil-section">${ouvertes.length > 0 ? 'Cortèges à rejoindre' : 'Aucun cortège ouvert pour le moment'}</h2>
         ${
           ouvertes.length > 0
-            ? `<ul class="pancartes">${ouvertes.map((m, i) => pancarteDeManif(m, i, maintenant)).join('')}</ul>`
+            ? `<ul class="cartons">${ouvertes.map((m, i) => cartonDeManif(m, i, maintenant)).join('')}</ul>`
             : `<p class="accueil-vide">Les grandes journées nationales apparaissent ici dès que leur parcours est publié.</p>`
         }
       </section>
@@ -90,37 +107,40 @@ async function afficherListe(vue: Vue): Promise<void> {
     </main>`;
   };
   afficher((await vue.attendre(listeManifs())).manifs);
-  // État (« départ dans… »), soutiens et météo à jour sans recharger la page.
   vue.rafraichir({ intervalleMs: INTERVALLE_RAFRAICHISSEMENT_MS, charger: listeManifs, appliquer: (liste) => afficher(liste.manifs) });
 }
 
-/** Inclinaisons des pancartes, à tour de rôle : tenues à la main, pas alignées au cordeau. */
+/** Inclinaisons des cartons, à tour de rôle : tenues à la main, pas alignées au cordeau. */
 const INCLINAISONS = [-1.4, 0.9, -0.6, 1.3, -1];
 const ICONES_METEO: Record<IconeMeteo, string> = {
   soleil: '☀️', lune: '🌙', eclaircies: '🌤️', nuages: '☁️', brouillard: '🌫️', pluie: '🌧️', neige: '🌨️', orage: '⛈️',
 };
 
-function pancarteDeManif(m: ManifPubliee, rang: number, maintenant: Date): string {
+/** Soutiens et météo d'une manif, sur son carton. */
+function detailsDeManif(m: ManifPubliee, maintenant: Date): string {
+  const meteo = m.meteo && resumeMeteo(m.meteo, m.parcours.coordinates[0]!, maintenant);
+  return `<span>${m.compteur} ${m.compteur > 1 ? 'soutiens' : 'soutien'}</span>${
+    meteo ? `<span><span aria-hidden="true">${ICONES_METEO[meteo.icone]}</span> ${meteo.texte}</span>` : ''
+  }`;
+}
+
+/** Une manif ouverte sur l'accueil : un carton tenu à la main, avec le tracé de son parcours. */
+function cartonDeManif(m: ManifPubliee, rang: number, maintenant: Date): string {
   const etat = etatDeLaManif(m, maintenant);
   const trace = traceMiniature(m.parcours, { largeur: 120, hauteur: 96, marge: 12 });
   const [depart, arrivee] = [trace.points[0]!, trace.points.at(-1)!];
-  const meteo = m.meteo && resumeMeteo(m.meteo, m.parcours.coordinates[0]!, maintenant);
-  const soutiens = `${m.compteur} ${m.compteur > 1 ? 'soutiens' : 'soutien'}`;
-  return `<li><a class="pancarte-manif" href="${lienManif(m.id)}" style="--inclinaison: ${INCLINAISONS[rang % INCLINAISONS.length]}deg">
+  return `<li data-manif="${echapper(m.id)}"><a class="carton-manif" href="${lienManif(m.id)}" style="--inclinaison: ${INCLINAISONS[rang % INCLINAISONS.length]}deg">
     <svg class="trace-miniature" viewBox="0 0 120 96" aria-hidden="true">
       <path class="trace-fond" d="${trace.d}" />
       <path class="trace-ligne" d="${trace.d}" style="--longueur: ${Math.ceil(trace.longueur)}" />
       <circle class="trace-depart" cx="${depart.x.toFixed(1)}" cy="${depart.y.toFixed(1)}" r="4" />
       <circle class="trace-arrivee" cx="${arrivee.x.toFixed(1)}" cy="${arrivee.y.toFixed(1)}" r="5" />
     </svg>
-    <span class="pancarte-texte">
-      <strong class="pancarte-titre">${echapper(m.intitule)}</strong>
-      <span class="pancarte-lieu">${echapper(m.ville)}, départ ${heure(m.depart)}</span>
-      <span class="pancarte-etat" data-phase="${etat.phase}">${etat.texte}</span>
-      <span class="pancarte-details">
-        <span>${soutiens}</span>
-        ${meteo ? `<span><span aria-hidden="true">${ICONES_METEO[meteo.icone]}</span> ${meteo.texte}</span>` : ''}
-      </span>
+    <span class="carton-texte">
+      <strong class="carton-titre">${echapper(m.intitule)}</strong>
+      <span class="carton-lieu">${echapper(m.ville)}, départ ${heure(m.depart)}</span>
+      <span class="carton-etat" data-phase="${etat.phase}">${etat.texte}</span>
+      <span class="carton-details">${detailsDeManif(m, maintenant)}</span>
     </span>
   </a></li>`;
 }

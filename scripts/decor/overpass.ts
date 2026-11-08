@@ -43,12 +43,20 @@ export async function telechargerExtrait(url: string, requete: string): Promise<
   return { texte, extrait };
 }
 
+/** Boîte géographique en degrés, dans l'ordre des boîtes Overpass. */
+export interface BoiteGeo {
+  sud: number;
+  ouest: number;
+  nord: number;
+  est: number;
+}
+
 /**
- * Requête Overpass QL du plan de la ville (ADR 0008) : sur une boîte [sud, ouest, nord, est],
+ * Requête Overpass QL du plan de la ville (ADR 0008) : sur une boîte géographique,
  * seulement ce que le plan dessine (rues carrossables et piétonnes, verts, eau, voies ferrées) ;
  * ni bâtiments ni chemins, trop lourds sur plusieurs kilomètres.
  */
-export function requetePlan([sud, ouest, nord, est]: [number, number, number, number]): string {
+export function requetePlan({ sud, ouest, nord, est }: BoiteGeo): string {
   const boite = `(${[sud, ouest, nord, est].map((n) => n.toFixed(6)).join(',')})`;
   return [
     '[out:json][timeout:300];',

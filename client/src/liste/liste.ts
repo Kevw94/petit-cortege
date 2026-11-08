@@ -2,7 +2,7 @@
  * Briques pures de la liste des manifs (page d'accueil) : l'état d'une manif en mots, et la
  * miniature de son parcours (tracé SVG, nord en haut, proportions gardées).
  */
-import type { Parcours } from '@petit-cortege/shared';
+import { versTuiles, type Parcours } from '@petit-cortege/shared';
 
 export type PhaseManif = 'avant' | 'en-marche' | 'terminee';
 
@@ -31,10 +31,9 @@ export interface Miniature {
 }
 
 export function traceMiniature(parcours: Parcours, cadre: { largeur: number; hauteur: number; marge: number }): Miniature {
-  const lat0 = parcours.coordinates[0]![1];
-  // Projection locale en mètres, comme le décor (`versTuiles`), y vers le bas.
-  const kx = 111_320 * Math.cos((lat0 * Math.PI) / 180);
-  const projetes = parcours.coordinates.map(([lon, lat]) => ({ x: lon * kx, y: -lat * 110_540 }));
+  // Projection locale du décor (y vers le sud), depuis le départ.
+  const georef = { origine: parcours.coordinates[0]! };
+  const projetes = parcours.coordinates.map((p) => versTuiles(georef, p));
   const xs = projetes.map((p) => p.x);
   const ys = projetes.map((p) => p.y);
   const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];

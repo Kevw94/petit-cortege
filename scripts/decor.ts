@@ -25,7 +25,7 @@ import { ecrirePng } from './apparence/atlas';
 import { DEMI_LARGEUR_PAR_DEFAUT_M, genererDecor } from './decor/carte';
 import { itineraireLeLongDe } from './decor/itineraire';
 import type { ExtraitOverpass } from './decor/osm';
-import { RAYON_EXTRACTION_M, requeteBande, requetePlan, telechargerExtrait } from './decor/overpass';
+import { RAYON_EXTRACTION_M, requeteBande, requetePlan, telechargerExtrait, type BoiteGeo } from './decor/overpass';
 import { genererPlan, METRES_PAR_PIXEL_PAR_DEFAUT, RAYON_PLAN_PAR_DEFAUT_M } from './decor/plan';
 import { RACINE } from './config';
 
@@ -42,9 +42,10 @@ const AIDE = `Commandes :
           [--demi-largeur <m>] [--rayon <m>]
       Génère la tilemap Tiled (ODbL) et l'inscrit dans l'index.json de son dossier.
   plan --parcours <geojson> (--osm <extrait.json>… | --overpass <url>) --decor <carte.json>
-       [--rayon <m>] [--metres-par-pixel <m>]
+       [--rayon <m>] [--metres-par-pixel <m>] [--morceaux <n>]
       Génère le plan de la ville autour du parcours (PNG à côté de la carte, ODbL) et l'attache au
-      décor dans index.json. Plusieurs --osm s'assemblent (grande zone téléchargée par morceaux).
+      décor dans index.json. Plusieurs --osm s'assemblent ; avec --overpass, --morceaux <n> découpe
+      la zone en n × n requêtes (un serveur Overpass expire souvent sur plusieurs kilomètres).
   parcours (--osm <extrait.json> | --overpass <url>) --rue <nom> [--rue <place traversée>…] --depart <lon,lat> --arrivee <lon,lat> --sortie <geojson>
       Trace un parcours le long des chemins OSM d'une rue (avec --overpass : chemins de ce nom autour des deux points).`;
 
@@ -53,6 +54,7 @@ const OPTIONS = {
   osm: { type: 'string', multiple: true },
   decor: { type: 'string' },
   'metres-par-pixel': { type: 'string' },
+  morceaux: { type: 'string' },
   overpass: { type: 'string' },
   sortie: { type: 'string' },
   rayon: { type: 'string' },
@@ -82,21 +84,25 @@ export async function executerDecor(argv: string[], deps: DependancesDecor): Pro
     await writeFile(fichier, contenu);
     deps.ecrire(`Écrit : ${relative(deps.dossierCourant, fichier) || fichier}`);
   };
+  /** Extraits assemblés (morceaux d'une grande zone) : éléments mis bout à bout, doublons ignorés. */
+  const assembler = (extraits: ExtraitOverpass[]): ExtraitOverpass => {
+    const vus = new Set<string>();
+    const elements: ExtraitOverpass['elements'] = [];
+    for (const extrait of extraits) {
+      for (const e of extrait.elements) {
+        const cle = `${e.type}/${e.id}`;
+        if (vus.has(cle)) continue;
+        vus.add(cle);
+        elements.push(e);
+      }
+    }
+    return { elements };
+  };
   const extraitOsm = async (requete: () => string): Promise<ExtraitOverpass> => {
     if (v.osm?.length) {
-      // Plusieurs extraits (morceaux d'une grande zone) : éléments assemblés, doublons ignorés.
-      const vus = new Set<string>();
-      const elements: ExtraitOverpass['elements'] = [];
-      for (const fichier of v.osm) {
-        const extrait = JSON.parse(await readFile(resolve(deps.dossierCourant, fichier), 'utf8')) as ExtraitOverpass;
-        for (const e of extrait.elements) {
-          const cle = `${e.type}/${e.id}`;
-          if (vus.has(cle)) continue;
-          vus.add(cle);
-          elements.push(e);
-        }
-      }
-      return { elements };
+      const extraits: ExtraitOverpass[] = [];
+      for (const fichier of v.osm) extraits.push(JSON.parse(await readFile(resolve(deps.dossierCourant, fichier), 'utf8')) as ExtraitOverpass);
+      return assembler(extraits);
     }
     if (v.overpass) return (await telechargerExtrait(v.overpass, requete())).extrait;
     throw new Error(`donner --osm ou --overpass.\n\n${AIDE}`);
@@ -133,7 +139,12 @@ export async function executerDecor(argv: string[], deps: DependancesDecor): Pro
       const index = lireIndexDecors(JSON.parse(await readFile(fichierIndex, 'utf8')));
       const entree = index.decors.find((d) => d.fichier === basename(carte));
       if (!entree) throw new Error(`${basename(carte)} n'est pas dans ${relative(deps.dossierCourant, fichierIndex)} : générer d'abord sa tilemap.`);
-      const osm = await extraitOsm(() => requetePlan(boiteElargie(parcours, rayonM)));
+      const boite = boiteElargie(parcours, rayonM);
+      const morceaux = Math.round(nombre('morceaux', 1));
+      const osm =
+        v.overpass && !v.osm?.length && morceaux > 1
+          ? assembler(await telechargerParMorceaux(v.overpass, boite, morceaux, deps.ecrire))
+          : await extraitOsm(() => requetePlan(boite));
       const { image, plan } = genererPlan({ osm, parcours, rayonM, metresParPixel: nombre('metres-par-pixel', METRES_PAR_PIXEL_PAR_DEFAUT) });
       const fichierPlan = `${basename(carte, '.json')}-plan.png`;
       await mkdir(dirname(carte), { recursive: true });
@@ -183,14 +194,32 @@ function requeteRues(rues: string[], a: Position, b: Position): string {
   return `[out:json][timeout:60];way["highway"]["name"~${JSON.stringify(`^(${filtre})$`)}](${sud},${ouest},${nord},${est});out geom;`;
 }
 
-/** Boîte [sud, ouest, nord, est] du parcours élargie de `rayonM`. */
-function boiteElargie(parcours: Parcours, rayonM: number): [number, number, number, number] {
+/** Télécharge la zone en n × n boîtes, l'une après l'autre (un serveur Overpass partagé n'aime pas les rafales). */
+async function telechargerParMorceaux(url: string, { sud, ouest, nord, est }: BoiteGeo, n: number, ecrire: (l: string) => void): Promise<ExtraitOverpass[]> {
+  const extraits: ExtraitOverpass[] = [];
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      const boite = {
+        sud: sud + ((nord - sud) * i) / n,
+        nord: sud + ((nord - sud) * (i + 1)) / n,
+        ouest: ouest + ((est - ouest) * j) / n,
+        est: ouest + ((est - ouest) * (j + 1)) / n,
+      };
+      extraits.push((await telechargerExtrait(url, requetePlan(boite))).extrait);
+      ecrire(`Morceau ${i * n + j + 1}/${n * n} téléchargé.`);
+    }
+  }
+  return extraits;
+}
+
+/** Boîte géographique du parcours élargie de `rayonM`. */
+function boiteElargie(parcours: Parcours, rayonM: number): BoiteGeo {
   const lons = parcours.coordinates.map((p) => p[0]);
   const lats = parcours.coordinates.map((p) => p[1]);
   const lat = (Math.min(...lats) + Math.max(...lats)) / 2;
   const dLat = rayonM / 110_540;
   const dLon = rayonM / (111_320 * Math.cos((lat * Math.PI) / 180));
-  return [Math.min(...lats) - dLat, Math.min(...lons) - dLon, Math.max(...lats) + dLat, Math.max(...lons) + dLon];
+  return { sud: Math.min(...lats) - dLat, ouest: Math.min(...lons) - dLon, nord: Math.max(...lats) + dLat, est: Math.max(...lons) + dLon };
 }
 
 /** Ajoute (ou remplace) la carte dans l'index des décors de son dossier. */

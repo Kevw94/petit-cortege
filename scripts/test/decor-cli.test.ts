@@ -106,6 +106,14 @@ describe('npm run decor', () => {
     expect(requete).toMatch(/\(48\.865\d*,2\.353\d*,48\.874\d*,2\.372\d*\)/);
   });
 
+  it('--morceaux <n> : la zone est demandée à Overpass en n × n boîtes (serveurs qui expirent sur une grande zone)', async () => {
+    const avant = requetesRecues.length;
+    await executer('plan', '--parcours', PARCOURS, '--overpass', urlOverpass, '--decor', 'decors/mini.json', '--morceaux', '2');
+    const boites = requetesRecues.slice(avant).map((r) => /way\(([^)]+)\)/.exec(r)![1]);
+    expect(boites).toHaveLength(4);
+    expect(new Set(boites).size).toBe(4);
+  });
+
   it('regénérer la tilemap garde le plan attaché au décor', async () => {
     await executer('tilemap', '--parcours', PARCOURS, '--osm', EXTRAIT, '--sortie', 'decors/mini.json');
     const index = lireIndexDecors(await lireJson(join(dossier, 'decors/index.json')));

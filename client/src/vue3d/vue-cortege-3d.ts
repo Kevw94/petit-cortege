@@ -429,7 +429,7 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
     // de haut, elle recule assez pour ne rien voiler. Plus proche sous la pluie, le brouillard.
     actualiserAmbiance(dt);
     ciel.animer(dt);
-    ciel.brume(parametres.distance * 1.5 + 60, parametres.distance * 3 + 450);
+    ciel.brume(parametres.distance * 1.5 + 60, parametres.distance * 3 + 450, parametres.distance);
     (solLointain.material as THREE.MeshBasicMaterial).color.setHex(COULEUR_SOL_LOINTAIN).multiply(ciel.eclairage);
     if (plan) (plan.material as THREE.MeshBasicMaterial).color.copy(ciel.eclairage);
     sol?.eclairer(ciel.eclairage);

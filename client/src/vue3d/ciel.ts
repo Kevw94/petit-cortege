@@ -56,10 +56,16 @@ export class CielAmbiant {
     this.#mettreAJourLumieres(0);
   }
 
-  /** Portée de la brume : la ville s'estompe plus tôt sous la pluie ou dans le brouillard. */
-  brume(near: number, far: number): void {
+  /**
+   * Portée de la brume : de près, la ville s'estompe plus tôt sous la pluie ou dans le
+   * brouillard ; en montant (`distance` de la caméra), l'effet s'efface pour que le plan de
+   * la ville reste lisible de haut.
+   */
+  brume(near: number, far: number, distance: number): void {
     const fog = this.#scene.fog as THREE.Fog;
-    const k = this.#ambiance?.portee ?? 1;
+    const portee = this.#ambiance?.portee ?? 1;
+    const hauteur = Math.min(1, Math.max(0, (distance - 150) / 650));
+    const k = portee + (1 - portee) * hauteur;
     fog.near = near * k;
     fog.far = Math.max(fog.near + 50, far * k);
   }

@@ -33,3 +33,8 @@ Ils sont publiés ici sous la même licence (ODbL), indépendamment de la licenc
   ```
 
 La tilemap dérivée (base de données dérivée, ODbL elle aussi) est dans `client/public/decors/`.
+
+Le plan de la ville (`client/public/decors/republique-nation-plan.png`, ADR 0008, ODbL lui aussi) vient d'un extrait
+plus large (rues, verts, eau, voies ferrées à environ 1,5 km autour du parcours, extrait du 8 novembre 2026). Trop lourd
+pour être versionné ici (≈ 15 Mo), il se retélécharge en 4 × 4 morceaux par la commande `decor -- plan --morceaux 4`
+(voir `client/public/decors/README.md`), ou s'assemble depuis des fichiers locaux avec plusieurs `--osm`.

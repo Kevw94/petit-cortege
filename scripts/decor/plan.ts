@@ -6,7 +6,7 @@
  *
  * Données dérivées d'OpenStreetMap : l'image produite est sous ODbL.
  */
-import { COULEURS_PLAN, METRES_PAR_TUILE, versTuiles, type Parcours, type PlanDecor, type PointTuiles, type Position } from '@petit-cortege/shared';
+import { COULEURS_PLAN, METRES_PAR_TUILE, versPosition, versTuiles, type Parcours, type PlanDecor, type PointTuiles, type Position } from '@petit-cortege/shared';
 import type { ImageRGBA } from '../apparence/atlas';
 import { classer, Terrain } from './classement';
 import { lireExtrait, type ExtraitOverpass } from './osm';
@@ -52,11 +52,7 @@ export function genererPlan({ osm, parcours, rayonM, metresParPixel }: OptionsPl
   const oppose = versTuiles({ origine: centre }, [Math.max(...lons), Math.min(...lats)]);
   const enPx = METRES_PAR_TUILE / metresParPixel;
   const rayonTuiles = rayonM / METRES_PAR_TUILE;
-  // Coin nord-ouest, en tuiles depuis le centre, ramené en position.
-  const nordOuest = { x: coin.x - rayonTuiles, y: coin.y - rayonTuiles };
-  const kx = (111_320 * Math.cos((centre[1] * Math.PI) / 180)) / METRES_PAR_TUILE;
-  const ky = 110_540 / METRES_PAR_TUILE;
-  const origine: Position = [centre[0] + nordOuest.x / kx, centre[1] - nordOuest.y / ky];
+  const origine = versPosition({ origine: centre }, { x: coin.x - rayonTuiles, y: coin.y - rayonTuiles });
   const largeur = Math.ceil((oppose.x - coin.x + 2 * rayonTuiles) * enPx);
   const hauteur = Math.ceil((oppose.y - coin.y + 2 * rayonTuiles) * enPx);
 

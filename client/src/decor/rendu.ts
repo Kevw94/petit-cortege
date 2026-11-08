@@ -155,7 +155,6 @@ export class DecorAffiche {
 }
 
 /** Étire une image entre deux coins à l'écran, arrondis au pixel (pas de joint entre blocs voisins). */
-/** Étire une image entre deux coins à l'écran, au pixel près. */
 export function placer(image: Phaser.GameObjects.Image, a: PointPx, b: PointPx): void {
   const x0 = Math.round(a.x);
   const y0 = Math.round(a.y);

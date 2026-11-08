@@ -18,7 +18,9 @@ export function creerVoileMeteo(parent: HTMLElement, manif: () => ManifPubliee):
     const m = manif();
     const a = ambiance(m.meteo, m.parcours.coordinates[0]!, new Date());
     // Vue de dessus, sans lumière propre aux sprites : la nuit assombrit moins qu'en 3D.
-    const lumiere = 0.35 + 0.65 * a.lumiere;
+    // Ciel bouché de jour (soleil voilé) : la ville grisaille un peu.
+    const voilee = 1 - 0.14 * (1 - Math.min(1, a.soleil.intensite / 1.6)) * (a.nuit ? 0 : 1);
+    const lumiere = (0.35 + 0.65 * a.lumiere) * voilee;
     const c = (decalage: number) => Math.round(((a.teinte >> decalage) & 255) * lumiere);
     voile.style.backgroundColor = `rgb(${c(16)} ${c(8)} ${c(0)})`;
     gouttes.dataset.sorte = a.precipitation?.sorte ?? '';

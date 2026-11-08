@@ -637,8 +637,8 @@ canvas.image-finale {
 }
 
 /* ------------------------------------------------------------------------------------------
-   Accueil : la liste des manifs. Le bitume de la rue, les manifs en pancartes de carton
-   écrites au feutre, leur parcours en marquage jaune (la couleur du tracé en jeu). */
+   Accueil : la liste des manifs. Le bitume de la rue, les manifs sur des cartons écrits
+   au feutre, leur parcours en marquage jaune (la couleur du tracé en jeu). */
 body[data-page='liste'] {
   --bitume: #34383d;
   --bitume-clair: #43484e;
@@ -704,7 +704,7 @@ body[data-page='liste'] .pied-de-page a {
   line-height: 1.5;
 }
 
-.pancartes {
+.cartons {
   list-style: none;
   margin: 0 0 36px;
   padding: 0;
@@ -712,8 +712,8 @@ body[data-page='liste'] .pied-de-page a {
   gap: 26px;
 }
 
-/* La pancarte : un carton tenu à la main, légèrement de travers. */
-.pancarte-manif {
+/* Chaque manif : un carton tenu à la main, légèrement de travers. */
+.carton-manif {
   position: relative;
   display: grid;
   grid-template-columns: 7.5rem 1fr;
@@ -729,12 +729,12 @@ body[data-page='liste'] .pied-de-page a {
   transition: transform 0.2s ease;
 }
 
-.pancarte-manif:hover,
-.pancarte-manif:focus-visible {
+.carton-manif:hover,
+.carton-manif:focus-visible {
   transform: rotate(0deg) translateY(-2px);
 }
 
-.pancarte-manif:focus-visible {
+.carton-manif:focus-visible {
   outline: 3px solid var(--marquage);
   outline-offset: 4px;
 }
@@ -782,14 +782,14 @@ body[data-page='liste'] .pied-de-page a {
   }
 }
 
-.pancarte-texte {
+.carton-texte {
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-width: 0;
 }
 
-.pancarte-titre {
+.carton-titre {
   font-family: 'Permanent Marker', system-ui, sans-serif;
   font-weight: 400;
   font-size: 1.35rem;
@@ -797,12 +797,12 @@ body[data-page='liste'] .pied-de-page a {
   overflow-wrap: anywhere;
 }
 
-.pancarte-lieu {
+.carton-lieu {
   font-size: 0.9rem;
   line-height: 1.35;
 }
 
-.pancarte-etat {
+.carton-etat {
   align-self: flex-start;
   margin-top: 2px;
   padding: 2px 8px;
@@ -813,12 +813,12 @@ body[data-page='liste'] .pied-de-page a {
   color: var(--craie);
 }
 
-.pancarte-etat[data-phase='en-marche'] {
+.carton-etat[data-phase='en-marche'] {
   background: var(--marquage);
   color: var(--encre);
 }
 
-.pancarte-details {
+.carton-details {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 14px;
@@ -853,7 +853,7 @@ body[data-page='liste'] .pied-de-page a {
 }
 
 @media (max-width: 380px) {
-  .pancarte-manif {
+  .carton-manif {
     grid-template-columns: 1fr;
   }
 
@@ -867,12 +867,12 @@ body[data-page='liste'] .pied-de-page a {
     animation: none;
   }
 
-  .pancarte-manif {
+  .carton-manif {
     transition: none;
   }
 }
 
-/* Vue d'une manif : le titre écrit au feutre, comme sur les pancartes de l'accueil. */
+/* Vue d'une manif : le titre écrit au feutre, comme sur les cartons de l'accueil. */
 .carte h1.titre-manif {
   font-family: 'Permanent Marker', system-ui, sans-serif;
   font-weight: 400;

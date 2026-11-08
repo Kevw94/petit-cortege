@@ -16,9 +16,11 @@ Le porteur veut que la vue d'une manif ressemble au temps qu'il fait sur place (
 
 ## Accueil : police au feutre
 
-La liste des manifs devient une rue (fond bitume) où chaque manif est une pancarte en carton, titrée au feutre avec **Permanent Marker** (Font Diner, Apache 2.0), servie par le site (paquet `@fontsource`, jamais Google Fonts : une police chargée depuis un tiers lui donnerait l'IP des visiteurs, ADR 0002).
+La liste des manifs devient une rue (fond bitume) où chaque manif est un carton tenu à la main (pas une « pancarte » au sens du glossaire : ni slogan ni avatar), titré au feutre avec **Permanent Marker** (Font Diner, Apache 2.0), servie par le site (paquet `@fontsource`, jamais Google Fonts : une police chargée depuis un tiers lui donnerait l'IP des visiteurs, ADR 0002).
 
 _Contredit ADR 0006 (« assets tiers : CC0 uniquement »)_, mais à rouvrir pour les polices : l'ADR vise à ne pas mélanger des licences à obligations de partage (CC BY-SA, GPL) avec les visuels ; Apache 2.0 est permissive, sans partage à l'identique, et ne s'applique qu'au fichier de police, crédité dans les mentions légales. Si le porteur préfère s'en tenir au CC0, revenir à la police système ne touche que `style.css`.
+
+Les couleurs du plan et du ciel sont choisies à la main (constantes `COULEURS_PLAN`, palettes d'`ambiance`), pas tirées de la palette Kenney : ce sont des aplats de fond, pas des visuels de personnages ou de décor au sens de l'ADR 0006.
 
 ## Conséquences
 

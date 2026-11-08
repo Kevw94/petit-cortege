@@ -30,7 +30,7 @@ import { calculerCortege, type Cortege } from './cortege/cortege';
 import { composerFoule } from './cortege/foule';
 import { MasseDeFoule } from './foule/masse';
 import { empriseDuPlan, type PlanAffichable } from './decor/plan';
-import { DecorAffiche, placer as etirerImage, prechargerDecor } from './decor/rendu';
+import { DecorAffiche, placer as placerImage, prechargerDecor } from './decor/rendu';
 import { TraceAuSol } from './decor/trace';
 import { pancartesAffichees, type PorteurDePancarte } from './pancartes/affichage';
 import { dessinerPancarte, SlogansAffiches } from './pancartes/dessin';
@@ -212,7 +212,7 @@ export class SceneCortege extends Phaser.Scene {
     const vers = versEcran(this.#cadrage!, ecran);
     if (this.#plan) {
       const { image, coin, largeurM, hauteurM } = this.#plan;
-      etirerImage(image, vers(coin), vers({ x: coin.x + largeurM, y: coin.y + hauteurM }));
+      placerImage(image, vers(coin), vers({ x: coin.x + largeurM, y: coin.y + hauteurM }));
     }
     this.#decor?.afficher(this.#cadrage!, ecran, vers, (y) => this.#profondeurSelonY(y));
     if (this.#parcoursADessiner) {

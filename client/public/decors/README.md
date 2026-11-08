@@ -20,14 +20,14 @@ npm run decor -- tilemap --parcours donnees/osm/republique-nation/parcours.geojs
   --osm donnees/osm/republique-nation/extrait-overpass.json --sortie client/public/decors/republique-nation.json
 ```
 
-Plan de la ville (extrait Overpass téléchargé par morceaux, voir `donnees/osm/README.md`) :
+Plan de la ville (extrait Overpass d'environ 1,5 km autour du parcours, téléchargé en 4 × 4 morceaux, voir
+`donnees/osm/README.md`) :
 
 ```sh
 npm run decor -- plan --parcours donnees/osm/republique-nation/parcours.geojson \
-  --osm <morceau-0-0.json> --osm <morceau-0-1.json> … --decor client/public/decors/republique-nation.json
+  --overpass https://maps.mail.ru/osm/tools/overpass/api/interpreter --morceaux 4 \
+  --decor client/public/decors/republique-nation.json
 ```
-
-ou directement `--overpass <url>` si le serveur accepte une requête de cette taille.
 
 Les cartes s'ouvrent dans Tiled (carte infinie, blocs de 32 × 32) pour un nettoyage à la main ; les chemins des
 tilesets pointent vers `assets/kenney/`. Couches de tuiles : `sol` (rues, verts, eau, cours), `ponts`
