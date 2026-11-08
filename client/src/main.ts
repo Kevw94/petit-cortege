@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
-import { apparenceAuHasard, ATTRIBUTION_OSM, type FichierEntrees } from '@petit-cortege/shared';
+import { apparenceAuHasard, ATTRIBUTION_OSM, COULEURS_PLAN, type FichierEntrees, type ManifPubliee } from '@petit-cortege/shared';
+import '@fontsource/permanent-marker/latin-400.css';
 import {
   avatarsPropres,
   jetonDeRetrait,
@@ -7,6 +8,7 @@ import {
   suivreFinsDesManifs,
 } from './avatars-propres';
 import { chargerDecor } from './decor/chargement';
+import { chargerPlan, decoderPlan } from './decor/plan';
 import { creerPanneauComposition, type PanneauComposition } from './composition/panneau';
 import { sectionApparence } from './composition/section-apparence';
 import { pancarteAuHasard, sectionPancarte } from './composition/section-pancarte';
@@ -19,6 +21,9 @@ import { Publication } from './publication';
 import { hacherJetonRetrait, nouveauJetonRetrait, RetraitRefuse, retirerMesAvatars } from './retrait';
 import { pageLegale, piedDePage } from './pages/pages-legales';
 import { creerNavigation, VuePerimee, type Vue } from './navigation';
+import { etatDeLaManif, traceMiniature } from './liste/liste';
+import { resumeMeteo, type IconeMeteo } from './meteo/ambiance';
+import { creerVoileMeteo } from './meteo/voile-2d';
 import { lienManif, lireRoute } from './routage';
 import { SceneCortege, type DonneesScene } from './scene-cortege';
 import type { VueCortege } from './vue-cortege';
@@ -55,29 +60,69 @@ async function listeManifs() {
 const estTerminee = (manif: { fin: string }, maintenant = new Date()) => maintenant.getTime() >= Date.parse(manif.fin);
 
 async function afficherListe(vue: Vue): Promise<void> {
-  const { manifs } = await vue.attendre(listeManifs());
-  const ouvertes = manifs.filter((m) => !estTerminee(m));
-  const terminees = manifs.filter((m) => estTerminee(m)).reverse(); // les plus récentes d'abord
-  const element = (m: (typeof manifs)[number], detail: string) => `<li><a href="${lienManif(m.id)}">
-              <strong>${echapper(m.intitule)}</strong>
-              ${echapper(m.ville)} · ${detail}
-            </a></li>`;
-  interfaceEl.innerHTML = `
-    <section class="carte">
-      <h1>Petit Cortège</h1>
-      <p>${ouvertes.length > 0 ? 'Choisis un cortège à rejoindre.' : 'Aucun cortège ouvert pour le moment.'}</p>
-      <ul class="liste">
-        ${ouvertes.map((m) => element(m, `départ ${heure(m.depart)} · fin ${heure(m.fin)}`)).join('')}
-      </ul>
+  const afficher = (manifs: ManifPubliee[]) => {
+    const maintenant = new Date();
+    const ouvertes = manifs.filter((m) => !estTerminee(m, maintenant));
+    const terminees = manifs.filter((m) => estTerminee(m, maintenant)).reverse(); // les plus récentes d'abord
+    interfaceEl.innerHTML = `
+    <main class="accueil">
+      <header class="accueil-tete">
+        <h1 class="accueil-titre">Petit Cortège</h1>
+        <p class="accueil-intro">Soutiens une manif à distance : ton avatar marche avec le cortège, sur le parcours et à l’heure annoncés.</p>
+      </header>
+      <section aria-labelledby="titre-ouvertes">
+        <h2 id="titre-ouvertes" class="accueil-section">${ouvertes.length > 0 ? 'Cortèges à rejoindre' : 'Aucun cortège ouvert pour le moment'}</h2>
+        ${
+          ouvertes.length > 0
+            ? `<ul class="pancartes">${ouvertes.map((m, i) => pancarteDeManif(m, i, maintenant)).join('')}</ul>`
+            : `<p class="accueil-vide">Les grandes journées nationales apparaissent ici dès que leur parcours est publié.</p>`
+        }
+      </section>
       ${
         terminees.length === 0
           ? ''
-          : `<h2 class="sous-titre">Terminées : revoir l’image finale</h2>
-      <ul class="liste">
-        ${terminees.map((m) => element(m, `terminée ${heure(m.fin)}`)).join('')}
-      </ul>`
+          : `<section aria-labelledby="titre-terminees">
+        <h2 id="titre-terminees" class="accueil-section">Terminées : revoir l’image finale</h2>
+        <ul class="terminees">${terminees.map((m) => `<li><a href="${lienManif(m.id)}"><strong>${echapper(m.intitule)}</strong>
+          <span>${echapper(m.ville)}, terminée ${heure(m.fin)}</span></a></li>`).join('')}</ul>
+      </section>`
       }
-    </section>`;
+    </main>`;
+  };
+  afficher((await vue.attendre(listeManifs())).manifs);
+  // État (« départ dans… »), soutiens et météo à jour sans recharger la page.
+  vue.rafraichir({ intervalleMs: INTERVALLE_RAFRAICHISSEMENT_MS, charger: listeManifs, appliquer: (liste) => afficher(liste.manifs) });
+}
+
+/** Inclinaisons des pancartes, à tour de rôle : tenues à la main, pas alignées au cordeau. */
+const INCLINAISONS = [-1.4, 0.9, -0.6, 1.3, -1];
+const ICONES_METEO: Record<IconeMeteo, string> = {
+  soleil: '☀️', lune: '🌙', eclaircies: '🌤️', nuages: '☁️', brouillard: '🌫️', pluie: '🌧️', neige: '🌨️', orage: '⛈️',
+};
+
+function pancarteDeManif(m: ManifPubliee, rang: number, maintenant: Date): string {
+  const etat = etatDeLaManif(m, maintenant);
+  const trace = traceMiniature(m.parcours, { largeur: 120, hauteur: 96, marge: 12 });
+  const [depart, arrivee] = [trace.points[0]!, trace.points.at(-1)!];
+  const meteo = m.meteo && resumeMeteo(m.meteo, m.parcours.coordinates[0]!, maintenant);
+  const soutiens = `${m.compteur} ${m.compteur > 1 ? 'soutiens' : 'soutien'}`;
+  return `<li><a class="pancarte-manif" href="${lienManif(m.id)}" style="--inclinaison: ${INCLINAISONS[rang % INCLINAISONS.length]}deg">
+    <svg class="trace-miniature" viewBox="0 0 120 96" aria-hidden="true">
+      <path class="trace-fond" d="${trace.d}" />
+      <path class="trace-ligne" d="${trace.d}" style="--longueur: ${Math.ceil(trace.longueur)}" />
+      <circle class="trace-depart" cx="${depart.x.toFixed(1)}" cy="${depart.y.toFixed(1)}" r="4" />
+      <circle class="trace-arrivee" cx="${arrivee.x.toFixed(1)}" cy="${arrivee.y.toFixed(1)}" r="5" />
+    </svg>
+    <span class="pancarte-texte">
+      <strong class="pancarte-titre">${echapper(m.intitule)}</strong>
+      <span class="pancarte-lieu">${echapper(m.ville)}, départ ${heure(m.depart)}</span>
+      <span class="pancarte-etat" data-phase="${etat.phase}">${etat.texte}</span>
+      <span class="pancarte-details">
+        <span>${soutiens}</span>
+        ${meteo ? `<span><span aria-hidden="true">${ICONES_METEO[meteo.icone]}</span> ${meteo.texte}</span>` : ''}
+      </span>
+    </span>
+  </a></li>`;
 }
 
 async function afficherManif(id: string, vue: Vue): Promise<void> {
@@ -89,6 +134,8 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
   }
   // Décor OSM : tous les décors publiés sont demandés, quelle que soit la manif (ADR 0002).
   const decor = chargerDecor(manif.parcours.coordinates);
+  // Plan de la ville autour du décor (ADR 0008) : même règle, tous les plans sont demandés.
+  const plan = chargerPlan(manif.parcours.coordinates).then((charge) => (charge ? decoderPlan(charge) : null));
   let entrees: FichierEntrees[] = await vue.attendre(publication.entreesPour(manif, new Date()));
   let retraitsPublies: string[] = await vue.attendre(publication.retraits().catch(() => []));
   // Retirés depuis cet appareil : effacés tout de suite, sans attendre le fichier des retraits.
@@ -102,9 +149,10 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
   interfaceEl.innerHTML = `
     <section class="carte">
       <a class="retour" href="#/">← Toutes les manifs</a>
-      <h1>${echapper(manif.intitule)}</h1>
+      <h1 class="titre-manif">${echapper(manif.intitule)}</h1>
       <p>${echapper(manif.ville)} · départ ${heure(manif.depart)}</p>
       <p data-etat></p>
+      <p class="meteo-manif" data-meteo></p>
     </section>
     <div class="camera" role="group" aria-label="Caméra">
       <button type="button" data-suivre hidden>Suivre</button>
@@ -119,7 +167,9 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
       <button type="button" class="rappel" data-rappel hidden>Rappel pour voir l’image finale</button>
       <p class="message" data-message role="status"></p>
     </section>
-    <p class="attribution">${ATTRIBUTION_OSM.replace('OpenStreetMap', '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>')}</p>`;
+    <p class="attribution">${ATTRIBUTION_OSM.replace('OpenStreetMap', '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>')}${
+      manif.meteo ? ' · météo <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a>' : ''
+    }</p>`;
   const etatEl = interfaceEl.querySelector<HTMLParagraphElement>('[data-etat]')!;
   const boutonEl = interfaceEl.querySelector<HTMLButtonElement>('[data-rejoindre]')!;
   const retirerEl = interfaceEl.querySelector<HTMLButtonElement>('[data-retirer]')!;
@@ -128,6 +178,13 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
   const suivreEl = interfaceEl.querySelector<HTMLButtonElement>('[data-suivre]')!;
   const ensembleEl = interfaceEl.querySelector<HTMLButtonElement>('[data-ensemble]')!;
   const modeEl = interfaceEl.querySelector<HTMLButtonElement>('[data-mode]')!;
+  const meteoEl = interfaceEl.querySelector<HTMLParagraphElement>('[data-meteo]')!;
+  /** Météo publiée au départ du parcours (ADR 0008), rafraîchie avec la liste des manifs. */
+  const afficherMeteo = (m: ManifPubliee) => {
+    const resume = m.meteo && resumeMeteo(m.meteo, m.parcours.coordinates[0]!, new Date());
+    meteoEl.textContent = resume ? `${ICONES_METEO[resume.icone]} ${resume.texte}` : '';
+  };
+  afficherMeteo(manif);
 
   // Rappel d'agenda (.ics) généré ici, au titre neutre, à l'heure de fin (ADR 0002 : seul
   // le fragment désigne la manif, jamais envoyé au serveur).
@@ -244,6 +301,7 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
   const donnees: DonneesScene = {
     manif,
     decor: await vue.attendre(decor),
+    plan: await vue.attendre(plan),
     entrees: () => entrees,
     propres: () => propres,
     retraits: () => (retiresIci.size === 0 ? retraitsPublies : [...retraitsPublies, ...retiresIci]),
@@ -313,6 +371,7 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
     },
     appliquer: (aJour) => {
       donnees.manif = aJour.manif;
+      afficherMeteo(aJour.manif);
       entrees = aJour.entrees;
       retraitsPublies = aJour.retraits ?? retraitsPublies;
     },
@@ -324,18 +383,23 @@ function creerVue2D(donnees: DonneesScene): VueCortege {
   const jeu = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'jeu',
-    backgroundColor: '#f4f1ea',
+    // Au-delà du plan de la ville : la couleur de ses îlots, sans coupure.
+    backgroundColor: `#${COULEURS_PLAN.ilot.toString(16).padStart(6, '0')}`,
     scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
     scene: [],
   });
   jeu.scene.add('cortege', SceneCortege, true, donnees);
   // La scène n'existe qu'une fois le jeu démarré : on la cherche au moment du clic.
   const scene = () => jeu.scene.getScene('cortege') as SceneCortege | null;
+  const meteo = creerVoileMeteo(document.querySelector<HTMLElement>('#jeu')!, () => donnees.manif);
   return {
     suivreLeCortege: () => scene()?.suivreLeCortege(),
     vueDEnsemble: () => scene()?.vueDEnsemble(),
     zoomer: (facteur) => scene()?.zoomer(facteur),
-    detruire: () => jeu.destroy(true),
+    detruire: () => {
+      meteo.detruire();
+      jeu.destroy(true);
+    },
   };
 }
 
@@ -405,6 +469,7 @@ async function naviguer(): Promise<void> {
   const vue = navigation.nouvelleVue(); // arrête le jeu et les minuteries de la vue quittée
   interfaceEl.innerHTML = '';
   const route = lireRoute(window.location.hash);
+  document.body.dataset.page = route.page;
   try {
     if (route.page === 'manif') await afficherManif(route.id, vue);
     else if (route.page === 'legale') interfaceEl.innerHTML = pageLegale(route.id);

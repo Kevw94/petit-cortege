@@ -8,19 +8,22 @@
  * chargé que pour la vue d'une manif en 3D.
  */
 import * as THREE from 'three';
-import { decoderPancarte, METRES_PAR_TUILE, versTuiles, type Georeference, type Position } from '@petit-cortege/shared';
+import { COULEURS_PLAN, decoderPancarte, METRES_PAR_TUILE, versTuiles, type Georeference, type Position } from '@petit-cortege/shared';
 import { BUDGET_AVATARS_DESSINES } from '../apparence/affichage';
 import type { PointM } from '../cadrage';
 import { cibleDeSuivi } from '../camera';
 import { calculerCortege, COLONNES_FOULE, PAS_FOULE_M } from '../cortege/cortege';
 import { composerFoule } from '../cortege/foule';
 import { chargerImagesTilesets } from '../decor/cuisson';
+import { empriseDuPlan } from '../decor/plan';
 import { PAQUET, TEINTE_MASSE, VARIANTES_PAQUET } from '../foule/paquets';
 import { tamponsDeMasse } from '../foule/tampons';
+import { ambiance as ambianceDe } from '../meteo/ambiance';
 import { CADRE_PANCARTE_M } from '../pancartes/canvas';
 import type { DonneesScene } from '../scene-cortege';
 import type { VueCortege } from '../vue-cortege';
 import { boitesDeBatiments } from './batiments';
+import { CielAmbiant } from './ciel';
 import { Billboards } from './billboards';
 import {
   capDeSuivi,
@@ -37,16 +40,17 @@ import {
   zoomPourDistance,
 } from './camera3d';
 import { detruireGroupe, maillageBatiments } from './maillage-batiments';
+import { Precipitations } from './precipitations';
 import { creerPlaceur, versScene } from './repere';
 import { materiauDeSol, ORDRE_SOL, Sol } from './sol';
 import { atlasApparences, atlasPancartes, chargerCouchesApparence, cleSansSlogan, texturePaquets } from './textures';
 import { TraceAuSol3D } from './trace';
 
 const CHAMP_DEG = CHAMP_VERTICAL_DEG;
-/** Ciel pâle ; la brume a la même couleur, si bien que la ville se fond dans l'horizon. */
-const COULEUR_CIEL = 0xcfdde6;
-/** Sol au-delà du décor OSM (bande d'environ 200 m) : un gris de ville, noyé dans la brume. */
-const COULEUR_SOL_LOINTAIN = 0x8f989c;
+/** L'ambiance (heure, météo publiée) est recalculée à cet intervalle, ou dès que la météo change. */
+const INTERVALLE_AMBIANCE_S = 30;
+/** Sol au-delà du plan de la ville : la couleur de ses îlots (son bord s'y fond), noyée dans la brume. */
+const COULEUR_SOL_LOINTAIN = COULEURS_PLAN.ilot;
 const COTE_SOL_LOINTAIN_M = 40_000;
 /** Un avatar : cellule de 24 × 16 px de l'atlas = 3 m × 2 m (16 px par tuile de 2 m). */
 const AVATAR_M = { largeur: 3, hauteur: 2 } as const;
@@ -81,6 +85,25 @@ function projeteur(georef: Georeference) {
   };
 }
 
+/** Plan de la ville à plat, sous le décor : pixels nets de près, lissés de loin. */
+function planDeLaVille(
+  { plan, toile }: NonNullable<DonneesScene['plan']>,
+  projeter: (p: Position) => PointM,
+  anisotropie: number,
+): THREE.Mesh {
+  const { coin, largeurM, hauteurM } = empriseDuPlan(plan, projeter);
+  const texture = new THREE.CanvasTexture(toile);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.anisotropy = anisotropie;
+  const geometrie = new THREE.PlaneGeometry(largeurM, hauteurM).rotateX(-Math.PI / 2);
+  const mesh = new THREE.Mesh(geometrie, materiauDeSol({ map: texture }, ORDRE_SOL.plan));
+  mesh.position.set(coin.x + largeurM / 2, -0.03, coin.y + hauteurM / 2);
+  mesh.renderOrder = ORDRE_SOL.plan;
+  return mesh;
+}
+
 export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesScene): Promise<VueCortege> {
   const [couches, images] = await Promise.all([chargerCouchesApparence(), chargerImagesTilesets()]);
 
@@ -95,12 +118,22 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
   const anisotropie = Math.min(4, renderer.capabilities.getMaxAnisotropy());
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(COULEUR_CIEL);
-  scene.fog = new THREE.Fog(COULEUR_CIEL, 100, 600);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x9a9384, 2.2));
-  const soleil = new THREE.DirectionalLight(0xfff4e0, 1.4);
-  soleil.position.set(-0.6, 1, 0.9); // Sud-ouest : les façades sud sont claires, les nord plus sombres.
-  scene.add(soleil);
+  // Ciel, brume et lumières selon la météo publiée et l'heure au départ du parcours (ADR 0008).
+  const ciel = new CielAmbiant(scene);
+  const precipitations = new Precipitations();
+  scene.add(precipitations.groupe);
+  let meteoAppliquee: typeof donnees.manif.meteo | null = null;
+  let avantAmbiance = 0;
+  const actualiserAmbiance = (dt: number) => {
+    avantAmbiance -= dt;
+    if (avantAmbiance > 0 && meteoAppliquee === donnees.manif.meteo) return;
+    avantAmbiance = INTERVALLE_AMBIANCE_S;
+    meteoAppliquee = donnees.manif.meteo;
+    const a = ambianceDe(donnees.manif.meteo, donnees.manif.parcours.coordinates[0]!, new Date());
+    ciel.appliquer(a);
+    precipitations.appliquer(a);
+  };
+  actualiserAmbiance(0);
   const camera = new THREE.PerspectiveCamera(CHAMP_DEG, 1, 0.5, 5000);
 
   const { decor } = donnees;
@@ -122,6 +155,10 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
   solLointain.position.set(centreParcours.x, -0.05, centreParcours.y);
   solLointain.renderOrder = ORDRE_SOL.lointain;
   scene.add(solLointain);
+
+  // Plan de la ville autour du décor (ADR 0008) : ce qu'on voit en dézoomant, au-delà de la bande.
+  const plan = donnees.plan ? planDeLaVille(donnees.plan, projeter, anisotropie) : null;
+  if (plan) scene.add(plan);
 
   // Décor : sol, tracé, bâtiments.
   const sol = decor ? new Sol(decor, images, anisotropie) : null;
@@ -388,11 +425,16 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
     camera.far = parametres.distance * 3 + 1200;
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld();
-    const brouillard = scene.fog as THREE.Fog;
     // Brume : de près, la ville s'estompe vers l'horizon à quelques centaines de mètres ;
-    // de haut, elle recule assez pour ne rien voiler.
-    brouillard.near = parametres.distance * 1.5 + 60;
-    brouillard.far = parametres.distance * 3 + 450;
+    // de haut, elle recule assez pour ne rien voiler. Plus proche sous la pluie, le brouillard.
+    actualiserAmbiance(dt);
+    ciel.animer(dt);
+    ciel.brume(parametres.distance * 1.5 + 60, parametres.distance * 3 + 450);
+    (solLointain.material as THREE.MeshBasicMaterial).color.setHex(COULEUR_SOL_LOINTAIN).multiply(ciel.eclairage);
+    if (plan) (plan.material as THREE.MeshBasicMaterial).color.copy(ciel.eclairage);
+    sol?.eclairer(ciel.eclairage);
+    for (const b of billboards) b.eclairer(ciel.eclairage);
+    precipitations.actualiser(dt, { x: regard.x, z: regard.y }, parametres.distance, hauteur);
     projection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     const ratio = renderer.getPixelRatio();
     for (const b of billboards) b.ecran(PX_MIN_AVATAR * ratio, hauteur * ratio);
@@ -504,6 +546,15 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
       renderer.setAnimationLoop(null);
       observateur.disconnect();
       sol?.detruire();
+      if (plan) {
+        plan.geometry.dispose();
+        (plan.material as THREE.MeshBasicMaterial).map?.dispose();
+        (plan.material as THREE.Material).dispose();
+      }
+      solLointain.geometry.dispose();
+      (solLointain.material as THREE.Material).dispose();
+      ciel.detruire();
+      precipitations.detruire();
       trace.detruire();
       if (batiments) detruireGroupe(batiments);
       for (const b of billboards) b.detruire();

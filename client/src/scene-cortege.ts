@@ -29,7 +29,8 @@ import { cadrerEnTroisiemePersonne, cibleDeSuivi, ECHELLE_SUIVI_PX_PAR_M, LISSAG
 import { calculerCortege, type Cortege } from './cortege/cortege';
 import { composerFoule } from './cortege/foule';
 import { MasseDeFoule } from './foule/masse';
-import { DecorAffiche, prechargerDecor } from './decor/rendu';
+import { empriseDuPlan, type PlanAffichable } from './decor/plan';
+import { DecorAffiche, placer as etirerImage, prechargerDecor } from './decor/rendu';
 import { TraceAuSol } from './decor/trace';
 import { pancartesAffichees, type PorteurDePancarte } from './pancartes/affichage';
 import { dessinerPancarte, SlogansAffiches } from './pancartes/dessin';
@@ -38,6 +39,8 @@ export interface DonneesScene {
   manif: ManifPubliee;
   /** Décor OSM couvrant le parcours (null : pas de décor, fond uni). */
   decor: Decor | null;
+  /** Plan de la ville autour du décor, vu quand on dézoome (null : sol uni au-delà du décor). */
+  plan: PlanAffichable | null;
   /** Fichiers d'entrées chargés à ce jour (mis à jour par le chargement périodique). */
   entrees: () => FichierEntrees[];
   /** Avatars du soutien sur cet appareil (affichés tout de suite, mis en valeur). */
@@ -51,6 +54,8 @@ export interface DonneesScene {
 }
 
 const MARGE_PX = 32;
+/** Le plan de la ville, sous le décor (vue d'ensemble à −100). */
+const PROFONDEUR_PLAN = -101;
 const COULEUR_TOI = 0xf1c40f;
 /** Un sprite Kenney de 16 px de haut représente 2 m (une tuile). */
 const METRES_PAR_PX_ATLAS = 2 / 16;
@@ -84,6 +89,7 @@ function projeteur(georef: Georeference) {
 export class SceneCortege extends Phaser.Scene {
   #donnees!: DonneesScene;
   #decor: DecorAffiche | null = null;
+  #plan: { image: Phaser.GameObjects.Image; coin: PointM; largeurM: number; hauteurM: number } | null = null;
   #trace!: TraceAuSol;
   #foule!: Phaser.GameObjects.Graphics;
   #avatarsPropres!: Phaser.GameObjects.Graphics;
@@ -138,6 +144,12 @@ export class SceneCortege extends Phaser.Scene {
     const { decor, manif } = this.#donnees;
     this.#projeter = projeteur(decor?.georef ?? { origine: manif.parcours.coordinates[0]! });
     if (decor) this.#decor = new DecorAffiche(this, decor);
+    if (this.#donnees.plan) {
+      const { plan, toile } = this.#donnees.plan;
+      const cle = `plan-${Phaser.Math.RND.uuid()}`;
+      this.textures.addCanvas(cle, toile)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
+      this.#plan = { image: this.add.image(0, 0, cle).setOrigin(0, 0).setDepth(PROFONDEUR_PLAN), ...empriseDuPlan(plan, this.#projeter) };
+    }
     this.#trace = new TraceAuSol(this, manif.parcours.coordinates.map(this.#projeter));
     this.#ensemble = this.#cadrageDEnsemble();
     this.#cadrage = cadrerEnTroisiemePersonne(this.#ensemble, this.#projeter(this.#donnees.manif.parcours.coordinates[0]!));
@@ -198,6 +210,10 @@ export class SceneCortege extends Phaser.Scene {
     }
     const ecran = this.#ecran();
     const vers = versEcran(this.#cadrage!, ecran);
+    if (this.#plan) {
+      const { image, coin, largeurM, hauteurM } = this.#plan;
+      etirerImage(image, vers(coin), vers({ x: coin.x + largeurM, y: coin.y + hauteurM }));
+    }
     this.#decor?.afficher(this.#cadrage!, ecran, vers, (y) => this.#profondeurSelonY(y));
     if (this.#parcoursADessiner) {
       this.#parcoursADessiner = false;

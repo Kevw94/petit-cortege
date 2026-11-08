@@ -71,10 +71,12 @@ export class Billboards {
   readonly #levers: THREE.InstancedBufferAttribute;
   readonly #materiau: THREE.ShaderMaterial;
   readonly capacite: number;
+  readonly #teinte: THREE.Color;
   #nombre = 0;
 
   constructor({ texture, capacite, teinte = 0xffffff, ordre = 0, devant = false }: OptionsBillboards) {
     this.capacite = capacite;
+    this.#teinte = new THREE.Color(teinte);
     const g = new THREE.InstancedBufferGeometry();
     g.setAttribute('coin', new THREE.Float32BufferAttribute([-0.5, 0, 0.5, 0, 0.5, 1, -0.5, 1], 2));
     // Attribut `position` factice : Three.js en a besoin pour compter les sommets.
@@ -115,6 +117,11 @@ export class Billboards {
   ecran(pxMin: number, hauteurEcran: number): void {
     this.#materiau.uniforms.uPxMin!.value = pxMin;
     this.#materiau.uniforms.uHauteurEcran!.value = hauteurEcran;
+  }
+
+  /** Éclairage ambiant (nuit, pluie) multiplié par la teinte propre des sprites. */
+  eclairer(eclairage: THREE.Color): void {
+    (this.#materiau.uniforms.uTeinte!.value as THREE.Color).copy(this.#teinte).multiply(eclairage);
   }
 
   /** Commence une nouvelle image : aucune instance. */

@@ -21,7 +21,7 @@ const BLOCS_CUITS_PAR_IMAGE = 2;
 const DISTANCE_DETAIL_M = 700;
 
 /** Ordre de dessin du sol (avant tout le reste). */
-export const ORDRE_SOL = { lointain: -11, ensemble: -10, blocs: -9, trace: -8, marques: -7, halo: -6 } as const;
+export const ORDRE_SOL = { lointain: -11, plan: -10.5, ensemble: -10, blocs: -9, trace: -8, marques: -7, halo: -6 } as const;
 
 export function materiauDeSol(options: THREE.MeshBasicMaterialParameters, ordre: number): THREE.MeshBasicMaterial {
   const m = new THREE.MeshBasicMaterial({ ...options, depthWrite: false, depthTest: false });
@@ -55,6 +55,7 @@ export class Sol {
   readonly #frustum = new THREE.Frustum();
   readonly #boite = new THREE.Box3();
   readonly #matrice = new THREE.Matrix4();
+  readonly #eclairage = new THREE.Color(1, 1, 1);
   #image = 0;
 
   constructor(decor: Decor, images: ImagesTilesets, anisotropie: number) {
@@ -76,6 +77,15 @@ export class Sol {
       ORDRE_SOL.ensemble,
     );
     this.groupe.add(ensemble);
+  }
+
+  /** Éclairage ambiant (nuit, pluie) : le sol n'est pas éclairé par les lumières de la scène. */
+  eclairer(eclairage: THREE.Color): void {
+    if (this.#eclairage.equals(eclairage)) return;
+    this.#eclairage.copy(eclairage);
+    this.groupe.traverse((o) => {
+      if (o instanceof THREE.Mesh) (o.material as THREE.MeshBasicMaterial).color.copy(eclairage);
+    });
   }
 
   /** À chaque image : affiche les blocs proches dans le champ, en cuit quelques-uns de plus. */
@@ -122,7 +132,7 @@ export class Sol {
       bloc.y * METRES_PAR_TUILE,
       COTE_BLOC_M,
       COTE_BLOC_M,
-      materiauDeSol({ map: texture, alphaTest: 0.5 }, ORDRE_SOL.blocs),
+      materiauDeSol({ map: texture, alphaTest: 0.5, color: this.#eclairage }, ORDRE_SOL.blocs),
       ORDRE_SOL.blocs,
     );
     this.groupe.add(mesh);

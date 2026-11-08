@@ -68,7 +68,9 @@ const CONTENUS: Record<IdPageLegale, () => string> = {
     <h2>Crédits</h2>
     <p>Personnages et décor : packs Roguelike de Kenney (kenney.nl), dans le domaine public (CC0). Données
       cartographiques : © les contributeurs d’OpenStreetMap, sous licence ODbL ; les cartes dérivées
-      d’OpenStreetMap utilisées par le jeu sont publiées sous la même licence.</p>
+      d’OpenStreetMap utilisées par le jeu sont publiées sous la même licence. Météo : Open-Meteo
+      (open-meteo.com), sous licence CC BY 4.0. Écriture des titres : police Permanent Marker (Font
+      Diner), sous licence Apache 2.0, servie par notre site.</p>
     <p>Code : ${valeur('licenceCode')}.</p>`,
 
   'vie-privee': () => `
@@ -82,6 +84,8 @@ const CONTENUS: Record<IdPageLegale, () => string> = {
       <li>Ni cookie, ni traceur, ni mesure d’audience, ni publicité, ni script, police ou image chargés depuis
         un service tiers.</li>
       <li>Jamais ton adresse IP à côté d’une manif : ni en base de données, ni dans les journaux du serveur.</li>
+      <li>La météo affichée est relevée par notre serveur, au point de départ de chaque manif, auprès
+        d’Open-Meteo : ton appareil ne contacte aucun service météo.</li>
     </ul>
 
     <h2>Ce qui est stocké sur notre serveur</h2>
