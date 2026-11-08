@@ -21,7 +21,7 @@ const BLOCS_CUITS_PAR_IMAGE = 2;
 const DISTANCE_DETAIL_M = 700;
 
 /** Ordre de dessin du sol (avant tout le reste). */
-export const ORDRE_SOL = { ensemble: -10, blocs: -9, trace: -8, marques: -7, halo: -6 } as const;
+export const ORDRE_SOL = { lointain: -11, ensemble: -10, blocs: -9, trace: -8, marques: -7, halo: -6 } as const;
 
 export function materiauDeSol(options: THREE.MeshBasicMaterialParameters, ordre: number): THREE.MeshBasicMaterial {
   const m = new THREE.MeshBasicMaterial({ ...options, depthWrite: false, depthTest: false });

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CHAMP_VERTICAL_DEG,
+  DISTANCE_SUIVI_M,
   capDeSuivi,
+  nomDePlaceVisible,
   cibleDeVue,
   deplacerCible,
   DISTANCE_PROCHE_M,
@@ -83,7 +86,7 @@ describe('zoom de la caméra : de près de l’avatar à la vue de haut', () => 
     const p = parametresZoom(0, loin);
     expect(p.distance).toBe(DISTANCE_PROCHE_M);
     expect(p.distance).toBeLessThan(10);
-    expect(p.inclinaison).toBeGreaterThan(20 * DEG);
+    expect(p.inclinaison).toBeGreaterThan(15 * DEG);
     expect(p.inclinaison).toBeLessThan(40 * DEG);
   });
 
@@ -124,6 +127,38 @@ describe('zoom de la caméra : de près de l’avatar à la vue de haut', () => 
     expect(parametresZoom(zoomApresPincement(z, 0.5, loin), loin).distance).toBeCloseTo(80, 6);
     expect(zoomApresPincement(0.01, 100, loin)).toBe(0);
     expect(zoomApresPincement(0.99, 0.01, loin)).toBe(1);
+  });
+});
+
+describe('horizon en vue à la troisième personne', () => {
+  const loin = 3000;
+  const demiChamp = (CHAMP_VERTICAL_DEG / 2) * DEG;
+  /** Angle sous l'horizontale du regard, et de la direction caméra → point (x, y au sol, h de haut). */
+  const sousHorizontale = (de: { x: number; y: number; z: number }, vers: { x: number; y: number; z: number }) =>
+    Math.atan2(de.y - vers.y, Math.hypot(vers.x - de.x, vers.z - de.z));
+
+  for (const [nom, zoom] of [
+    ['au plus près', 0],
+    ['au zoom de suivi', zoomPourDistance(DISTANCE_SUIVI_M, loin)],
+  ] as const) {
+    it(`${nom} : l'horizon est à l'écran, sous le haut de l'image, et son avatar reste visible`, () => {
+      const p = parametresZoom(zoom, loin);
+      const pose = poseCamera({ cible: { x: 0, y: 0 }, cap: 0, ...p });
+      const regard = sousHorizontale(pose.position, pose.regard);
+      // L'horizon (angle 0) est au-dessus du centre, au moins 6° sous le bord haut.
+      expect(regard).toBeGreaterThan(0);
+      expect(regard).toBeLessThan(demiChamp - 6 * DEG);
+      // Son avatar (pieds au sol, à la cible) est sous le centre mais dans l'image.
+      const avatar = sousHorizontale(pose.position, { x: 0, y: 0, z: 0 });
+      expect(avatar).toBeGreaterThan(regard);
+      expect(avatar - regard).toBeLessThan(demiChamp - 2 * DEG);
+    });
+  }
+
+  it('en dézoomant jusqu’en haut, le regard revient sur le parcours, à la verticale', () => {
+    expect(parametresZoom(1, loin).avance).toBe(0);
+    const part = (z: number) => parametresZoom(z, loin).avance / parametresZoom(z, loin).distance;
+    expect(part(0)).toBeGreaterThan(part(0.6));
   });
 });
 
@@ -183,5 +218,16 @@ describe('glisser la vue', () => {
     // Regard vers le sud : avancer, c'est aller vers le sud.
     expect(apres.x).toBeCloseTo(0, 6);
     expect(apres.y).toBeCloseTo(40, 6);
+  });
+});
+
+describe('noms des places en 3D', () => {
+  it('de près, seuls les noms proches s’affichent : les lointains ne s’empilent pas sur l’horizon', () => {
+    expect(nomDePlaceVisible(120, DISTANCE_SUIVI_M)).toBe(true);
+    expect(nomDePlaceVisible(1500, DISTANCE_SUIVI_M)).toBe(false);
+  });
+
+  it('de haut, tous les noms du parcours s’affichent', () => {
+    expect(nomDePlaceVisible(1500, 3000)).toBe(true);
   });
 });

@@ -28,6 +28,8 @@ import {
   deplacerCible,
   DISTANCE_SUIVI_M,
   distancePourToutVoir,
+  CHAMP_VERTICAL_DEG,
+  nomDePlaceVisible,
   parametresZoom,
   poseCamera,
   rapprocherAngle,
@@ -40,9 +42,12 @@ import { materiauDeSol, ORDRE_SOL, Sol } from './sol';
 import { atlasApparences, atlasPancartes, chargerCouchesApparence, cleSansSlogan, texturePaquets } from './textures';
 import { TraceAuSol3D } from './trace';
 
-/** Champ vertical de la caméra (degrés). */
-const CHAMP_DEG = 50;
-const COULEUR_CIEL = 0xdfe4e2;
+const CHAMP_DEG = CHAMP_VERTICAL_DEG;
+/** Ciel pâle ; la brume a la même couleur, si bien que la ville se fond dans l'horizon. */
+const COULEUR_CIEL = 0xcfdde6;
+/** Sol au-delà du décor OSM (bande d'environ 200 m) : un gris de ville, noyé dans la brume. */
+const COULEUR_SOL_LOINTAIN = 0x8f989c;
+const COTE_SOL_LOINTAIN_M = 40_000;
 /** Un avatar : cellule de 24 × 16 px de l'atlas = 3 m × 2 m (16 px par tuile de 2 m). */
 const AVATAR_M = { largeur: 3, hauteur: 2 } as const;
 /** Pancarte tenue au-dessus de la tête (haut du crâne Kenney : 14 px sur 16). */
@@ -107,6 +112,16 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
   const ys = pointsParcours.map((p) => p.y);
   const centreParcours = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
   const rayonParcours = Math.max(...pointsParcours.map((p) => Math.hypot(p.x - centreParcours.x, p.y - centreParcours.y))) + 40;
+
+  // Sol lointain, sous tout le reste : au-delà de la bande OSM, la rue file vers l'horizon
+  // au lieu de s'arrêter sur le vide.
+  const solLointain = new THREE.Mesh(
+    new THREE.PlaneGeometry(COTE_SOL_LOINTAIN_M, COTE_SOL_LOINTAIN_M).rotateX(-Math.PI / 2),
+    materiauDeSol({ color: COULEUR_SOL_LOINTAIN }, ORDRE_SOL.lointain),
+  );
+  solLointain.position.set(centreParcours.x, -0.05, centreParcours.y);
+  solLointain.renderOrder = ORDRE_SOL.lointain;
+  scene.add(solLointain);
 
   // Décor : sol, tracé, bâtiments.
   const sol = decor ? new Sol(decor, images, anisotropie) : null;
@@ -360,7 +375,13 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
     regard = { x: regard.x + (voulu.x - regard.x) * kRegard, y: regard.y + (voulu.y - regard.y) * kRegard };
     premiereImage = false;
     const parametres = parametresZoom(zoom, distanceLoin);
-    const pose = poseCamera({ cible: regard, cap, distance: parametres.distance, inclinaison: parametres.inclinaison });
+    const pose = poseCamera({
+      cible: regard,
+      cap,
+      distance: parametres.distance,
+      inclinaison: parametres.inclinaison,
+      avance: parametres.avance,
+    });
     camera.position.set(pose.position.x, pose.position.y, pose.position.z);
     camera.lookAt(pose.regard.x, pose.regard.y, pose.regard.z);
     camera.near = Math.max(0.3, parametres.distance * 0.03);
@@ -368,8 +389,10 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld();
     const brouillard = scene.fog as THREE.Fog;
-    brouillard.near = parametres.distance * 1.6 + 120;
-    brouillard.far = parametres.distance * 3 + 900;
+    // Brume : de près, la ville s'estompe vers l'horizon à quelques centaines de mètres ;
+    // de haut, elle recule assez pour ne rien voiler.
+    brouillard.near = parametres.distance * 1.5 + 60;
+    brouillard.far = parametres.distance * 3 + 450;
     projection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     const ratio = renderer.getPixelRatio();
     for (const b of billboards) b.ecran(PX_MIN_AVATAR * ratio, hauteur * ratio);
@@ -449,7 +472,8 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
       placerEtiquette(toi, haut && { x: haut.x, y: haut.y - 24 });
     } else placerEtiquette(toi, null);
     for (const { el, point } of libellesPlaces) {
-      const p = versEcran(point.x, 0, point.y);
+      const auSol = Math.hypot(point.x - camera.position.x, point.y - camera.position.z);
+      const p = nomDePlaceVisible(auSol, parametres.distance) ? versEcran(point.x, 0, point.y) : null;
       placerEtiquette(el, p && { x: p.x, y: p.y + 6 }, true);
     }
     for (const { el, point } of libellesTrace) {

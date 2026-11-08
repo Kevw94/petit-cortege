@@ -40,8 +40,16 @@ export function capDeSuivi(placeur: Placeur, distance: number): number {
 export const DISTANCE_PROCHE_M = 9;
 /** Distance du suivi par défaut : son avatar et la foule autour, la rue devant. */
 export const DISTANCE_SUIVI_M = 28;
+/** Champ de vision vertical de la caméra (degrés). */
+export const CHAMP_VERTICAL_DEG = 50;
 /** Inclinaison sous l'horizon au plus près (vue de trois quarts) et au plus loin (presque à la verticale). */
-const INCLINAISON_PROCHE = (30 * Math.PI) / 180;
+const INCLINAISON_PROCHE = (16 * Math.PI) / 180;
+/**
+ * De près, le regard est porté devant la cible, d'une part de la distance : la caméra
+ * reste derrière son avatar, mais regarde plus loin dans la rue, jusqu'à l'horizon.
+ * Cette avance s'efface en dézoomant (de haut, on regarde le parcours à la verticale).
+ */
+const AVANCE_REGARD = 0.6;
 const INCLINAISON_LOIN = (89.5 * Math.PI) / 180;
 /** Le regard est porté au-dessus de la tête : de près, l'avatar et sa pancarte sont à l'écran. */
 const HAUTEUR_REGARD_M = 2.5;
@@ -60,6 +68,8 @@ export interface ParametresZoom {
   /** Hauteur de la caméra au-dessus du point regardé, et recul horizontal derrière lui (m). */
   hauteur: number;
   recul: number;
+  /** Distance devant la cible, dans le sens de la marche, où se porte le regard (m). */
+  avance: number;
 }
 
 /**
@@ -73,8 +83,10 @@ export function parametresZoom(zoom: number, distanceLoin: number): ParametresZo
   const distance = z === 1 ? loin : DISTANCE_PROCHE_M * (loin / DISTANCE_PROCHE_M) ** z;
   // Se redresse vite au début (au zoom du suivi, ≈ 50° : la foule devant la caméra masque moins
   // son avatar), puis doucement jusqu'à la verticale.
-  const inclinaison = INCLINAISON_PROCHE + (INCLINAISON_LOIN - INCLINAISON_PROCHE) * (1 - (1 - z) ** 2);
-  return { distance, inclinaison, hauteur: distance * Math.sin(inclinaison), recul: distance * Math.cos(inclinaison) };
+  // Rasante jusqu'au zoom de suivi (l'horizon reste à l'écran), puis se redresse vers la verticale.
+  const inclinaison = INCLINAISON_PROCHE + (INCLINAISON_LOIN - INCLINAISON_PROCHE) * lisser(0.2, 1, z);
+  const avance = distance * AVANCE_REGARD * (1 - lisser(0.3, 0.8, z));
+  return { distance, inclinaison, hauteur: distance * Math.sin(inclinaison), recul: distance * Math.cos(inclinaison), avance };
 }
 
 /** Zoom qui place la caméra à `distance` du point regardé (borné à [0, 1]). */
@@ -110,17 +122,26 @@ export interface PoseCamera {
   regard: Point3;
 }
 
-/** Caméra derrière la cible selon le cap, à `distance`, inclinée de `inclinaison` sous l'horizon. */
-export function poseCamera(options: { cible: PointM; cap: number; distance: number; inclinaison: number }): PoseCamera {
-  const { cible, cap, distance, inclinaison } = options;
-  const regard = versScene(cible, HAUTEUR_REGARD_M);
+/**
+ * Caméra derrière la cible selon le cap, à `distance`, placée à `inclinaison` sous l'horizon
+ * vue de la cible ; le regard se porte `avance` mètres devant la cible (0 : sur elle).
+ */
+export function poseCamera(options: {
+  cible: PointM;
+  cap: number;
+  distance: number;
+  inclinaison: number;
+  avance?: number;
+}): PoseCamera {
+  const { cible, cap, distance, inclinaison, avance = 0 } = options;
+  const surCible = versScene(cible, HAUTEUR_REGARD_M);
   const recul = distance * Math.cos(inclinaison);
   return {
-    regard,
+    regard: { x: surCible.x + Math.cos(cap) * avance, y: surCible.y, z: surCible.z + Math.sin(cap) * avance },
     position: {
-      x: regard.x - Math.cos(cap) * recul,
-      y: regard.y + distance * Math.sin(inclinaison),
-      z: regard.z - Math.sin(cap) * recul,
+      x: surCible.x - Math.cos(cap) * recul,
+      y: surCible.y + distance * Math.sin(inclinaison),
+      z: surCible.z - Math.sin(cap) * recul,
     },
   };
 }
@@ -137,4 +158,15 @@ export function deplacerCible(cible: PointM, cap: number, glissement: { x: numbe
     x: cible.x - droite.x * glissement.x * metresParPx + avant.x * glissement.y * metresParPx,
     y: cible.y - droite.y * glissement.x * metresParPx + avant.y * glissement.y * metresParPx,
   };
+}
+
+/** Portée des noms de places de près : au-delà, ils s'empileraient sur l'horizon. */
+export const PORTEE_NOMS_DE_PLACES_M = 350;
+
+/**
+ * Un nom de place s'affiche s'il est assez proche de la caméra (distance au sol, en mètres) ;
+ * en dézoomant, la portée grandit avec la distance de la caméra, jusqu'à tout montrer de haut.
+ */
+export function nomDePlaceVisible(distanceAuNomM: number, distanceCameraM: number): boolean {
+  return distanceAuNomM <= Math.max(PORTEE_NOMS_DE_PLACES_M, distanceCameraM * 2);
 }
