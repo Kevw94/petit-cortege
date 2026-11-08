@@ -21,6 +21,8 @@ import { pageLegale, piedDePage } from './pages/pages-legales';
 import { creerNavigation, VuePerimee, type Vue } from './navigation';
 import { lienManif, lireRoute } from './routage';
 import { SceneCortege, type DonneesScene } from './scene-cortege';
+import type { VueCortege } from './vue-cortege';
+import { choisirModeVue, lireModeVue, memoriserModeVue, stockageLocal, webglDisponible, type ModeVue } from './vue3d/mode-vue';
 
 /** Rafraîchissement des fichiers publiés (liste en cache court ≈ 1 min, minutes immuables). */
 const INTERVALLE_RAFRAICHISSEMENT_MS = 20_000;
@@ -104,6 +106,13 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
       <p>${echapper(manif.ville)} · départ ${heure(manif.depart)}</p>
       <p data-etat></p>
     </section>
+    <div class="camera" role="group" aria-label="Caméra">
+      <button type="button" data-suivre hidden>Suivre</button>
+      <button type="button" data-ensemble>Vue d’ensemble</button>
+      <button type="button" class="zoom" data-zoom="1.5" aria-label="Rapprocher">+</button>
+      <button type="button" class="zoom" data-zoom="0.6667" aria-label="Éloigner">−</button>
+      <button type="button" data-mode hidden></button>
+    </div>
     <section class="action">
       <button type="button" class="rejoindre" data-rejoindre hidden>Rejoindre le cortège</button>
       <button type="button" class="retirer" data-retirer hidden>Retirer mon avatar</button>
@@ -116,6 +125,9 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
   const retirerEl = interfaceEl.querySelector<HTMLButtonElement>('[data-retirer]')!;
   const messageEl = interfaceEl.querySelector<HTMLParagraphElement>('[data-message]')!;
   const rappelEl = interfaceEl.querySelector<HTMLButtonElement>('[data-rappel]')!;
+  const suivreEl = interfaceEl.querySelector<HTMLButtonElement>('[data-suivre]')!;
+  const ensembleEl = interfaceEl.querySelector<HTMLButtonElement>('[data-ensemble]')!;
+  const modeEl = interfaceEl.querySelector<HTMLButtonElement>('[data-mode]')!;
 
   // Rappel d'agenda (.ics) généré ici, au titre neutre, à l'heure de fin (ADR 0002 : seul
   // le fragment désigne la manif, jamais envoyé au serveur).
@@ -236,16 +248,56 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
     propres: () => propres,
     retraits: () => (retiresIci.size === 0 ? retraitsPublies : [...retraitsPublies, ...retiresIci]),
     surCortege,
+    // Caméra à la troisième personne : « Suivre » n'apparaît que quand la vue est détachée.
+    surModeCamera: (suivi) => {
+      suivreEl.hidden = suivi;
+    },
   };
-  const jeu = new Phaser.Game({
-    type: Phaser.AUTO,
-    parent: 'jeu',
-    backgroundColor: '#f4f1ea',
-    scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
-    scene: [],
+  // Vue 3D (Three.js, chargé seulement ici) ou 2D (Phaser) : choix mémorisé sur l'appareil,
+  // 3D par défaut si WebGL est disponible (ADR 0007).
+  const webgl = webglDisponible();
+  let mode: ModeVue = choisirModeVue(lireModeVue(stockageLocal()), webgl);
+  let vueCortege: VueCortege | null = null;
+  let changement = 0;
+  const afficherMode = async (voulu: ModeVue) => {
+    const numero = ++changement;
+    vueCortege?.detruire();
+    vueCortege = null;
+    let creee: VueCortege;
+    try {
+      creee = voulu === '3d' ? await creerVue3D(donnees) : creerVue2D(donnees);
+    } catch (erreur) {
+      console.error('Vue 3D indisponible, retour à la 2D :', erreur);
+      voulu = '2d';
+      creee = creerVue2D(donnees);
+    }
+    // Vue quittée ou autre changement de mode pendant le chargement de Three.js.
+    if (numero !== changement || !vue.courante) {
+      creee.detruire();
+      return;
+    }
+    vueCortege = creee;
+    mode = voulu;
+    modeEl.textContent = mode === '3d' ? 'Vue 2D' : 'Vue 3D';
+    modeEl.setAttribute('aria-label', mode === '3d' ? 'Passer à la vue 2D (de dessus)' : 'Passer à la vue 3D (troisième personne)');
+    modeEl.hidden = !webgl;
+  };
+  void afficherMode(mode);
+  modeEl.addEventListener('click', () => {
+    const autre: ModeVue = mode === '3d' ? '2d' : '3d';
+    memoriserModeVue(autre, stockageLocal());
+    void afficherMode(autre);
   });
-  jeu.scene.add('cortege', SceneCortege, true, donnees);
-  vue.surQuitter(() => jeu.destroy(true));
+  suivreEl.addEventListener('click', () => vueCortege?.suivreLeCortege());
+  ensembleEl.addEventListener('click', () => vueCortege?.vueDEnsemble());
+  for (const bouton of interfaceEl.querySelectorAll<HTMLButtonElement>('[data-zoom]')) {
+    bouton.addEventListener('click', () => vueCortege?.zoomer(Number(bouton.dataset.zoom)));
+  }
+  vue.surQuitter(() => {
+    changement++;
+    vueCortege?.detruire();
+    vueCortege = null;
+  });
 
   // Sans chevauchement, et rien n'est appliqué une fois la vue quittée.
   vue.rafraichir({
@@ -265,6 +317,32 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
       retraitsPublies = aJour.retraits ?? retraitsPublies;
     },
   });
+}
+
+/** Vue 2D (Phaser) : vue de dessus en 3/4, comme avant la 3D. */
+function creerVue2D(donnees: DonneesScene): VueCortege {
+  const jeu = new Phaser.Game({
+    type: Phaser.AUTO,
+    parent: 'jeu',
+    backgroundColor: '#f4f1ea',
+    scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
+    scene: [],
+  });
+  jeu.scene.add('cortege', SceneCortege, true, donnees);
+  // La scène n'existe qu'une fois le jeu démarré : on la cherche au moment du clic.
+  const scene = () => jeu.scene.getScene('cortege') as SceneCortege | null;
+  return {
+    suivreLeCortege: () => scene()?.suivreLeCortege(),
+    vueDEnsemble: () => scene()?.vueDEnsemble(),
+    zoomer: (facteur) => scene()?.zoomer(facteur),
+    detruire: () => jeu.destroy(true),
+  };
+}
+
+/** Vue 3D (Three.js) : chargée à la demande, pour ne pas alourdir la liste des manifs. */
+async function creerVue3D(donnees: DonneesScene): Promise<VueCortege> {
+  const { creerVueCortege3D } = await import('./vue3d/vue-cortege-3d');
+  return creerVueCortege3D(document.querySelector<HTMLElement>('#jeu')!, donnees);
 }
 
 /** Image finale d'une manif terminée (tout le cortège au point d'arrivée). */
