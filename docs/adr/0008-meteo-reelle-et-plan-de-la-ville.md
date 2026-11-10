@@ -14,6 +14,10 @@ Le porteur veut que la vue d'une manif ressemble au temps qu'il fait sur place (
 - Le plan est attaché à son décor dans `decors/index.json` (champ `plan`, avec sa géoréférence). Comme les décors, **tous les plans listés sont demandés** par chaque client (ADR 0002).
 - Données dérivées d'OSM : le PNG est sous ODbL, comme les tilemaps (ADR 0006).
 
+## Arbres
+
+Les arbres du décor sont ceux d'OpenStreetMap (`natural=tree`, très complets à Paris grâce à l'import des arbres de la Ville, et rangées `tree_row` jalonnées tous les 10 m), dans une couche d'objets `arbres` de la tilemap : pas d'arbres inventés. Le générateur écarte ceux qui tombent sur la chaussée, dans l'eau, dans un bâtiment ou à moins de 6 m du parcours (le cortège fait 10 m de large). Sprites Kenney de la planche RPG (CC0, ADR 0006), deux tuiles de haut, à 6 × 12 m ; feuillus roux en automne selon la date de la manif, conifères si OSM dit `leaf_type=needleleaved`. Billboards instanciés en 3D (sans agrandissement de loin), sprites triés en profondeur avec les avatars en 2D.
+
 ## Accueil : police au feutre
 
 La liste des manifs devient une rue (fond bitume) où chaque manif est un carton tenu à la main (pas une « pancarte » au sens du glossaire : ni slogan ni avatar), titré au feutre avec **Permanent Marker** (Font Diner, Apache 2.0), servie par le site (paquet `@fontsource`, jamais Google Fonts : une police chargée depuis un tiers lui donnerait l'IP des visiteurs, ADR 0002).

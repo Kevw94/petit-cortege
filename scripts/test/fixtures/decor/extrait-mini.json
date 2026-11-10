@@ -401,6 +401,82 @@
     "place": "suburb",
     "name": "Quartier Test"
    }
+  },
+  {
+   "type": "node",
+   "id": 101,
+   "lat": 48.8700724,
+   "lon": 2.3608194,
+   "tags": {
+    "natural": "tree"
+   }
+  },
+  {
+   "type": "node",
+   "id": 102,
+   "lat": 48.8704523,
+   "lon": 2.3613657,
+   "tags": {
+    "natural": "tree"
+   }
+  },
+  {
+   "type": "node",
+   "id": 103,
+   "lat": 48.8694572,
+   "lon": 2.3620485,
+   "tags": {
+    "natural": "tree"
+   }
+  },
+  {
+   "type": "node",
+   "id": 104,
+   "lat": 48.8704071,
+   "lon": 2.3605463,
+   "tags": {
+    "natural": "tree"
+   }
+  },
+  {
+   "type": "node",
+   "id": 105,
+   "lat": 48.871357,
+   "lon": 2.3608194,
+   "tags": {
+    "natural": "tree"
+   }
+  },
+  {
+   "type": "node",
+   "id": 106,
+   "lat": 48.8693215,
+   "lon": 2.3623217,
+   "tags": {
+    "natural": "tree",
+    "leaf_type": "needleleaved"
+   }
+  },
+  {
+   "type": "way",
+   "id": 107,
+   "tags": {
+    "natural": "tree_row"
+   },
+   "nodes": [
+    1071,
+    1072
+   ],
+   "geometry": [
+    {
+     "lat": 48.8707237,
+     "lon": 2.3627314
+    },
+    {
+     "lat": 48.8707237,
+     "lon": 2.3635508
+    }
+   ]
   }
  ]
 }

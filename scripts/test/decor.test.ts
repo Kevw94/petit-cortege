@@ -4,7 +4,8 @@
  * 400 m), une rue résidentielle et une rue piétonne nord-sud, une route en
  * tunnel, un square, un bassin (multipolygone en deux morceaux), une boutique,
  * un bâtiment, un canal nord-sud que le boulevard franchit, des places (une
- * piétonne traversée, une `place=square` à l'arrivée, une lointaine).
+ * piétonne traversée, une `place=square` à l'arrivée, une lointaine), des arbres
+ * (trottoir, chaussée, square dont un résineux, bâtiment, hors bande, une rangée).
  */
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -247,5 +248,36 @@ describe('noms des places traversées', () => {
     expect(decor.places).toEqual(
       expect.arrayContaining([expect.objectContaining({ nom: 'Place Test', arrivee: true }), expect.objectContaining({ nom: 'Place du Milieu', arrivee: false })]),
     );
+  });
+});
+
+describe('arbres', () => {
+  /** Arbres de la tilemap, en mètres de la fixture (x vers l'est, y vers le sud). */
+  const arbres = () => {
+    const origine = versTuiles(decor.georef, enPosition(0, 0));
+    return decor.arbres.map((a) => ({ x: (a.x - origine.x) * 2, y: (a.y - origine.y) * 2, resineux: a.resineux }));
+  };
+  const pres = (x: number, y: number) => arbres().find((a) => Math.hypot(a.x - x, a.y - y) < 1.5);
+
+  it('plante les arbres OSM sur le trottoir et dans le square, résineux compris', () => {
+    expect(pres(60, -8)).toMatchObject({ resineux: false });
+    expect(pres(150, 60)).toMatchObject({ resineux: false });
+    expect(pres(170, 75)).toMatchObject({ resineux: true });
+  });
+
+  it('plante une rangée d’arbres (`tree_row`) tous les 10 m', () => {
+    const rangee = arbres().filter((a) => Math.abs(a.y + 80) < 1.5 && a.x > 195 && a.x < 265);
+    expect(rangee.map((a) => Math.round(a.x))).toEqual([200, 210, 220, 230, 240, 250, 260]);
+  });
+
+  it('ne plante rien sur la chaussée, dans un bâtiment, hors de la bande', () => {
+    expect(pres(100, -50)).toBeUndefined();
+    expect(pres(40, -45)).toBeUndefined();
+    expect(pres(60, -150)).toBeUndefined();
+  });
+
+  it('laisse le passage du cortège libre : aucun arbre à moins de 6 m du parcours', () => {
+    // Le parcours suit le boulevard (y = 0) de x = 0 à x = 400.
+    for (const a of arbres()) if (a.x >= 0 && a.x <= 400) expect(Math.abs(a.y)).toBeGreaterThanOrEqual(6);
   });
 });

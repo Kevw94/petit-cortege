@@ -143,7 +143,7 @@ export class SceneCortege extends Phaser.Scene {
       .setVisible(false);
     const { decor, manif } = this.#donnees;
     this.#projeter = projeteur(decor?.georef ?? { origine: manif.parcours.coordinates[0]! });
-    if (decor) this.#decor = new DecorAffiche(this, decor);
+    if (decor) this.#decor = new DecorAffiche(this, decor, new Date(manif.depart));
     if (this.#donnees.plan) {
       const { plan, toile } = this.#donnees.plan;
       const cle = `plan-${Phaser.Math.RND.uuid()}`;

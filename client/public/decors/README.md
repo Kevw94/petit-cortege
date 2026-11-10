@@ -32,5 +32,6 @@ npm run decor -- plan --parcours donnees/osm/republique-nation/parcours.geojson 
 Les cartes s'ouvrent dans Tiled (carte infinie, blocs de 32 × 32) pour un nettoyage à la main ; les chemins des
 tilesets pointent vers `assets/kenney/`. Couches de tuiles : `sol` (rues, verts, eau, cours), `ponts`
 (garde-corps), `batiments` (toits et murs) et `facades` (fenêtres, portes), ces deux dernières dessinées en jeu
-par rangées avec profondeur = y ; couches d'objets : `parcours` (tracé) et `places` (noms des places
-traversées, propriété `arrivee`).
+par rangées avec profondeur = y ; couches d'objets : `parcours` (tracé), `places` (noms des places
+traversées, propriété `arrivee`) et `arbres` (arbres OSM `natural=tree` et rangées `tree_row`, hors chaussée, bâtiments
+et passage du cortège ; propriété `resineux`).

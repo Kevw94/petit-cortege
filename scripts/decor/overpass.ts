@@ -14,7 +14,7 @@ export const RAYON_EXTRACTION_M = 150;
 
 /**
  * Requête Overpass QL : tout ce dont le décor a besoin, et aussi ce dont #13
- * aura besoin (bâtiments, ponts, places et leurs noms), pour rejouer sans réseau.
+ * aura besoin (bâtiments, ponts, places et leurs noms, arbres), pour rejouer sans réseau.
  */
 export function requeteBande(parcours: Parcours, rayonM: number): string {
   const autour = `(around:${rayonM},${parcours.coordinates.map(([lon, lat]) => `${lat},${lon}`).join(',')})`;
@@ -25,6 +25,8 @@ export function requeteBande(parcours: Parcours, rayonM: number): string {
     ...chemins.map((cle) => `  way${autour}[${cle}];`),
     `  relation${autour}["type"="multipolygon"];`,
     `  node${autour}["place"];`,
+    // Arbres isolés (alignements des boulevards, cours, squares) ; les rangées sont des chemins `natural`.
+    `  node${autour}["natural"="tree"];`,
     ');',
     'out geom;',
   ].join('\n');

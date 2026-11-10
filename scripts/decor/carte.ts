@@ -10,6 +10,7 @@
 import { deflateSync } from 'node:zlib';
 import {
   ATTRIBUTION_OSM,
+  COUCHE_ARBRES,
   COUCHE_PLACES,
   FORMAT_DECOR,
   METRES_PAR_TUILE,
@@ -53,6 +54,12 @@ const ESPACEMENT_FLECHES_M = 50;
 const LARGEUR_PASSAGE_PARCOURS_M = 8;
 /** Une place est traversée si le parcours passe à moins de cette distance. */
 const DISTANCE_PLACE_TRAVERSEE_M = 10;
+/** Un arbre d'une rangée (`natural=tree_row`) tous les… */
+const ESPACEMENT_RANGEE_ARBRES_M = 10;
+/** Le cortège (5 colonnes de 2 m) passe : pas d'arbre à moins de cette distance du parcours. */
+const DEGAGEMENT_CORTEGE_M = 6;
+/** Un arbre pousse sur le trottoir, dans un vert, une cour ou une place piétonne (pas sur la chaussée ni dans l'eau). */
+const TERRAINS_PLANTABLES: ReadonlySet<number> = new Set([Terrain.trottoir, Terrain.vert, Terrain.ilot, Terrain.pieton]);
 /** Chemin de assets/kenney depuis client/public/decors/. */
 const DOSSIER_KENNEY_PAR_DEFAUT = '../../../assets/kenney';
 
@@ -125,6 +132,24 @@ export function genererDecor(options: OptionsDecor): CarteTiled {
     enTuiles(DISTANCE_PLACE_TRAVERSEE_M),
   );
 
+  // Arbres OSM : isolés ou en rangée, gardés s'ils poussent hors chaussée, hors bâtiment et hors du passage du cortège.
+  const arbres = objetsOsm
+    .flatMap((o) => {
+      const resineux = o.tags.leaf_type === 'needleleaved';
+      if (o.tags.natural === 'tree' && o.ligne.length === 1) return [{ p: projeter(o.ligne)[0]!, resineux }];
+      if (o.tags.natural === 'tree_row' && o.ligne.length > 1) {
+        return jalonner(projeter(o.ligne), enTuiles(ESPACEMENT_RANGEE_ARBRES_M)).map((p) => ({ p, resineux }));
+      }
+      return [];
+    })
+    .filter(({ p }) => {
+      const x = Math.floor(p.x);
+      const y = Math.floor(p.y);
+      if (x < 0 || y < 0 || x >= largeur || y >= hauteur || !TERRAINS_PLANTABLES.has(grille.lire(x, y))) return false;
+      if (batiments[y * largeur + x] || facades[y * largeur + x]) return false;
+      return distanceALaLigne(p, parcours) >= enTuiles(DEGAGEMENT_CORTEGE_M);
+    });
+
   const trace = tracerParcours(parcours, { espacementFleches: enTuiles(options.espacementFlechesM ?? ESPACEMENT_FLECHES_M) });
   const depuis = (gids: Uint32Array) => (_g: Grille, x: number, y: number) =>
     x < largeur && y < hauteur ? gids[y * largeur + x]! : 0;
@@ -180,6 +205,21 @@ export function genererDecor(options: OptionsDecor): CarteTiled {
     })),
   });
 
+  couches.push({
+    type: 'objectgroup',
+    id: couches.length + 1,
+    name: COUCHE_ARBRES,
+    x: 0,
+    y: 0,
+    opacity: 1,
+    visible: true,
+    draworder: 'topdown',
+    objects: arbres.map(({ p, resineux }) => ({
+      ...objet('arbre', p),
+      properties: [{ name: 'resineux', type: 'bool' as const, value: resineux }],
+    })),
+  });
+
   return {
     type: 'map',
     version: '1.10',
@@ -205,6 +245,39 @@ export function genererDecor(options: OptionsDecor): CarteTiled {
     tilesets: tilesets(options.dossierKenney ?? DOSSIER_KENNEY_PAR_DEFAUT),
     layers: couches,
   };
+}
+
+/** Points tous les `pas` le long d'une ligne, extrémités comprises (à un dixième de pas près). */
+function jalonner(ligne: PointTuiles[], pas: number): PointTuiles[] {
+  const points: PointTuiles[] = [];
+  let reste = 0;
+  for (let i = 1; i < ligne.length; i++) {
+    const a = ligne[i - 1]!;
+    const b = ligne[i]!;
+    const longueur = Math.hypot(b.x - a.x, b.y - a.y);
+    let d = reste;
+    for (; d <= longueur + pas * 0.1; d += pas) {
+      const f = longueur === 0 ? 0 : Math.min(1, d / longueur);
+      points.push({ x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f });
+    }
+    reste = d - longueur;
+  }
+  return points;
+}
+
+/** Distance d'un point à une polyligne (mêmes unités). */
+function distanceALaLigne(p: PointTuiles, ligne: PointTuiles[]): number {
+  let min = Infinity;
+  for (let i = 1; i < ligne.length; i++) {
+    const a = ligne[i - 1]!;
+    const b = ligne[i]!;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const l2 = dx * dx + dy * dy;
+    const t = l2 === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2));
+    min = Math.min(min, Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy)));
+  }
+  return min;
 }
 
 /** Origine et taille de la carte : emprise de la bande, coin haut-gauche sur une tuile entière. */

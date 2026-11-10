@@ -36,6 +36,7 @@ function decorDepuis(lignes: string[], x0 = 0, y0 = 0): Decor {
     nomsCouches: ['sol', 'batiments', 'facades'],
     blocs,
     places: [],
+    arbres: [],
   };
 }
 

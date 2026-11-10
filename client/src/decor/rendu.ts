@@ -22,6 +22,7 @@ import {
   type Decor,
 } from '@petit-cortege/shared';
 import type { PointM, PointPx } from '../cadrage';
+import { allureDArbre, ARBRE_M, dessinerArbres, VARIANTES_ARBRE } from './arbres';
 import { blocsVisibles, COTE_BLOC_M } from './blocs';
 import { cuireBloc, dessinerVueDEnsemble, IMAGES_TILESETS, type ImagesTilesets } from './cuisson';
 import { NomsDesPlaces } from './places';
@@ -61,10 +62,13 @@ export class DecorAffiche {
   readonly #couchesBatiments: string[];
   readonly #places: NomsDesPlaces;
   readonly #images: ImagesTilesets;
+  /** Arbres (OSM) : sprite, pied en mètres et taille en mètres. */
+  readonly #arbres: { sprite: Phaser.GameObjects.Image; pied: PointM; largeurM: number; hauteurM: number }[] = [];
   #image = 0;
   #numeroTexture = 0;
 
-  constructor(scene: Phaser.Scene, decor: Decor) {
+  /** `date` : celle de la manif, pour la saison des arbres. */
+  constructor(scene: Phaser.Scene, decor: Decor, date: Date) {
     this.#scene = scene;
     this.#decor = decor;
     this.#couchesSol = decor.nomsCouches.filter((c) => !COUCHES_BATIMENTS.includes(c));
@@ -75,6 +79,25 @@ export class DecorAffiche {
     const cle = `decor-ensemble-${Phaser.Math.RND.uuid()}`;
     scene.textures.addCanvas(cle, dessinerVueDEnsemble(decor, this.#images))!.setFilter(Phaser.Textures.FilterMode.NEAREST);
     this.#ensemble = scene.add.image(0, 0, cle).setOrigin(0, 0).setDepth(PROFONDEUR_DECOR);
+    this.#planterArbres(date);
+  }
+
+  #planterArbres(date: Date): void {
+    const planche = this.#images('roguelikeSheet');
+    if (!planche || this.#decor.arbres.length === 0) return;
+    const cle = `arbres-${Phaser.Math.RND.uuid()}`;
+    const texture = this.#scene.textures.addCanvas(cle, dessinerArbres(planche))!;
+    texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+    VARIANTES_ARBRE.forEach((v, i) => texture.add(v, 0, i * 16, 0, 16, 32));
+    for (const a of this.#decor.arbres) {
+      const { variante, echelle } = allureDArbre(a, date);
+      this.#arbres.push({
+        sprite: this.#scene.add.image(0, 0, cle, variante).setOrigin(0.5, 1).setVisible(false),
+        pied: { x: a.x * METRES_PAR_TUILE, y: a.y * METRES_PAR_TUILE },
+        largeurM: ARBRE_M.largeur * echelle,
+        hauteurM: ARBRE_M.hauteur * echelle,
+      });
+    }
   }
 
   /**
@@ -115,6 +138,15 @@ export class DecorAffiche {
       for (const { image } of affiche.rangees) image.setVisible(false);
     }
     if (this.#blocs.size > BLOCS_EN_MEMOIRE_MAX) this.#liberer();
+    // Arbres : à l'écran seulement, profondeur selon le pied (comme les avatars et les façades).
+    for (const { sprite, pied, largeurM, hauteurM } of this.#arbres) {
+      const p = vers(pied);
+      const l = largeurM * cadrage.echelle;
+      const h = hauteurM * cadrage.echelle;
+      const visible = p.x > -l && p.x < ecran.largeur + l && p.y > 0 && p.y < ecran.hauteur + h;
+      sprite.setVisible(visible);
+      if (visible) sprite.setPosition(Math.round(p.x), Math.round(p.y)).setDisplaySize(l, h).setDepth(profondeur(p.y));
+    }
     this.#places.afficher(vers, ecran);
   }
 

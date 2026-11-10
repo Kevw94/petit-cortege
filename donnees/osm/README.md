@@ -23,8 +23,8 @@ Ils sont publiés ici sous la même licence (ODbL), indépendamment de la licenc
 
   (rejouable sans réseau avec `--osm donnees/osm/republique-nation/extrait-overpass.json` au lieu de `--overpass …`).
 
-- `extrait-overpass.json` : réponse brute de l'API Overpass (miroir maps.mail.ru, extrait du 7 novembre 2026) pour
-  une bande de 150 m autour du parcours (rues, espaces verts, eau, bâtiments, places) :
+- `extrait-overpass.json` : réponse brute de l'API Overpass (miroir maps.mail.ru, extrait du 10 novembre 2026) pour
+  une bande de 150 m autour du parcours (rues, espaces verts, eau, bâtiments, places, arbres) :
 
   ```sh
   npm run decor -- extraire --parcours donnees/osm/republique-nation/parcours.geojson \

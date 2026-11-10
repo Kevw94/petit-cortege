@@ -70,13 +70,13 @@ export function recollerAnneaux(morceaux: Position[][]): Position[][] {
   return anneaux;
 }
 
-/** Objets OSM d'un extrait Overpass (les nœuds isolés sont ignorés, sauf les lieux nommés `place=*`). */
+/** Objets OSM d'un extrait Overpass (les nœuds isolés sont ignorés, sauf les lieux nommés `place=*` et les arbres). */
 export function lireExtrait(extrait: ExtraitOverpass): ObjetOsm[] {
   const objets: ObjetOsm[] = [];
   for (const e of extrait.elements) {
     const tags = e.tags ?? {};
     if (e.type === 'node') {
-      if (tags.place !== undefined && e.lon !== undefined && e.lat !== undefined) {
+      if ((tags.place !== undefined || tags.natural === 'tree') && e.lon !== undefined && e.lat !== undefined) {
         objets.push({ id: `node/${e.id}`, tags, ligne: [[e.lon, e.lat]], anneaux: [] });
       }
     } else if (e.type === 'way') {

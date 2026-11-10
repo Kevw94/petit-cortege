@@ -25,6 +25,8 @@ export const ATTRIBUTION_OSM = '© les contributeurs d’OpenStreetMap';
 export const COUCHES_BATIMENTS: readonly string[] = ['batiments', 'facades'];
 /** Couche d'objets des noms de places traversées (objets ponctuels : `name` = nom, propriété `arrivee`). */
 export const COUCHE_PLACES = 'places';
+/** Couche d'objets des arbres (objets ponctuels au pied de l'arbre, propriété `resineux`). */
+export const COUCHE_ARBRES = 'arbres';
 
 /** Géoréférencement : position du coin haut-gauche de la tuile (0, 0). */
 export interface Georeference {
@@ -294,6 +296,16 @@ export interface Decor {
   blocs: Map<string, BlocDecor>;
   /** Noms des places traversées par le parcours, à afficher (dont la place d'arrivée). */
   places: PlaceDecor[];
+  /** Arbres de la bande (OSM), hors chaussée, bâtiments et passage du cortège. */
+  arbres: ArbreDecor[];
+}
+
+export interface ArbreDecor {
+  /** Pied de l'arbre, en tuiles. */
+  x: number;
+  y: number;
+  /** Conifère (OSM `leaf_type=needleleaved`) ; sinon feuillu. */
+  resineux: boolean;
 }
 
 export interface PlaceDecor {
@@ -349,6 +361,14 @@ export async function lireDecor(carte: CarteTiled): Promise<Decor> {
       y: o.y / TAILLE_TUILE_PX,
       arrivee: o.properties?.find((p) => p.name === 'arrivee')?.value === true,
     }));
+  const arbres = carte.layers
+    .filter((c): c is CoucheObjetsTiled => c.type === 'objectgroup' && c.name === COUCHE_ARBRES)
+    .flatMap((c) => c.objects)
+    .map((o) => ({
+      x: o.x / TAILLE_TUILE_PX,
+      y: o.y / TAILLE_TUILE_PX,
+      resineux: o.properties?.find((p) => p.name === 'resineux')?.value === true,
+    }));
   return {
     georef: { origine: [lon, lat] },
     largeur: carte.width,
@@ -357,6 +377,7 @@ export async function lireDecor(carte: CarteTiled): Promise<Decor> {
     nomsCouches: couches.map((c) => c.name),
     blocs,
     places,
+    arbres,
   };
 }
 

@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { decoderPancarte, encoderPancarte, TAILLE_TUILE_PX, type Decor } from '@petit-cortege/shared';
 import { Emplacements } from '../apparence/affichage';
 import { CELLULE_APPARENCE, dessinerApparence, URL_COUCHES_APPARENCE } from '../apparence/dessin';
+import { dessinerArbres, VARIANTES_ARBRE } from '../decor/arbres';
 import { sourceDeTuile, type ImagesTilesets } from '../decor/cuisson';
 import { dessinerPaquets, PAQUET, VARIANTES_PAQUET } from '../foule/paquets';
 import { CADRE_PANCARTE_M, dessinerPancarteCanvas } from '../pancartes/canvas';
@@ -166,4 +167,11 @@ export function textureDeTuiles(decor: Decor, images: ImagesTilesets, gids: read
   t.magFilter = THREE.NearestFilter;
   t.minFilter = THREE.LinearMipmapLinearFilter;
   return t;
+}
+
+/** Sprites d'arbres (planche RPG Kenney) ; `cadres[i]` pour `VARIANTES_ARBRE[i]`. */
+export function textureArbres(planche: CanvasImageSource): { texture: THREE.CanvasTexture; cadres: CadreUv[] } {
+  const n = VARIANTES_ARBRE.length;
+  const cadres = Array.from({ length: n }, (_, i): CadreUv => [i / n, 0, (i + 1) / n, 1]);
+  return { texture: textureCanvas(dessinerArbres(planche), true), cadres };
 }

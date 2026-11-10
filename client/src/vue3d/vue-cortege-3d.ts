@@ -8,13 +8,14 @@
  * chargé que pour la vue d'une manif en 3D.
  */
 import * as THREE from 'three';
-import { COULEURS_PLAN, decoderPancarte, METRES_PAR_TUILE, versTuiles, type Georeference, type Position } from '@petit-cortege/shared';
+import { COULEURS_PLAN, decoderPancarte, METRES_PAR_TUILE, versTuiles, type ArbreDecor, type Georeference, type Position } from '@petit-cortege/shared';
 import { BUDGET_AVATARS_DESSINES } from '../apparence/affichage';
 import type { PointM } from '../cadrage';
 import { cibleDeSuivi } from '../camera';
 import { calculerCortege, COLONNES_FOULE, PAS_FOULE_M } from '../cortege/cortege';
 import { composerFoule } from '../cortege/foule';
 import { chargerImagesTilesets } from '../decor/cuisson';
+import { allureDArbre, ARBRE_M, VARIANTES_ARBRE } from '../decor/arbres';
 import { empriseDuPlan } from '../decor/plan';
 import { PAQUET, TEINTE_MASSE, VARIANTES_PAQUET } from '../foule/paquets';
 import { tamponsDeMasse } from '../foule/tampons';
@@ -43,7 +44,7 @@ import { detruireGroupe, maillageBatiments } from './maillage-batiments';
 import { Precipitations } from './precipitations';
 import { creerPlaceur, versScene } from './repere';
 import { materiauDeSol, ORDRE_SOL, Sol } from './sol';
-import { atlasApparences, atlasPancartes, chargerCouchesApparence, cleSansSlogan, texturePaquets } from './textures';
+import { atlasApparences, atlasPancartes, chargerCouchesApparence, cleSansSlogan, textureArbres, texturePaquets } from './textures';
 import { TraceAuSol3D } from './trace';
 
 const CHAMP_DEG = CHAMP_VERTICAL_DEG;
@@ -83,6 +84,19 @@ function projeteur(georef: Georeference) {
     const t = versTuiles(georef, p);
     return { x: t.x * METRES_PAR_TUILE, y: t.y * METRES_PAR_TUILE };
   };
+}
+
+/** Arbres du décor en billboards instanciés (un seul appel de dessin), allure selon la saison de la manif. */
+function planterArbres(liste: readonly ArbreDecor[], planche: CanvasImageSource, date: Date): { billboards: Billboards; texture: THREE.Texture } {
+  const { texture, cadres } = textureArbres(planche);
+  const arbres = new Billboards({ texture, capacite: liste.length });
+  for (const a of liste) {
+    const { variante, echelle } = allureDArbre(a, date);
+    const pied = versScene({ x: a.x * METRES_PAR_TUILE, y: a.y * METRES_PAR_TUILE });
+    arbres.ajouter(pied, ARBRE_M.largeur * echelle, ARBRE_M.hauteur * echelle, cadres[VARIANTES_ARBRE.indexOf(variante)]!);
+  }
+  arbres.terminer();
+  return { billboards: arbres, texture };
 }
 
 /** Plan de la ville à plat, sous le décor : pixels nets de près, lissés de loin. */
@@ -167,6 +181,10 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
   scene.add(trace.groupe);
   const batiments = decor ? maillageBatiments(decor, images, boitesDeBatiments(decor), anisotropie) : null;
   if (batiments) scene.add(batiments);
+  // Arbres OSM (alignements, squares) : sprites Kenney toujours face à la caméra, posés une fois.
+  const planche = images('roguelikeSheet');
+  const arbres = decor && planche && decor.arbres.length > 0 ? planterArbres(decor.arbres, planche, new Date(donnees.manif.depart)) : null;
+  if (arbres) scene.add(arbres.billboards.mesh);
 
   // Foule : masse, avatars, pancartes ; les siens à part.
   const apparences = atlasApparences(couches);
@@ -434,6 +452,9 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
     if (plan) (plan.material as THREE.MeshBasicMaterial).color.copy(ciel.eclairage);
     sol?.eclairer(ciel.eclairage);
     for (const b of billboards) b.eclairer(ciel.eclairage);
+    // Pas d'agrandissement de loin : un arbre garde sa taille, la foule seule reste visible.
+    arbres?.billboards.ecran(0, hauteur * renderer.getPixelRatio());
+    arbres?.billboards.eclairer(ciel.eclairage);
     precipitations.actualiser(dt, { x: regard.x, z: regard.y }, parametres.distance, hauteur);
     projection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     const ratio = renderer.getPixelRatio();
@@ -558,6 +579,8 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
       trace.detruire();
       if (batiments) detruireGroupe(batiments);
       for (const b of billboards) b.detruire();
+      arbres?.billboards.detruire();
+      arbres?.texture.dispose();
       for (const t of [apparences.texture, pancartes.texture, pancartesLoin.texture, pancartesPropres.texture, paquets.texture]) t.dispose();
       for (const h of halos) {
         h.geometry.dispose();
