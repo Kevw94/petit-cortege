@@ -23,6 +23,8 @@ import { pageLegale, piedDePage } from './pages/pages-legales';
 import { creerNavigation, VuePerimee, type Vue } from './navigation';
 import { etatDeLaManif, traceMiniature } from './liste/liste';
 import { resumeMeteo, type IconeMeteo } from './meteo/ambiance';
+import { creerImmersion } from './immersion';
+import { ICONES } from './icones';
 import { creerVoileMeteo } from './meteo/voile-2d';
 import { lienManif, lireRoute } from './routage';
 import { SceneCortege, type DonneesScene } from './scene-cortege';
@@ -175,12 +177,16 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
       <p class="meteo-manif" data-meteo></p>
     </section>
     <div class="camera" role="group" aria-label="Caméra">
-      <button type="button" data-suivre hidden>Suivre</button>
-      <button type="button" data-ensemble>Vue d’ensemble</button>
-      <button type="button" class="zoom" data-zoom="1.5" aria-label="Rapprocher">+</button>
-      <button type="button" class="zoom" data-zoom="0.6667" aria-label="Éloigner">−</button>
-      <button type="button" data-mode hidden></button>
+      <button type="button" data-suivre data-libelle="Suivre le cortège" aria-label="Suivre le cortège" hidden>${ICONES.suivre}</button>
+      <button type="button" data-ensemble data-libelle="Vue d’ensemble" aria-label="Vue d’ensemble">${ICONES.ensemble}</button>
+      <span class="camera-separateur" aria-hidden="true"></span>
+      <button type="button" data-zoom="1.5" data-libelle="Rapprocher" aria-label="Rapprocher">${ICONES.plus}</button>
+      <button type="button" data-zoom="0.6667" data-libelle="Éloigner" aria-label="Éloigner">${ICONES.moins}</button>
+      <span class="camera-separateur" aria-hidden="true"></span>
+      <button type="button" class="camera-mode" data-mode hidden></button>
+      <button type="button" data-immersion data-libelle="Mode immersif" aria-label="Mode immersif : masquer les boutons">${ICONES.immersion}</button>
     </div>
+    <button type="button" class="sortir-immersion" data-sortir-immersion aria-label="Quitter le mode immersif : afficher les boutons" title="Afficher les boutons (Échap)">${ICONES.sortirImmersion}</button>
     <section class="action">
       <button type="button" class="rejoindre" data-rejoindre hidden>Rejoindre le cortège</button>
       <button type="button" class="retirer" data-retirer hidden>Retirer mon avatar</button>
@@ -356,7 +362,8 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
     }
     vueCortege = creee;
     mode = voulu;
-    modeEl.textContent = mode === '3d' ? 'Vue 2D' : 'Vue 3D';
+    modeEl.textContent = mode === '3d' ? '2D' : '3D';
+    modeEl.dataset.libelle = mode === '3d' ? 'Vue 2D, de dessus' : 'Vue 3D, dans la rue';
     modeEl.setAttribute('aria-label', mode === '3d' ? 'Passer à la vue 2D (de dessus)' : 'Passer à la vue 3D (troisième personne)');
     modeEl.hidden = !webgl;
   };
@@ -371,7 +378,14 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
   for (const bouton of interfaceEl.querySelectorAll<HTMLButtonElement>('[data-zoom]')) {
     bouton.addEventListener('click', () => vueCortege?.zoomer(Number(bouton.dataset.zoom)));
   }
+  // Mode immersif : l'interface s'efface, la vue reste ; le bouton de sortie prend le focus.
+  const sortirImmersionEl = interfaceEl.querySelector<HTMLButtonElement>('[data-sortir-immersion]')!;
+  const entrerImmersionEl = interfaceEl.querySelector<HTMLButtonElement>('[data-immersion]')!;
+  const immersion = creerImmersion((active) => (active ? sortirImmersionEl : entrerImmersionEl).focus({ preventScroll: true }));
+  entrerImmersionEl.addEventListener('click', () => immersion.entrer());
+  sortirImmersionEl.addEventListener('click', () => immersion.sortir());
   vue.surQuitter(() => {
+    immersion.detruire();
     changement++;
     vueCortege?.detruire();
     vueCortege = null;
