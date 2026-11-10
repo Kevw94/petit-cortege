@@ -22,7 +22,7 @@ import {
   type Decor,
 } from '@petit-cortege/shared';
 import type { PointM, PointPx } from '../cadrage';
-import { allureDArbre, ARBRE_M, dessinerArbres, VARIANTES_ARBRE } from './arbres';
+import { arbresAPlanter, dessinerArbres } from './arbres';
 import { blocsVisibles, COTE_BLOC_M } from './blocs';
 import { cuireBloc, dessinerVueDEnsemble, IMAGES_TILESETS, type ImagesTilesets } from './cuisson';
 import { NomsDesPlaces } from './places';
@@ -88,15 +88,10 @@ export class DecorAffiche {
     const cle = `arbres-${Phaser.Math.RND.uuid()}`;
     const texture = this.#scene.textures.addCanvas(cle, dessinerArbres(planche))!;
     texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
-    VARIANTES_ARBRE.forEach((v, i) => texture.add(v, 0, i * 16, 0, 16, 32));
-    for (const a of this.#decor.arbres) {
-      const { variante, echelle } = allureDArbre(a, date);
-      this.#arbres.push({
-        sprite: this.#scene.add.image(0, 0, cle, variante).setOrigin(0.5, 1).setVisible(false),
-        pied: { x: a.x * METRES_PAR_TUILE, y: a.y * METRES_PAR_TUILE },
-        largeurM: ARBRE_M.largeur * echelle,
-        hauteurM: ARBRE_M.hauteur * echelle,
-      });
+    for (const { pied, largeurM, hauteurM, cadre } of arbresAPlanter(this.#decor.arbres, date)) {
+      const nom = `${cadre.x},${cadre.y}`;
+      if (!texture.has(nom)) texture.add(nom, 0, cadre.x, cadre.y, cadre.largeur, cadre.hauteur);
+      this.#arbres.push({ sprite: this.#scene.add.image(0, 0, cle, nom).setOrigin(0.5, 1).setVisible(false), pied, largeurM, hauteurM });
     }
   }
 
@@ -138,8 +133,14 @@ export class DecorAffiche {
       for (const { image } of affiche.rangees) image.setVisible(false);
     }
     if (this.#blocs.size > BLOCS_EN_MEMOIRE_MAX) this.#liberer();
-    // Arbres : à l'écran seulement, profondeur selon le pied (comme les avatars et les façades).
+    // Arbres : à l'écran seulement, profondeur selon le pied (comme les avatars et les façades) ;
+    // de loin (sous le seuil des blocs détaillés), ils s'effacent avec le reste du détail.
+    const arbresVisibles = cadrage.echelle >= ECHELLE_MIN_BLOCS;
     for (const { sprite, pied, largeurM, hauteurM } of this.#arbres) {
+      if (!arbresVisibles) {
+        sprite.setVisible(false);
+        continue;
+      }
       const p = vers(pied);
       const l = largeurM * cadrage.echelle;
       const h = hauteurM * cadrage.echelle;

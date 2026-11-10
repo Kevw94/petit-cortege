@@ -7,7 +7,7 @@ Le porteur veut suivre son avatar comme dans un jeu à la troisième personne (s
 - Le Cortège (fonction pure), le serveur, les fichiers publiés : la vue 3D affiche les mêmes sorties (positions, masse de foule, tirage des avatars, budget de 2 000 avatars dessinés).
 - Les assets (ADR 0006) : sol cuit depuis la tilemap OSM Kenney (filtrage `NearestFilter`), bâtiments extrudés depuis les emprises de la tilemap et habillés de ses tuiles de toit, de mur et de fenêtre, avatars et paquets de foule composés depuis l'atlas d'apparence, pancartes dessinées par script. Rien n'est dessiné à la main, aucun modèle 3D tiers.
 - Les noms des places et « © les contributeurs d'OpenStreetMap » restent visibles.
-- La vue 2D Phaser reste disponible (interrupteur « Vue 2D » / « Vue 3D », mémorisé sur l'appareil) et sert de repli sans WebGL ; l'image finale (#15) reste en canvas 2D.
+- La vue 2D Phaser reste disponible (interrupteur « 2D » / « 3D » dans la barre de la caméra, mémorisé sur l'appareil) et sert de repli sans WebGL ; l'image finale (#15) reste en canvas 2D.
 
 ## Conséquences
 

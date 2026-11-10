@@ -6,7 +6,7 @@ const icone = (chemins: string) =>
   `<svg class="icone" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${chemins}</svg>`;
 
 export const ICONES = {
-  /** Une cible : revenir derrière son avatar. */
+  /** Une cible : suivre le cortège (son avatar, ou la tête). */
   suivre: icone('<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>'),
   /** Un parcours de bout en bout : tout le cortège. */
   ensemble: icone('<circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="5.5" r="2.5"/><path d="M7.5 17c3-1 2-5 5-6s3-3 4-4"/>'),

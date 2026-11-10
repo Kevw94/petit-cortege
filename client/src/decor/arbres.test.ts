@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allureDArbre, VARIANTES_ARBRE } from './arbres';
+import { allureDArbre, arbresAPlanter, VARIANTES_ARBRE } from './arbres';
 
 /** Une rangée d'arbres feuillus, un tous les 5 m. */
 const rangee = Array.from({ length: 400 }, (_, i) => ({ x: i * 2.5, y: 10, resineux: false }));
@@ -34,5 +34,20 @@ describe('allure d’un arbre', () => {
     expect(Math.min(...tailles)).toBeGreaterThanOrEqual(0.85);
     expect(Math.max(...tailles)).toBeLessThanOrEqual(1.15);
     expect(new Set(tailles.map((t) => t.toFixed(2))).size).toBeGreaterThan(10);
+  });
+});
+
+describe('arbres à planter', () => {
+  it('pied en mètres (tuile de 2 m), taille selon l’allure, case de la planche de la variante', () => {
+    const date = new Date('2026-07-14T12:00:00Z');
+    const arbre = { x: 10, y: 20.5, resineux: true };
+    const [plante] = arbresAPlanter([arbre], date);
+    const { variante, echelle } = allureDArbre(arbre, date);
+    expect(plante).toEqual({
+      pied: { x: 20, y: 41 },
+      largeurM: 6 * echelle,
+      hauteurM: 12 * echelle,
+      cadre: { x: VARIANTES_ARBRE.indexOf(variante) * 16, y: 0, largeur: 16, hauteur: 32 },
+    });
   });
 });

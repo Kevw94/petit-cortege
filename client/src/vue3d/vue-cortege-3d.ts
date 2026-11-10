@@ -15,7 +15,7 @@ import { cibleDeSuivi } from '../camera';
 import { calculerCortege, COLONNES_FOULE, PAS_FOULE_M } from '../cortege/cortege';
 import { composerFoule } from '../cortege/foule';
 import { chargerImagesTilesets } from '../decor/cuisson';
-import { allureDArbre, ARBRE_M, VARIANTES_ARBRE } from '../decor/arbres';
+import { arbresAPlanter } from '../decor/arbres';
 import { empriseDuPlan } from '../decor/plan';
 import { PAQUET, TEINTE_MASSE, VARIANTES_PAQUET } from '../foule/paquets';
 import { tamponsDeMasse } from '../foule/tampons';
@@ -88,12 +88,11 @@ function projeteur(georef: Georeference) {
 
 /** Arbres du décor en billboards instanciés (un seul appel de dessin), allure selon la saison de la manif. */
 function planterArbres(liste: readonly ArbreDecor[], planche: CanvasImageSource, date: Date): { billboards: Billboards; texture: THREE.Texture } {
-  const { texture, cadres } = textureArbres(planche);
+  const { texture, largeur, hauteur } = textureArbres(planche);
   const arbres = new Billboards({ texture, capacite: liste.length });
-  for (const a of liste) {
-    const { variante, echelle } = allureDArbre(a, date);
-    const pied = versScene({ x: a.x * METRES_PAR_TUILE, y: a.y * METRES_PAR_TUILE });
-    arbres.ajouter(pied, ARBRE_M.largeur * echelle, ARBRE_M.hauteur * echelle, cadres[VARIANTES_ARBRE.indexOf(variante)]!);
+  for (const { pied, largeurM, hauteurM, cadre } of arbresAPlanter(liste, date)) {
+    const uv = [cadre.x / largeur, cadre.y / hauteur, (cadre.x + cadre.largeur) / largeur, (cadre.y + cadre.hauteur) / hauteur] as const;
+    arbres.ajouter(versScene(pied), largeurM, hauteurM, uv);
   }
   arbres.terminer();
   return { billboards: arbres, texture };

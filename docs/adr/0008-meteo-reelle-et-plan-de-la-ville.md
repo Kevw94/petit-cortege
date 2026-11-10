@@ -26,6 +26,10 @@ _Contredit ADR 0006 (« assets tiers : CC0 uniquement »)_, mais à rouvrir pour
 
 Les couleurs du plan et du ciel sont choisies à la main (constantes `COULEURS_PLAN`, palettes d'`ambiance`), pas tirées de la palette Kenney : ce sont des aplats de fond, pas des visuels de personnages ou de décor au sens de l'ADR 0006.
 
+## Boutons et mode immersif
+
+Les boutons de la vue reprennent les matières de l'accueil (bitume, carton, marquage jaune). La caméra est une barre d'icônes : leurs tracés SVG sont dessinés à la main dans `icones.ts`. L'ADR 0006 (« rien de dessiné à la main ») vise les visuels du jeu (décor, avatars, pancartes) ; ces pictogrammes d'interface en sont exclus. Chaque bouton garde son nom (`aria-label`, libellé au survol, mot court sous l'icône sur écran tactile). Le mode immersif masque toute l'interface sauf la mention OpenStreetMap, obligatoire, et un bouton de retour ; il passe en plein écran si le navigateur le permet.
+
 ## Conséquences
 
 - Format v1 étendu sans changement de version : `meteo` et `plan` sont facultatifs, un ancien client les ignore.

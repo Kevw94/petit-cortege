@@ -177,14 +177,14 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
       <p class="meteo-manif" data-meteo></p>
     </section>
     <div class="camera" role="group" aria-label="Caméra">
-      <button type="button" data-suivre data-libelle="Suivre le cortège" aria-label="Suivre le cortège" hidden>${ICONES.suivre}</button>
-      <button type="button" data-ensemble data-libelle="Vue d’ensemble" aria-label="Vue d’ensemble">${ICONES.ensemble}</button>
+      <button type="button" data-suivre data-libelle="Suivre le cortège" data-court="Suivre" aria-label="Suivre le cortège" hidden>${ICONES.suivre}</button>
+      <button type="button" data-ensemble data-libelle="Vue d’ensemble" data-court="Tout voir" aria-label="Vue d’ensemble">${ICONES.ensemble}</button>
       <span class="camera-separateur" aria-hidden="true"></span>
       <button type="button" data-zoom="1.5" data-libelle="Rapprocher" aria-label="Rapprocher">${ICONES.plus}</button>
       <button type="button" data-zoom="0.6667" data-libelle="Éloigner" aria-label="Éloigner">${ICONES.moins}</button>
       <span class="camera-separateur" aria-hidden="true"></span>
       <button type="button" class="camera-mode" data-mode hidden></button>
-      <button type="button" data-immersion data-libelle="Mode immersif" aria-label="Mode immersif : masquer les boutons">${ICONES.immersion}</button>
+      <button type="button" data-immersion data-libelle="Mode immersif" data-court="Immersif" aria-label="Mode immersif : masquer les boutons">${ICONES.immersion}</button>
     </div>
     <button type="button" class="sortir-immersion" data-sortir-immersion aria-label="Quitter le mode immersif : afficher les boutons" title="Afficher les boutons (Échap)">${ICONES.sortirImmersion}</button>
     <section class="action">

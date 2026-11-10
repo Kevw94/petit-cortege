@@ -7,6 +7,7 @@
  * Le canvas est réutilisable tel quel pour le PNG à télécharger ou à partager (#16) :
  * `imageFinaleEnPng`. Rendu en pixels entiers (tuiles Kenney à l'échelle 1, 2 ou 3).
  */
+import { arbresAPlanter, dessinerArbres } from '../decor/arbres';
 import {
   ATTRIBUTION_OSM,
   METRES_PAR_TUILE,
@@ -103,6 +104,9 @@ export function dessinerImageFinale(canvas: HTMLCanvasElement, donnees: DonneesI
   });
 
   if (decor) dessinerDecor(ctx, decor, ressources, versImage, echelle);
+  // Arbres de la place d'arrivée, sous la foule (du fond vers l'avant).
+  const planche = ressources.tilesets.get('roguelikeSheet');
+  if (decor && planche) dessinerArbresImage(ctx, decor, planche, new Date(manif.depart), versImage, pxParMetre);
   dessinerParcours(ctx, manif.parcours.coordinates.map(enMetres).map(versImage), echelle);
 
   const placer = (a: AvatarImageFinale) => ({ ...a, ...versImage({ x: arrivee.x + a.xM, y: arrivee.y + a.yM }) });
@@ -179,6 +183,29 @@ class ApparencesPrecomposees {
     const l = CELLULE_APPARENCE.largeur * echelle;
     const h = CELLULE_APPARENCE.hauteur * echelle;
     ctx.drawImage(cellule, Math.round(x - l / 2), y - h, l, h);
+  }
+}
+
+function dessinerArbresImage(
+  ctx: CanvasRenderingContext2D,
+  decor: Decor,
+  planche: HTMLImageElement,
+  date: Date,
+  versImage: (m: { x: number; y: number }) => { x: number; y: number },
+  pxParMetre: number,
+): void {
+  const sprites = dessinerArbres(planche);
+  const arbres = arbresAPlanter(decor.arbres, date)
+    .map((a) => ({ ...a, ecran: versImage(a.pied) }))
+    .filter(({ ecran, largeurM, hauteurM }) => {
+      const l = largeurM * pxParMetre;
+      return ecran.x > -l && ecran.x < LARGEUR_IMAGE_FINALE + l && ecran.y > 0 && ecran.y < HAUTEUR_IMAGE_FINALE + hauteurM * pxParMetre;
+    })
+    .sort((a, b) => a.ecran.y - b.ecran.y);
+  for (const { ecran, largeurM, hauteurM, cadre } of arbres) {
+    const l = Math.round(largeurM * pxParMetre);
+    const h = Math.round(hauteurM * pxParMetre);
+    ctx.drawImage(sprites, cadre.x, cadre.y, cadre.largeur, cadre.hauteur, Math.round(ecran.x - l / 2), ecran.y - h, l, h);
   }
 }
 

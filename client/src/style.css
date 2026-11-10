@@ -235,13 +235,20 @@ button.retirer:disabled {
 .message {
   margin: 0;
   max-width: 28rem;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.92);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* Sur la vue, au-dessus de la rue : bitume et craie, comme les boutons. */
+.action > .message {
   padding: 8px 14px;
   border-radius: 10px;
   background: var(--bitume-voile);
   color: var(--craie);
-  font-size: 0.9rem;
   line-height: 1.4;
-  text-align: center;
 }
 
 /* Panneau de composition avant d'entrer (#11 pancarte, #10 apparence) : feuille en bas
@@ -300,16 +307,28 @@ button.retirer:disabled {
   padding: 12px 16px;
 }
 
+/* Action secondaire sur fond clair (panneau de composition, partage) : un carton pâle. */
 button.secondaire {
   min-height: 48px;
   padding: 12px 18px;
-  border: 1px solid #ccc;
+  border: 0;
   border-radius: 999px;
-  background: #fff;
-  color: var(--texte);
+  background: #eee8dc;
+  color: var(--encre);
   font: inherit;
+  font-weight: 600;
+  box-shadow: 0 2px 0 #d6cebf;
   touch-action: manipulation;
   cursor: pointer;
+}
+
+button.secondaire:hover {
+  background: #e6dfd0;
+}
+
+button.secondaire:focus-visible {
+  outline: 3px solid var(--marquage);
+  outline-offset: 2px;
 }
 
 .choix {
@@ -321,7 +340,7 @@ button.secondaire {
 .choix button {
   min-height: 44px;
   min-width: 44px;
-  border: 2px solid #ddd;
+  border: 2px solid #e4dfd5;
   border-radius: 10px;
   background: #fff;
   color: var(--texte);
@@ -331,9 +350,19 @@ button.secondaire {
   cursor: pointer;
 }
 
+.choix button:hover {
+  border-color: #cfc7b8;
+}
+
+.choix button:focus-visible {
+  outline: 3px solid var(--marquage);
+  outline-offset: 2px;
+}
+
+/* Choisi : bordé d'encre et souligné du jaune du marquage. */
 .choix button[aria-pressed='true'] {
-  border-color: var(--texte);
-  box-shadow: 0 0 0 2px #fff inset;
+  border-color: var(--encre);
+  box-shadow: 0 0 0 2px #fff inset, 0 3px 0 var(--marquage);
 }
 
 .choix-slogans button {
@@ -341,7 +370,7 @@ button.secondaire {
 }
 
 .choix-slogans button[aria-pressed='true'] {
-  background: #f1efe8;
+  background: #fdf3cf;
   font-weight: 600;
 }
 
@@ -528,7 +557,7 @@ canvas.image-finale {
    chaque bouton s'affiche à sa gauche au survol ou au focus (souris, clavier). */
 #interface > .camera {
   position: fixed;
-  right: 12px;
+  right: max(12px, env(safe-area-inset-right));
   top: 50%;
   transform: translateY(-50%);
   display: flex;
@@ -615,6 +644,26 @@ canvas.image-finale {
   }
 }
 
+/* Écran tactile (pas de survol) : un mot sous les icônes qui ne parlent pas d'elles-mêmes. */
+@media (hover: none), (pointer: coarse) {
+  .camera > button[data-court] {
+    width: 56px;
+    height: 54px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .camera > button[data-court]::after {
+    content: attr(data-court);
+    font-size: 0.66rem;
+    font-weight: 600;
+    line-height: 1;
+  }
+}
+
 /* Mode immersif : la vue seule. Restent la mention OpenStreetMap (obligatoire, ODbL), les noms
    des places et l'étiquette « toi » posés dans la vue, et un bouton discret pour revenir. */
 .sortir-immersion {
@@ -634,7 +683,7 @@ body.immersif #interface > .attribution {
 body.immersif #interface > .sortir-immersion {
   position: fixed;
   top: max(12px, env(safe-area-inset-top));
-  right: 12px;
+  right: max(12px, env(safe-area-inset-right));
   display: grid;
   place-items: center;
   width: 44px;
