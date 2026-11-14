@@ -1,0 +1,87 @@
+# Service systemd du serveur de Petit Cortège (Node + tâche de publication, ADR 0005).
+# Installé par `installer.sh` dans /etc/systemd/system/petit-cortege.service.
+#
+# ÉTAT DE VALIDATION : la syntaxe a été vérifiée avec `systemd-analyze verify` (seule
+# remarque : /usr/bin/node absent de la machine de test, sans objet sur le VPS) et la
+# commande de lancement a été exécutée à la main avec les mêmes variables d'environnement.
+# L'unité n'a PAS été démarrée par systemd (pas de systemd actif là où elle a été écrite),
+# donc le durcissement (ProtectSystem, SystemCallFilter…) n'est pas éprouvé. Sur le VPS :
+#   systemd-analyze security petit-cortege
+#   sudo journalctl -u petit-cortege -n 30
+# Si le service échoue à cause d'une restriction, assouplis la ligne en cause plutôt que de tout retirer.
+[Unit]
+Description=Petit Cortège : serveur (API d'entrée et publication)
+Documentation=file:///opt/petit-cortege/docs/deploiement.md
+After=network-online.target postgresql.service
+Wants=network-online.target postgresql.service
+# Au plus 5 redémarrages en 2 minutes, puis on s'arrête (visible dans `systemctl status`).
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=petit-cortege
+Group=petit-cortege
+WorkingDirectory=/opt/petit-cortege
+
+# Secrets et réglages : /etc/petit-cortege.env (voir petit-cortege.env.exemple).
+# systemd le lit en root avant de changer d'utilisateur.
+EnvironmentFile=/etc/petit-cortege.env
+Environment=NODE_ENV=production
+
+# Équivalent de `npm run serveur` (qui lance `tsx server/src/principal.ts`), sans
+# la couche npm : un processus de moins, pas d'écriture dans ~/.npm, et SIGTERM
+# arrive directement à Node (arrêt propre : la publication en cours se termine).
+ExecStart=/usr/bin/node --import tsx server/src/principal.ts
+
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=30
+
+# /var/lib/petit-cortege, créé par systemd, appartient à petit-cortege. Mode 0755 : Caddy
+# (utilisateur « caddy ») doit pouvoir lire le dossier publie/ qui s'y trouve.
+StateDirectory=petit-cortege
+StateDirectoryMode=0755
+UMask=0022
+
+# --- Journaux (journald) ------------------------------------------------------------
+# Le serveur n'écrit aucune IP ni aucun identifiant de manif dans sa sortie (ADR 0001/0002) :
+# seulement le démarrage, les avertissements (publication lente, plafond dépassé) et les
+# erreurs. La durée de conservation de journald est réglée par installer.sh
+# (/etc/systemd/journald.conf.d/petit-cortege.conf).
+SyslogIdentifier=petit-cortege
+StandardOutput=journal
+StandardError=journal
+
+# --- Durcissement ----------------------------------------------------------------------
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/petit-cortege
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RemoveIPC=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+# Réseau : Postgres en TCP local, et le webhook d'alerte si configuré.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+# Pas de MemoryDenyWriteExecute : le compilateur JIT de V8 en a besoin.
+# Plafond de mémoire : le test de charge a mesuré 184 à 326 Mo de RSS (docs/test-de-charge.md).
+MemoryMax=1G
+
+[Install]
+WantedBy=multi-user.target
