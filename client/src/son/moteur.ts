@@ -13,6 +13,7 @@
 import { frequenceMidi } from './alea';
 import type { ReglagesAmbiance } from './ambiance';
 import type { EvenementChant, ProgrammeChant, Voyelle } from './chants';
+import { creerBrouhahaVoix } from './moteur-voix';
 import { creerPartitionAccueil, MESURE_ACCUEIL_S, type NoteAccueil } from './partition-accueil';
 
 export type SceneSon = 'silence' | 'accueil' | 'manif';
@@ -53,6 +54,8 @@ interface Sorties {
 interface Scene extends Sorties {
   nom: Exclude<SceneSon, 'silence'>;
   arreter(): void;
+  /** Baisse un peu le fond de voix le temps d'un chant (ambiance de manif seulement). */
+  baisserPourChant?(debut: number, duree: number): void;
 }
 
 interface Bus {
@@ -155,6 +158,7 @@ export function creerMoteurSon(actifAuDepart: boolean): MoteurSon {
       if (!doitJouer() || !bus || bus.ctx.state !== 'running' || !courante) return null;
       const delai = 0.12;
       jouerProgrammeChant(bus, courante, programme, bus.ctx.currentTime + delai);
+      courante.baisserPourChant?.(bus.ctx.currentTime + delai, programme.duree);
       return delai + (bus.ctx.outputLatency || bus.ctx.baseLatency || 0);
     },
   };
@@ -366,6 +370,8 @@ const REGLAGES_PAR_DEFAUT: ReglagesAmbiance = {
   pasParSeconde: 0.5,
   percussions: 0,
   evenementsParMinute: 1,
+  voix: 0.2,
+  locuteurs: 1,
 };
 
 function sceneManif(b: Bus, lireReglages: () => ReglagesAmbiance | null): Scene {
@@ -418,6 +424,14 @@ function sceneManif(b: Bus, lireReglages: () => ReglagesAmbiance | null): Scene 
   brancher(ctx, evenements, sorties, 0.35);
   noeuds.push(evenements);
 
+  // Conversations inintelligibles, sous le reste (ADR 0008) : une voix de fond par locuteur.
+  const sortieVoix = ctx.createGain();
+  brancher(ctx, sortieVoix, sorties, 0.5);
+  noeuds.push(sortieVoix);
+  const voix = creerBrouhahaVoix(ctx, b.bruit, sortieVoix, Math.floor(Math.random() * 2 ** 31));
+  sources.push(...voix.sources);
+  noeuds.push(...voix.noeuds);
+
   let reglagesAppliques: ReglagesAmbiance | null = null;
   let prochainPas = ctx.currentTime + 0.3;
   let prochainEvenement = ctx.currentTime + 4 + Math.random() * 6;
@@ -436,9 +450,11 @@ function sceneManif(b: Bus, lireReglages: () => ReglagesAmbiance | null): Scene 
       // Transitions lentes (constante de temps ≈ 1,5 s) : la foule enfle sans à-coup.
       volumeBrouhaha.gain.setTargetAtTime(r.brouhaha * 0.5, maintenant, 1.5);
       coupure.frequency.setTargetAtTime(r.coupureHz, maintenant, 1.5);
+      voix.regler(r);
       reglagesAppliques = r;
     }
     const horizon = maintenant + AVANCE_S;
+    voix.programmer(maintenant, horizon);
     if (prochainPas < maintenant - 1) prochainPas = maintenant;
     if (prochaineCroche < maintenant - 1) prochaineCroche = maintenant + 0.1;
     if (prochainEvenement < maintenant - 1) prochainEvenement = maintenant + 2;
@@ -471,6 +487,7 @@ function sceneManif(b: Bus, lireReglages: () => ReglagesAmbiance | null): Scene 
     nom: 'manif',
     sortie: sorties.sortie,
     envoi: sorties.envoi,
+    baisserPourChant: voix.baisserPourChant,
     arreter() {
       clearInterval(minuterie);
       sorties.fermer(() => {
