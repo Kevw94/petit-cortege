@@ -39,6 +39,7 @@ import {
   tronconEnMarche,
 } from './cortege/marche';
 import { MasseDeFoule } from './foule/masse';
+import { COULEUR_FOND_CSS } from './decor/alentours';
 import { DecorAffiche, prechargerDecor } from './decor/rendu';
 import { TraceAuSol } from './decor/trace';
 import { pancartesAffichees } from './pancartes/affichage';
@@ -151,7 +152,11 @@ export class SceneCortege extends Phaser.Scene {
       .setVisible(false);
     const { decor, manif } = this.#donnees;
     this.#projeter = projeteur(decor?.georef ?? { origine: manif.parcours.coordinates[0]! });
-    if (decor) this.#decor = new DecorAffiche(this, decor);
+    if (decor) {
+      this.#decor = new DecorAffiche(this, decor);
+      // Au-delà du décor, la teinte des pâtés de maisons (celle où se fondent les alentours), pas le papier.
+      this.cameras.main.setBackgroundColor(COULEUR_FOND_CSS);
+    }
     this.#trace = new TraceAuSol(this, manif.parcours.coordinates.map(this.#projeter));
     this.#ensemble = this.#cadrageDEnsemble();
     this.#cadrage = cadrerEnTroisiemePersonne(this.#ensemble, this.#projeter(this.#donnees.manif.parcours.coordinates[0]!));

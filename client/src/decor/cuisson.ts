@@ -57,20 +57,15 @@ export function cuireBloc(
   return { canvas, rangees: [...pleines].sort((a, b) => a - b) };
 }
 
-/** Vue d'ensemble : un pixel par tuile, de la couleur moyenne de la tuile la plus haute des `couches`. */
-export function dessinerVueDEnsemble(decor: Decor, images: ImagesTilesets, couches: readonly string[] = decor.nomsCouches): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.max(1, decor.largeur);
-  canvas.height = Math.max(1, decor.hauteur);
-  const ctx = canvas.getContext('2d')!;
-  const pixels = ctx.createImageData(canvas.width, canvas.height);
+/** Couleur moyenne (RGBA, 0–255) des pixels opaques d'une tuile ; mémorisée par gid ([0, 0, 0, 0] si vide). */
+export function couleursDeTuiles(tilesets: readonly TilesetTiled[], images: ImagesTilesets): (gid: number) => number[] {
   const couleurs = new Map<number, number[]>();
   const echantillon = document.createElement('canvas').getContext('2d', { willReadFrequently: true })!;
-  const couleur = (gid: number) => {
+  return (gid) => {
     let c = couleurs.get(gid);
     if (!c) {
       c = [0, 0, 0, 0];
-      const s = sourceDeTuile(decor.tilesets, images, gid);
+      const s = sourceDeTuile(tilesets, images, gid);
       if (s) {
         echantillon.canvas.width = echantillon.canvas.height = TAILLE_TUILE_PX;
         echantillon.clearRect(0, 0, TAILLE_TUILE_PX, TAILLE_TUILE_PX);
@@ -90,6 +85,16 @@ export function dessinerVueDEnsemble(decor: Decor, images: ImagesTilesets, couch
     }
     return c;
   };
+}
+
+/** Vue d'ensemble : un pixel par tuile, de la couleur moyenne de la tuile la plus haute des `couches`. */
+export function dessinerVueDEnsemble(decor: Decor, images: ImagesTilesets, couches: readonly string[] = decor.nomsCouches): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, decor.largeur);
+  canvas.height = Math.max(1, decor.hauteur);
+  const ctx = canvas.getContext('2d')!;
+  const pixels = ctx.createImageData(canvas.width, canvas.height);
+  const couleur = couleursDeTuiles(decor.tilesets, images);
   for (const bloc of decor.blocs.values()) {
     for (let i = 0; i < TAILLE_BLOC * TAILLE_BLOC; i++) {
       const x = bloc.x + (i % TAILLE_BLOC);
