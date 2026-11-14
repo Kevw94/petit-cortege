@@ -16,11 +16,13 @@ Kenney (CC0) ; le code du dépôt garde sa propre licence (ADR 0006).
 Chaque entrée de l'index porte aussi le tracé simplifié du parcours et la demi-largeur de la bande : le client prend
 le décor dont la bande couvre le parcours, pas seulement l'emprise rectangulaire.
 
-Régénérer :
+Régénérer (sans réseau tant que les deux extraits existent ; sinon ajouter `--overpass <url>`, répétable) :
 
 ```sh
 npm run decor -- tilemap --parcours donnees/osm/republique-nation/parcours.geojson \
-  --osm donnees/osm/republique-nation/extrait-overpass.json --sortie client/public/decors/republique-nation.json
+  --osm donnees/osm/republique-nation/extrait-overpass.json \
+  --alentours-osm donnees/osm/republique-nation/alentours-overpass.json \
+  --sortie client/public/decors/republique-nation.json
 ```
 
 Les cartes s'ouvrent dans Tiled (carte infinie, blocs de 32 × 32) pour un nettoyage à la main ; les chemins des
@@ -28,3 +30,13 @@ tilesets pointent vers `assets/kenney/`. Couches de tuiles : `sol` (rues, verts,
 (garde-corps), `batiments` (toits et murs) et `facades` (fenêtres, portes), ces deux dernières dessinées en jeu
 par rangées avec profondeur = y ; couches d'objets : `parcours` (tracé) et `places` (noms des places
 traversées, propriété `arrivee`).
+
+**Alentours** (format 2) : couche de tuiles `alentours` à résolution réduite, autour de la bande détaillée, jusqu'à
+700 m du parcours : rues selon leur type (chaussée et trottoirs), espaces verts, eau, et entre les rues des pâtés
+de maisons d'une seule teinte (tuile du toit beige, sans bâtiments individuels ni noms). Chaque case couvre
+`tuiles_par_case` × `tuiles_par_case` tuiles (propriété de la couche : 2, soit 4 m) ; ses blocs de 32 × 32 cases
+partent de la même origine que la carte et débordent de son emprise (coordonnées négatives). Dans Tiled, cette
+couche apparaît à la moitié de l'échelle : à masquer pour nettoyer la bande. Le client en cuit une seule texture
+(un pixel par case, couleur moyenne de la tuile), fondue au bord dans la teinte des pâtés de maisons, qui est
+aussi celle du sol au-delà. L'emprise et la demi-largeur inscrites dans l'index restent celles de la bande : le
+choix du décor ne change pas. Les cartes sans alentours (format 1) restent lues.

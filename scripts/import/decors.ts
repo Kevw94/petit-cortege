@@ -1,7 +1,8 @@
 /**
  * Étape « decors » : pour chaque manif tracée, extrait OSM brut de la bande
- * autour du parcours (Overpass, serveurs essayés dans l'ordre ; enregistré dans
- * `donnees/osm/<id>/` pour rejouer sans réseau) puis tilemap du décor dans
+ * autour du parcours et extrait simplifié de ses alentours (Overpass, serveurs
+ * essayés dans l'ordre ; enregistrés dans `donnees/osm/<id>/` pour rejouer sans
+ * réseau) puis tilemap du décor dans
  * `client/public/decors/<id>.json`, inscrite dans `index.json` (ODbL).
  */
 import { join, relative } from 'node:path';
@@ -10,6 +11,7 @@ import { inscrireDansIndex } from '../decor';
 import { DEMI_LARGEUR_PAR_DEFAUT_M, genererDecor } from '../decor/carte';
 import { lireExtrait, type ExtraitOverpass } from '../decor/osm';
 import { RAYON_EXTRACTION_M, requeteBande } from '../decor/overpass';
+import { RAYON_ALENTOURS_PAR_DEFAUT_M, requeteAlentours, simplifierExtraitAlentours, texteExtraitAlentours } from '../decor/alentours';
 import { echantillonner, nomDeVoie } from './controles';
 import type { ManifDeclaree } from './fichier';
 import { interrogerOverpass } from './overpass';
@@ -31,6 +33,7 @@ export interface DependancesDecors {
 export interface DecorGenere {
   id: string;
   octetsExtrait: number;
+  octetsAlentours: number;
   octetsDecor: number;
   places: string[];
   /** Zones à éviter dans l'emprise OSM desquelles le parcours entre (doit rester vide). */
@@ -50,11 +53,24 @@ export async function genererDecorManif(manif: ManifDeclaree, parcours: Parcours
     deps.journal(`  extrait OSM déjà enregistré (${relative(deps.racine, cheminExtrait)}), rejoué sans réseau.`);
   }
   const osm = JSON.parse(texte) as ExtraitOverpass;
+  const cheminAlentours = join(deps.racine, 'donnees/osm', manif.id, 'alentours-overpass.json');
+  let texteAlentours = deps.rafraichir ? null : await deps.lire(cheminAlentours);
+  if (texteAlentours === null) {
+    deps.journal(`  extrait OSM des alentours (${RAYON_ALENTOURS_PAR_DEFAUT_M} m autour du parcours, sans bâtiments)…`);
+    const reponse = await interrogerOverpass(deps.reseau, deps.urlsOverpass, requeteAlentours(parcours, RAYON_ALENTOURS_PAR_DEFAUT_M), deps.journal);
+    const simplifie = simplifierExtraitAlentours(reponse.extrait);
+    texteAlentours = texteExtraitAlentours(simplifie);
+    await deps.ecrireFichier(cheminAlentours, texteAlentours);
+    deps.journal(`  alentours de ${new URL(reponse.url).host} : ${reponse.extrait.elements.length} éléments OSM, ${simplifie.elements.length} gardés.`);
+  } else {
+    deps.journal(`  alentours déjà enregistrés (${relative(deps.racine, cheminAlentours)}), rejoués sans réseau.`);
+  }
   const sortie = join(deps.dossierDecors, `${manif.id}.json`);
   const carte = genererDecor({
     osm,
     parcours,
     demiLargeurM: DEMI_LARGEUR_PAR_DEFAUT_M,
+    alentours: { osm: JSON.parse(texteAlentours) as ExtraitOverpass, rayonM: RAYON_ALENTOURS_PAR_DEFAUT_M },
     dossierKenney: relative(deps.dossierDecors, join(deps.racine, 'assets/kenney')).split('\\').join('/'),
   });
   const contenu = `${JSON.stringify(carte)}\n`;
@@ -67,6 +83,7 @@ export async function genererDecorManif(manif: ManifDeclaree, parcours: Parcours
   return {
     id: manif.id,
     octetsExtrait: Buffer.byteLength(texte),
+    octetsAlentours: Buffer.byteLength(texteAlentours),
     octetsDecor: Buffer.byteLength(contenu),
     places,
     zonesTraversees,

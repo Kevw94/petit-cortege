@@ -5,6 +5,7 @@
  * pure, appliquée par le moteur Web Audio au plus une fois par seconde.
  */
 import type { EtatManif } from '../cortege/cortege';
+import { LOCUTEURS_MAX, type ReglagesVoix } from './brouhaha-voix';
 
 export type PhaseAmbiance = 'avant' | 'marche' | 'fin';
 
@@ -13,7 +14,7 @@ export function phaseAmbiance(etat: EtatManif, departMs: number, maintenantMs: n
   return maintenantMs < departMs ? 'avant' : 'marche';
 }
 
-export interface ReglagesAmbiance {
+export interface ReglagesAmbiance extends ReglagesVoix {
   /** Volume du brouhaha (bruit filtré), de 0 à 1. */
   brouhaha: number;
   /** Fréquence de coupure du filtre du brouhaha (Hz) : plus de monde, plus de brillance. */
@@ -24,6 +25,8 @@ export interface ReglagesAmbiance {
   percussions: number;
   /** Événements doux (sifflet lointain, applaudissements) par minute. */
   evenementsParMinute: number;
+  // `voix` (niveau, 0 à 1) et `locuteurs` (nombre, 0 à LOCUTEURS_MAX) : conversations
+  // inintelligibles du fond sonore, voir `brouhaha-voix.ts`.
 }
 
 /** Au-delà, la foule ne s'entend pas plus fort : l'échelle sature doucement. */
@@ -45,6 +48,9 @@ export function reglagesAmbiance({ soutiens, phase }: { soutiens: number; phase:
         pasParSeconde: 0.3 + 0.9 * f,
         percussions: 0,
         evenementsParMinute: 0.5 + 1.5 * f,
+        // Une ou deux voix lointaines avec peu de monde, jusqu'à cinq en foule dense.
+        voix: 0.2 + 0.4 * f,
+        locuteurs: Math.round(1 + 4 * f),
       };
     case 'marche':
       return {
@@ -53,9 +59,20 @@ export function reglagesAmbiance({ soutiens, phase }: { soutiens: number; phase:
         pasParSeconde: 1.5 + 6.5 * f,
         percussions: 0.25 + 0.55 * f,
         evenementsParMinute: 2 + 5 * f,
+        // Foule dense : un murmure continu de nombreuses voix (au plus LOCUTEURS_MAX).
+        voix: 0.3 + 0.5 * f,
+        locuteurs: Math.min(LOCUTEURS_MAX, Math.round(1 + (LOCUTEURS_MAX - 1) * f)),
       };
     case 'fin':
-      return { brouhaha: 0.12, coupureHz: 600, pasParSeconde: 0, percussions: 0, evenementsParMinute: 0.5 };
+      return {
+        brouhaha: 0.12,
+        coupureHz: 600,
+        pasParSeconde: 0,
+        percussions: 0,
+        evenementsParMinute: 0.5,
+        voix: 0.1,
+        locuteurs: 1,
+      };
   }
 }
 

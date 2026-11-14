@@ -15,7 +15,8 @@ export const TAILLE_TUILE_PX = 16;
 export const TAILLE_BLOC = 32;
 /** Valeur de la propriété `format` d'une carte de décor (version : propriété `version_format`). */
 export const FORMAT_DECOR = 'petit-cortege-decor';
-export const VERSION_FORMAT_DECOR = 1;
+/** 2 : couche `alentours` facultative (résolution réduite) ; les cartes en version 1 restent lues. */
+export const VERSION_FORMAT_DECOR = 2;
 export const ATTRIBUTION_OSM = '© les contributeurs d’OpenStreetMap';
 /**
  * Couches de tuiles des bâtiments (toits et murs, puis fenêtres et portes) : le
@@ -23,6 +24,16 @@ export const ATTRIBUTION_OSM = '© les contributeurs d’OpenStreetMap';
  * pour qu'une façade passe devant les avatars qui sont derrière elle.
  */
 export const COUCHES_BATIMENTS: readonly string[] = ['batiments', 'facades'];
+/**
+ * Couche de tuiles des alentours : autour de la bande détaillée, une carte simplifiée (rues,
+ * verts, eau, pâtés de maisons sans bâtiments) à résolution réduite. Chaque case couvre
+ * `tuiles_par_case` × `tuiles_par_case` tuiles (propriété de la couche) ; ses blocs sont en
+ * cases (TAILLE_BLOC × TAILLE_BLOC cases), comptées depuis la même origine que la carte, et
+ * peuvent déborder de l'emprise de la bande (coordonnées négatives). Le gid d'une case est la
+ * tuile Kenney dont la couleur moyenne la représente (0 : hors des alentours).
+ */
+export const COUCHE_ALENTOURS = 'alentours';
+export const PROPRIETE_TUILES_PAR_CASE = 'tuiles_par_case';
 /** Couche d'objets des noms de places traversées (objets ponctuels : `name` = nom, propriété `arrivee`). */
 export const COUCHE_PLACES = 'places';
 
@@ -154,6 +165,7 @@ export interface CoucheTuilesTiled {
   encoding: 'base64';
   compression: 'zlib';
   chunks: BlocTiled[];
+  properties?: ProprieteTiled[];
 }
 
 export interface ObjetTiled {
@@ -331,6 +343,20 @@ export interface Decor {
   blocs: Map<string, BlocDecor>;
   /** Noms des places traversées par le parcours, à afficher (dont la place d'arrivée). */
   places: PlaceDecor[];
+  /** Alentours simplifiés (absents des cartes anciennes). */
+  alentours?: AlentoursDecor;
+}
+
+/** Grille dense des alentours, en cases de `tuilesParCase` tuiles de côté. */
+export interface AlentoursDecor {
+  tuilesParCase: number;
+  /** Case du coin haut-gauche de la grille (en cases depuis l'origine de la carte, peut être négative). */
+  x: number;
+  y: number;
+  largeur: number;
+  hauteur: number;
+  /** Gids, ligne par ligne (largeur × hauteur) ; 0 hors des alentours. */
+  gids: Uint32Array;
 }
 
 export interface PlaceDecor {
@@ -364,7 +390,10 @@ export async function lireDecor(carte: CarteTiled): Promise<Decor> {
   if (propriete(carte, 'format') !== FORMAT_DECOR || typeof lon !== 'number' || typeof lat !== 'number') {
     throw new Error('Carte de décor illisible');
   }
-  const couches = carte.layers.filter((c): c is CoucheTuilesTiled => c.type === 'tilelayer');
+  const tuilesParCase = (c: CoucheTuilesTiled) => c.properties?.find((p) => p.name === PROPRIETE_TUILES_PAR_CASE)?.value;
+  const toutes = carte.layers.filter((c): c is CoucheTuilesTiled => c.type === 'tilelayer');
+  const couches = toutes.filter((c) => c.name !== COUCHE_ALENTOURS);
+  const coucheAlentours = toutes.find((c) => c.name === COUCHE_ALENTOURS);
   const blocs = new Map<string, BlocDecor>();
   for (const couche of couches) {
     for (const bloc of couche.chunks) {
@@ -386,6 +415,7 @@ export async function lireDecor(carte: CarteTiled): Promise<Decor> {
       y: o.y / TAILLE_TUILE_PX,
       arrivee: o.properties?.find((p) => p.name === 'arrivee')?.value === true,
     }));
+  const alentours = coucheAlentours ? await lireAlentours(coucheAlentours, Number(tuilesParCase(coucheAlentours))) : undefined;
   return {
     georef: { origine: [lon, lat] },
     largeur: carte.width,
@@ -394,7 +424,31 @@ export async function lireDecor(carte: CarteTiled): Promise<Decor> {
     nomsCouches: couches.map((c) => c.name),
     blocs,
     places,
+    ...(alentours ? { alentours } : {}),
   };
+}
+
+/** Assemble les blocs de la couche des alentours en une grille dense. */
+async function lireAlentours(couche: CoucheTuilesTiled, tuilesParCase: number): Promise<AlentoursDecor | undefined> {
+  if (!Number.isInteger(tuilesParCase) || tuilesParCase < 1) throw new Error('Alentours : tuiles_par_case illisible');
+  if (couche.chunks.length === 0) return undefined;
+  for (const bloc of couche.chunks) {
+    if (bloc.width !== TAILLE_BLOC || bloc.height !== TAILLE_BLOC || bloc.x % TAILLE_BLOC || bloc.y % TAILLE_BLOC) {
+      throw new Error(`Bloc des alentours mal aligné (${bloc.x}, ${bloc.y})`);
+    }
+  }
+  const x = Math.min(...couche.chunks.map((b) => b.x));
+  const y = Math.min(...couche.chunks.map((b) => b.y));
+  const largeur = Math.max(...couche.chunks.map((b) => b.x)) + TAILLE_BLOC - x;
+  const hauteur = Math.max(...couche.chunks.map((b) => b.y)) + TAILLE_BLOC - y;
+  const gids = new Uint32Array(largeur * hauteur);
+  for (const bloc of couche.chunks) {
+    const donnees = await decompresser(bloc.data);
+    for (let r = 0; r < TAILLE_BLOC; r++) {
+      gids.set(donnees.subarray(r * TAILLE_BLOC, (r + 1) * TAILLE_BLOC), (bloc.y - y + r) * largeur + (bloc.x - x));
+    }
+  }
+  return { tuilesParCase, x, y, largeur, hauteur, gids };
 }
 
 /** Gid de la tuile (x, y) d'une couche ; 0 si vide ou hors des blocs. */

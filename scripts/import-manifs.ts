@@ -49,8 +49,8 @@ const AIDE = `Usage : npm run import-manifs -- <commande> --fichier donnees/mani
   verifier   Valide le fichier du jour (aucun réseau).
   tracer     Géocode les étapes, calcule l'itinéraire piéton et écrit donnees/manifs/<jour>/<id>.geojson
              (Géoplateforme IGN, repli API Adresse / OSRM FOSSGIS ; Overpass pour les étapes « rue »).
-  decors     Génère le décor de chaque manif tracée : extrait OSM dans donnees/osm/<id>/ (réutilisé s'il existe,
-             sauf --rafraichir), tilemap dans client/public/decors/<id>.json + index.json.
+  decors     Génère le décor de chaque manif tracée : extraits OSM de la bande et des alentours dans donnees/osm/<id>/
+             (réutilisés s'ils existent, sauf --rafraichir), tilemap dans client/public/decors/<id>.json + index.json.
   publier    Crée en base les manifs tracées et vérifiées (DATABASE_URL, DOSSIER_PUBLICATION), puis publie.
              Idempotent : une manif déjà créée est sautée. Aucun réseau.
 
@@ -160,7 +160,7 @@ export async function executerImport(argv: string[], deps: DependancesImportMani
             const ko = (n: number) => `${Math.round(n / 1024)} Ko`;
             deps.ecrire(
               `${manif.id} : décor ${chemin(join(dossierDecors, `${manif.id}.json`))} (${ko(decor.octetsDecor)}), ` +
-                `extrait OSM ${ko(decor.octetsExtrait)} ; places traversées : ${decor.places.join(', ') || 'aucune'}.`,
+                `extrait OSM ${ko(decor.octetsExtrait)}, alentours ${ko(decor.octetsAlentours)} ; places traversées : ${decor.places.join(', ') || 'aucune'}.`,
             );
             if (decor.zonesTraversees.length) {
               echecs++;
