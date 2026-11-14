@@ -1,0 +1,206 @@
+{
+ "type": "Feature",
+ "properties": {
+  "manif": "caen-2026-11-14",
+  "ville": "Caen",
+  "parcoursAnnonce": "Rendez-vous à 14h, marche à 14h40 : départ place Saint-Pierre, arrivée place Saint-Sauveur (relevé de la carte des organisateurs).",
+  "empreinte": "f8ed13fbfc15b11b",
+  "etapes": [
+   {
+    "rang": 1,
+    "demande": "Place Saint-Pierre, Caen",
+    "genre": "adresse",
+    "libelle": "Place Saint-Pierre 14000 Caen",
+    "position": [
+     -0.361265,
+     49.183719
+    ],
+    "score": 0.966,
+    "service": "Géoplateforme IGN (géocodage)"
+   },
+   {
+    "rang": 2,
+    "demande": "Place Saint-Sauveur, Caen",
+    "genre": "adresse",
+    "libelle": "Place Saint-Sauveur 14000 Caen",
+    "position": [
+     -0.369026,
+     49.182774
+    ],
+    "score": 0.973,
+    "service": "Géoplateforme IGN (géocodage)"
+   }
+  ],
+  "pointsDePassage": [
+   [
+    -0.361265,
+    49.183719
+   ],
+   [
+    -0.369026,
+    49.182774
+   ]
+  ],
+  "zonesEvitees": [],
+  "itineraire": {
+   "service": "Géoplateforme IGN (itinéraire piéton, bdtopo-osrm)",
+   "versionDonnees": "2026-11-13",
+   "distanceAnnonceeM": 727
+  },
+  "longueurM": 725,
+  "rues": [
+   {
+    "nom": "PL SAINT-PIERRE",
+    "m": 51
+   },
+   {
+    "nom": "R SAINT-PIERRE",
+    "m": 271
+   },
+   {
+    "nom": "R FROIDE",
+    "m": 165
+   },
+   {
+    "nom": "R SAINT-SAUVEUR",
+    "m": 239
+   },
+   {
+    "nom": "PL SAINT-SAUVEUR",
+    "m": 0
+   }
+  ],
+  "avertissements": [],
+  "calculeLe": "2026-11-14T09:35:11.363Z",
+  "attribution": [
+   "Adresses : Base Adresse Nationale, via la Géoplateforme IGN (Licence Ouverte 2.0)",
+   "Itinéraire : IGN – Géoplateforme, BD TOPO® (Licence Ouverte 2.0)"
+  ],
+  "licence": "Tracé calculé, dérivé de données sous Licence Ouverte 2.0 (IGN, BAN) et, le cas échéant, ODbL (OpenStreetMap)"
+ },
+ "geometry": {
+  "type": "LineString",
+  "coordinates": [
+   [
+    -0.36117,
+    49.18376
+   ],
+   [
+    -0.361304,
+    49.183893
+   ],
+   [
+    -0.361563,
+    49.184141
+   ],
+   [
+    -0.362125,
+    49.183894
+   ],
+   [
+    -0.362436,
+    49.183765
+   ],
+   [
+    -0.362813,
+    49.183608
+   ],
+   [
+    -0.363909,
+    49.183148
+   ],
+   [
+    -0.363944,
+    49.183134
+   ],
+   [
+    -0.364216,
+    49.183031
+   ],
+   [
+    -0.364638,
+    49.182866
+   ],
+   [
+    -0.364706,
+    49.18284
+   ],
+   [
+    -0.365198,
+    49.183355
+   ],
+   [
+    -0.365312,
+    49.183478
+   ],
+   [
+    -0.365356,
+    49.183512
+   ],
+   [
+    -0.365393,
+    49.183531
+   ],
+   [
+    -0.365454,
+    49.183553
+   ],
+   [
+    -0.365533,
+    49.183572
+   ],
+   [
+    -0.365648,
+    49.1836
+   ],
+   [
+    -0.365832,
+    49.183668
+   ],
+   [
+    -0.365944,
+    49.183722
+   ],
+   [
+    -0.36615,
+    49.183839
+   ],
+   [
+    -0.366225,
+    49.183884
+   ],
+   [
+    -0.366312,
+    49.18386
+   ],
+   [
+    -0.367035,
+    49.183465
+   ],
+   [
+    -0.367478,
+    49.183298
+   ],
+   [
+    -0.367913,
+    49.183141
+   ],
+   [
+    -0.368229,
+    49.183023
+   ],
+   [
+    -0.368363,
+    49.182968
+   ],
+   [
+    -0.368533,
+    49.182897
+   ],
+   [
+    -0.368971,
+    49.182717
+   ]
+  ]
+ }
+}

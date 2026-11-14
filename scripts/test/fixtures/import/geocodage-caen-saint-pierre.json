@@ -1,0 +1,82 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -0.361265,
+     49.183719
+    ]
+   },
+   "properties": {
+    "label": "Place Saint-Pierre 14000 Caen",
+    "score": 0.965681818181818,
+    "name": "Place Saint-Pierre",
+    "postcode": "14000",
+    "citycode": "14118",
+    "city": "Caen",
+    "type": "street"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -0.364161,
+     49.183027
+    ]
+   },
+   "properties": {
+    "label": "Rue Saint-Pierre 14000 Caen",
+    "score": 0.6836454545454546,
+    "name": "Rue Saint-Pierre",
+    "postcode": "14000",
+    "citycode": "14118",
+    "city": "Caen",
+    "type": "street"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -3.105224,
+     48.703432
+    ]
+   },
+   "properties": {
+    "label": "Place Saint Pierre 22260 Quemper-Guézennec",
+    "score": 0.6654568595041321,
+    "name": "Place Saint Pierre",
+    "postcode": "22260",
+    "citycode": "22256",
+    "city": "Quemper-Guézennec",
+    "type": "street"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -0.364325,
+     49.18353
+    ]
+   },
+   "properties": {
+    "label": "Place Pierre Bouchard 14000 Caen",
+    "score": 0.48132829912023456,
+    "name": "Place Pierre Bouchard",
+    "postcode": "14000",
+    "citycode": "14118",
+    "city": "Caen",
+    "type": "street"
+   }
+  }
+ ],
+ "query": "Place Saint-Pierre, Caen"
+}

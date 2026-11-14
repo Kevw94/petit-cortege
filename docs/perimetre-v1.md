@@ -6,7 +6,7 @@ Contexte : porteur seul, sous pseudo, éditeur non professionnel (identité conn
 
 ## Dans la V1
 
-- Liste des manifs ouvertes ; manifs saisies à la main par l'équipe (parcours tracé avec uMap → GeoJSON, sources citées), sélection sur l'ampleur (ADR 0003).
+- Liste des manifs ouvertes ; manifs relevées par l'équipe dans un fichier du jour (étapes annoncées publiquement, sources citées), parcours calculé par API (géocodage + itinéraire piéton) puis relu et validé à la main avant publication (`npm run import-manifs`, ADR 0009 ; uMap reste possible), sélection sur l'ampleur (ADR 0003).
 - « Rejoindre le cortège » : apparence de l'avatar (catalogue neutre, accessoires inclusifs) + pancarte (slogan générique + couleur + forme, sans picto).
 - Un seul compteur « soutiens ».
 - Retrait de son avatar (jeton en localStorage) ; mise en valeur locale de son propre avatar, pendant la marche et dans l'image finale.
