@@ -12,7 +12,7 @@
 #
 # Ce qu'il fait : paquets (Node 22, Postgres 16, Caddy), utilisateur système, code dans
 # /opt/petit-cortege, fichier d'environnement avec des secrets tirés au hasard, base et rôle
-# Postgres, Caddy, service systemd, sauvegarde quotidienne, commande `pc-moderation`.
+# Postgres, Caddy, service systemd, sauvegarde quotidienne, commandes `pc-moderation` et `pc-import-manifs`.
 # Il s'ARRÊTE avant de construire le site tant que client/src/pages/a-completer.ts contient
 # encore des marqueurs « [À COMPLÉTER » : remplis-les puis relance le script.
 #
@@ -215,8 +215,9 @@ for unite in petit-cortege.service petit-cortege-sauvegarde.service petit-corteg
   installer_si_different "$DEPLOIEMENT/$unite" "/etc/systemd/system/$unite" || true
 done
 systemctl daemon-reload
-chmod 0755 "$DEPLOIEMENT/sauvegarde.sh" "$DEPLOIEMENT/moderation.sh" "$DEPLOIEMENT/mettre-a-jour.sh" "$DEPLOIEMENT/installer.sh"
+chmod 0755 "$DEPLOIEMENT/sauvegarde.sh" "$DEPLOIEMENT/moderation.sh" "$DEPLOIEMENT/import-manifs.sh" "$DEPLOIEMENT/mettre-a-jour.sh" "$DEPLOIEMENT/installer.sh"
 ln -sfn "$DEPLOIEMENT/moderation.sh" /usr/local/bin/pc-moderation
+ln -sfn "$DEPLOIEMENT/import-manifs.sh" /usr/local/bin/pc-import-manifs
 install -d -m 0700 /var/backups/petit-cortege
 
 # --- 12. Construction du site et démarrage -------------------------------------------------------

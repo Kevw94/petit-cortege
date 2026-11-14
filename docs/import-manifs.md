@@ -90,6 +90,8 @@ Pour chaque manif (ADR 0003), noter dans `verifie` comment et quand c'est vérif
 DATABASE_URL=… DOSSIER_PUBLICATION=… npm run import-manifs -- publier --fichier donnees/manifs/2026-11-14.json
 ```
 
+Sur le VPS (voir `docs/deploiement.md`), la commande `sudo pc-import-manifs publier --fichier /opt/petit-cortege/donnees/manifs/2026-11-14.json` fait la même chose avec la base et le dossier de publication de production.
+
 Crée en base les manifs tracées et vérifiées (comme `moderation -- creer-manif`) et publie la liste. Sans réseau. Idempotent : une manif déjà créée est signalée et sautée. Refusées avec leur motif : vérification incomplète, `aVerifier`, pas de tracé, tracé périmé (étapes modifiées depuis « tracer »), manif déjà terminée. Code de sortie 1 s'il y a un refus.
 
 ## Licences et mentions

@@ -2,7 +2,7 @@
 
 Guide pas à pas, pour quelqu'un qui n'a jamais déployé de site. Il suit l'ordre réel : domaine, DNS, sécurisation du VPS, installation, textes légaux, construction, première manif, jour J, sauvegardes.
 
-Tout vient du dossier [`deploiement/`](../deploiement/) : `installer.sh`, `mettre-a-jour.sh`, `Caddyfile`, `petit-cortege.service`, `petit-cortege.env.exemple`, `sauvegarde.sh` (+ minuterie), `moderation.sh`. Les scripts sont commentés : les lire est la meilleure façon de comprendre ce qu'ils font.
+Tout vient du dossier [`deploiement/`](../deploiement/) : `installer.sh`, `mettre-a-jour.sh`, `Caddyfile`, `petit-cortege.service`, `petit-cortege.env.exemple`, `sauvegarde.sh` (+ minuterie), `moderation.sh`, `import-manifs.sh`. Les scripts sont commentés : les lire est la meilleure façon de comprendre ce qu'ils font.
 
 > **État de validation (à lire).** Ce qui a été essayé pour de vrai, en local : la construction du client, le serveur de production lancé comme le fera systemd avec un fichier d'environnement issu de l'exemple, la création et la modération d'une manif, la sauvegarde et la restauration, le `Caddyfile` (validé et exercé en HTTP avec Caddy 2.6.2, sans TLS) et l'app complète dans un vrai Chrome derrière les en-têtes du `Caddyfile`. **Pas essayé** : `installer.sh` sur un VPS vierge, l'émission du certificat Let's Encrypt, l'unité systemd chargée par systemd (seulement `systemd-analyze verify`), la dernière version de Caddy, le CDN. Si une étape échoue chez toi, c'est probablement là : lis le message, puis la section « En cas de problème ».
 
@@ -320,8 +320,16 @@ Chaque manif est saisie à la main (ADR 0003 : sélection sur l'ampleur, jamais 
 - **Outil d'import** `npm run import-manifs` : trace le parcours depuis des données ouvertes, à relire avant publication. Mode d'emploi complet dans [`docs/import-manifs.md`](import-manifs.md). En une phrase : **tracer → relire → décors → publier**. Les décors qu'il produit sont écrits dans `client/public/decors/` : après les avoir ajoutés (et commités), **reconstruis le client** pour qu'ils arrivent dans `client/dist/decors/` :
 
   ```sh
-  sudo bash /opt/petit-cortege/deploiement/mettre-a-jour.sh --sans-pull
+  sudo bash /opt/petit-cortege/deploiement/mettre-a-jour.sh
   ```
+
+  (`--sans-pull` si tu as copié les fichiers sans passer par git.) Puis publie les manifs du jour avec la commande `pc-import-manifs`, qui s'exécute comme `pc-moderation` sous l'utilisateur du service, avec la base et le dossier de publication de production. « tracer » et « decors » se font sur ta machine, avant de committer ; sur le VPS, seule « publier » sert :
+
+  ```sh
+  sudo pc-import-manifs publier --fichier /opt/petit-cortege/donnees/manifs/2026-11-14.json
+  ```
+
+  Les manifs dont la vérification humaine n'est pas remplie dans le fichier du jour sont refusées (c'est voulu, ADR 0003).
 
 - **À la main** : un tracé exporté depuis uMap au format GeoJSON, que tu envoies sur le VPS (par exemple dans `/opt/petit-cortege/donnees/`, lisible par le service).
 
