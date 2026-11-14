@@ -74,7 +74,7 @@ Committer le fichier du jour et les GeoJSON : la publication se rejoue sans rés
 npm run import-manifs -- decors --fichier donnees/manifs/2026-11-14.json
 ```
 
-Extrait OSM brut de la bande de 150 m autour du parcours dans `donnees/osm/<id>/extrait-overpass.json` (réutilisé s'il existe ; `--rafraichir` pour le retélécharger), tilemap `client/public/decors/<id>.json` et entrée dans `index.json` (emprise, tracé simplifié, demi-largeur de la bande : le client prend le décor dont la bande couvre le parcours). Les places OSM traversées sont comparées aux zones à éviter. Les décors sont publiés avec le client (build).
+Extrait OSM brut de la bande de 150 m autour du parcours dans `donnees/osm/<id>/extrait-overpass.json`, et extrait simplifié des alentours (700 m autour du parcours, sans bâtiments : rues, verts, eau ; seuls les tags utiles au rendu, géométrie arrondie) dans `donnees/osm/<id>/alentours-overpass.json` (réutilisés s'ils existent ; `--rafraichir` pour les retélécharger), tilemap `client/public/decors/<id>.json` et entrée dans `index.json` (emprise, tracé simplifié, demi-largeur de la bande : le client prend le décor dont la bande couvre le parcours). Les places OSM traversées sont comparées aux zones à éviter. Les décors sont publiés avec le client (build).
 
 ## 5. Avant de publier : vérifier
 

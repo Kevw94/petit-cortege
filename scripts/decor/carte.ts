@@ -29,6 +29,7 @@ import {
   type PointTuiles,
   type Position,
 } from '@petit-cortege/shared';
+import { genererAlentours, RAYON_ALENTOURS_PAR_DEFAUT_M } from './alentours';
 import { autotilerBatiments } from './batiments';
 import { classer, estBatiment, Terrain, type Classement } from './classement';
 import { lireExtrait, type ExtraitOverpass, type ObjetOsm } from './osm';
@@ -45,6 +46,8 @@ export interface OptionsDecor {
   espacementFlechesM?: number;
   /** Chemin du dossier assets/kenney relatif au fichier de la carte (pour Tiled). */
   dossierKenney?: string;
+  /** Alentours simplifiés autour de la bande (extrait sans bâtiments) ; absents : bande seule. */
+  alentours?: { osm: ExtraitOverpass; rayonM?: number };
 }
 
 export const DEMI_LARGEUR_PAR_DEFAUT_M = 100;
@@ -58,7 +61,7 @@ const DOSSIER_KENNEY_PAR_DEFAUT = '../../../assets/kenney';
 
 const enTuiles = (m: number) => m / METRES_PAR_TUILE;
 /** Rayon minimal d’une ligne peinte : au-delà de √2/2 tuile, une diagonale reste continue. */
-const RAYON_MIN_TUILES = 0.75;
+export const RAYON_MIN_TUILES = 0.75;
 const rayonDe = (largeurM: number) => Math.max(enTuiles(largeurM / 2), RAYON_MIN_TUILES);
 
 export function genererDecor(options: OptionsDecor): CarteTiled {
@@ -165,6 +168,17 @@ export function genererDecor(options: OptionsDecor): CarteTiled {
       objet('arrivee', trace.arrivee, trace.arrivee.angle),
     ],
   });
+  if (options.alentours) {
+    couches.push(
+      genererAlentours({
+        id: couches.length + 1,
+        osm: options.alentours.osm,
+        parcours: options.parcours,
+        georef,
+        rayonM: options.alentours.rayonM ?? RAYON_ALENTOURS_PAR_DEFAUT_M,
+      }),
+    );
+  }
   couches.push({
     type: 'objectgroup',
     id: couches.length + 1,
@@ -275,6 +289,8 @@ export function coucheTuiles(
   nom: string,
   grille: Grille,
   tuile: (g: Grille, x: number, y: number) => number,
+  /** Position (en cases, multiple de TAILLE_BLOC) de la case (0, 0) de la grille. */
+  decalage: { x: number; y: number } = { x: 0, y: 0 },
 ): CoucheTuilesTiled {
   const chunks: BlocTiled[] = [];
   for (let by = 0; by * TAILLE_BLOC < grille.hauteur; by++) {
@@ -292,8 +308,8 @@ export function coucheTuiles(
       const octets = Buffer.alloc(gids.length * 4);
       gids.forEach((gid, i) => octets.writeUInt32LE(gid, i * 4));
       chunks.push({
-        x: bx * TAILLE_BLOC,
-        y: by * TAILLE_BLOC,
+        x: decalage.x + bx * TAILLE_BLOC,
+        y: decalage.y + by * TAILLE_BLOC,
         width: TAILLE_BLOC,
         height: TAILLE_BLOC,
         data: deflateSync(octets, { level: 9 }).toString('base64'),
@@ -308,8 +324,8 @@ export function coucheTuiles(
     name: nom,
     x: 0,
     y: 0,
-    startx: 0,
-    starty: 0,
+    startx: decalage.x,
+    starty: decalage.y,
     width: largeurBlocs,
     height: hauteurBlocs,
     opacity: 1,

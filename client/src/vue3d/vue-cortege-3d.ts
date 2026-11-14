@@ -25,6 +25,7 @@ import {
   sautDeMasse,
   tronconEnMarche,
 } from '../cortege/marche';
+import { COULEUR_FOND } from '../decor/alentours';
 import { chargerImagesTilesets } from '../decor/cuisson';
 import { PAQUET, TEINTE_MASSE, VARIANTES_PAQUET } from '../foule/paquets';
 import { tamponsDeMasse } from '../foule/tampons';
@@ -56,8 +57,8 @@ import { TraceAuSol3D } from './trace';
 const CHAMP_DEG = CHAMP_VERTICAL_DEG;
 /** Ciel pâle ; la brume a la même couleur, si bien que la ville se fond dans l'horizon. */
 const COULEUR_CIEL = 0xcfdde6;
-/** Sol au-delà du décor OSM (bande d'environ 200 m) : un gris de ville, noyé dans la brume. */
-const COULEUR_SOL_LOINTAIN = 0x8f989c;
+/** Sol au-delà des alentours : la teinte des pâtés de maisons, dans laquelle leur bord se fond, noyée dans la brume. */
+const COULEUR_SOL_LOINTAIN = COULEUR_FOND;
 const COTE_SOL_LOINTAIN_M = 40_000;
 /** Un avatar : cellule de 24 × 16 px de l'atlas = 3 m × 2 m (16 px par tuile de 2 m). */
 const AVATAR_M = { largeur: 3, hauteur: 2 } as const;
@@ -124,7 +125,7 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
   const centreParcours = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
   const rayonParcours = Math.max(...pointsParcours.map((p) => Math.hypot(p.x - centreParcours.x, p.y - centreParcours.y))) + 40;
 
-  // Sol lointain, sous tout le reste : au-delà de la bande OSM, la rue file vers l'horizon
+  // Sol lointain, sous tout le reste : au-delà des alentours, la ville continue dans la brume
   // au lieu de s'arrêter sur le vide.
   const solLointain = new THREE.Mesh(
     new THREE.PlaneGeometry(COTE_SOL_LOINTAIN_M, COTE_SOL_LOINTAIN_M).rotateX(-Math.PI / 2),

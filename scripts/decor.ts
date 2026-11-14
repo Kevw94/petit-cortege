@@ -5,7 +5,7 @@
  * Source OSM : `--overpass <url>` (API Overpass ou miroir) ou `--osm <fichier>`
  * (réponse JSON Overpass enregistrée, pour rejouer sans réseau).
  */
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -23,28 +23,46 @@ import {
 import { DEMI_LARGEUR_PAR_DEFAUT_M, genererDecor } from './decor/carte';
 import { itineraireLeLongDe } from './decor/itineraire';
 import type { ExtraitOverpass } from './decor/osm';
-import { RAYON_EXTRACTION_M, requeteBande, telechargerExtrait } from './decor/overpass';
+import { RAYON_EXTRACTION_M, requeteBande } from './decor/overpass';
+import { RAYON_ALENTOURS_PAR_DEFAUT_M, requeteAlentours, simplifierExtraitAlentours, texteExtraitAlentours } from './decor/alentours';
+import { interrogerOverpass, URLS_OVERPASS_PAR_DEFAUT } from './import/overpass';
+import { reseauReel, type Reseau } from './import/reseau';
+import { simplifierLigne } from './decor/geometrie';
 import { RACINE } from './config';
+
+export { simplifierLigne };
+
+/** Tolérance de simplification du tracé inscrit dans l'index (m) : négligeable devant la demi-bande. */
+const TOLERANCE_TRACE_INDEX_M = 3;
 
 export interface DependancesDecor {
   ecrire: (ligne: string) => void;
   /** Dossier contre lequel résoudre les chemins (dossier où la commande a été tapée). */
   dossierCourant: string;
+  /** Accès réseau (Overpass) ; défaut : fetch, 4 essais par serveur avec attente croissante. */
+  reseau?: Reseau;
 }
 
 const AIDE = `Commandes :
   extraire --parcours <geojson> --overpass <url> --sortie <extrait.json> [--rayon <m>]
       Enregistre la réponse Overpass brute (bande autour du parcours ; rues, verts, eau, bâtiments, places).
+  extraire-alentours --parcours <geojson> --overpass <url> --sortie <alentours.json> [--alentours <m>]
+      Enregistre l'extrait simplifié des alentours (rues, verts, eau ; sans bâtiments).
   tilemap --parcours <geojson> (--osm <extrait.json> | --overpass <url>) --sortie <carte.json>
-          [--demi-largeur <m>] [--rayon <m>]
-      Génère la tilemap Tiled (ODbL) et l'inscrit dans l'index.json de son dossier.
+          [--alentours-osm <alentours.json>] [--alentours <m>] [--demi-largeur <m>] [--rayon <m>]
+      Génère la tilemap Tiled (ODbL) et l'inscrit dans l'index.json de son dossier. Alentours
+      (défaut ${RAYON_ALENTOURS_PAR_DEFAUT_M} m, 0 : aucun) : --alentours-osm est relu s'il existe, sinon
+      téléchargé par --overpass puis enregistré ; sans l'un ni l'autre, la bande seule.
+  --overpass <url> est répétable : serveurs essayés dans l'ordre, chacun avec réessais.
   parcours (--osm <extrait.json> | --overpass <url>) --rue <nom> [--rue <place traversée>…] --depart <lon,lat> --arrivee <lon,lat> --sortie <geojson>
       Trace un parcours le long des chemins OSM d'une rue (avec --overpass : chemins de ce nom autour des deux points).`;
 
 const OPTIONS = {
   parcours: { type: 'string' },
   osm: { type: 'string' },
-  overpass: { type: 'string' },
+  overpass: { type: 'string', multiple: true },
+  'alentours-osm': { type: 'string' },
+  alentours: { type: 'string' },
   sortie: { type: 'string' },
   rayon: { type: 'string' },
   'demi-largeur': { type: 'string' },
@@ -56,15 +74,18 @@ const OPTIONS = {
 export async function executerDecor(argv: string[], deps: DependancesDecor): Promise<void> {
   const [commande, ...reste] = argv;
   const { values: v } = parseArgs({ args: reste, options: OPTIONS, strict: true });
-  type OptionTexte = Exclude<keyof typeof OPTIONS, 'rue'>;
+  type OptionTexte = Exclude<keyof typeof OPTIONS, 'rue' | 'overpass'>;
+  const urls = v.overpass ?? [];
+  const reseau = deps.reseau ?? { ...reseauReel(), essais: 4 };
+  const telecharger = (requete: string) => interrogerOverpass(reseau, urls.length ? urls : URLS_OVERPASS_PAR_DEFAUT, requete, deps.ecrire);
   const chemin = (nom: OptionTexte) => {
     const valeur = v[nom];
     if (!valeur) throw new Error(`option --${nom} manquante.\n\n${AIDE}`);
     return resolve(deps.dossierCourant, valeur);
   };
-  const nombre = (nom: OptionTexte, defaut: number) => {
+  const nombre = (nom: OptionTexte, defaut: number, zeroPermis = false) => {
     const n = v[nom] === undefined ? defaut : Number(v[nom]);
-    if (!Number.isFinite(n) || n <= 0) throw new Error(`--${nom} illisible : « ${v[nom]} ».`);
+    if (!Number.isFinite(n) || n < 0 || (n === 0 && !zeroPermis)) throw new Error(`--${nom} illisible : « ${v[nom]} ».`);
     return n;
   };
   const lireParcours = async (): Promise<Parcours> => lireParcoursGeoJson(JSON.parse(await readFile(chemin('parcours'), 'utf8')));
@@ -75,17 +96,37 @@ export async function executerDecor(argv: string[], deps: DependancesDecor): Pro
   };
   const extraitOsm = async (requete: () => string): Promise<ExtraitOverpass> => {
     if (v.osm) return JSON.parse(await readFile(chemin('osm'), 'utf8')) as ExtraitOverpass;
-    if (v.overpass) return (await telechargerExtrait(v.overpass, requete())).extrait;
+    if (urls.length) return (await telecharger(requete())).extrait;
     throw new Error(`donner --osm ou --overpass.\n\n${AIDE}`);
+  };
+  /** Extrait simplifié des alentours : relu s'il existe, sinon téléchargé (et enregistré si --alentours-osm). */
+  const extraitAlentours = async (parcours: Parcours, rayonM: number): Promise<ExtraitOverpass | null> => {
+    const fichier = v['alentours-osm'] ? chemin('alentours-osm') : null;
+    if (fichier && (await existe(fichier))) return JSON.parse(await readFile(fichier, 'utf8')) as ExtraitOverpass;
+    if (!urls.length) return null;
+    const { extrait, url } = await telecharger(requeteAlentours(parcours, rayonM));
+    const simplifie = simplifierExtraitAlentours(extrait);
+    deps.ecrire(`Alentours (${new URL(url).host}) : ${extrait.elements.length} éléments OSM, ${simplifie.elements.length} gardés.`);
+    if (fichier) await ecrireFichier(fichier, texteExtraitAlentours(simplifie));
+    return simplifie;
   };
 
   switch (commande) {
     case 'extraire': {
       const parcours = await lireParcours();
-      if (!v.overpass) throw new Error(`option --overpass manquante.\n\n${AIDE}`);
-      const { texte, extrait } = await telechargerExtrait(v.overpass, requeteBande(parcours, nombre('rayon', RAYON_EXTRACTION_M)));
+      if (!urls.length) throw new Error(`option --overpass manquante.\n\n${AIDE}`);
+      const { texte, extrait } = await telecharger(requeteBande(parcours, nombre('rayon', RAYON_EXTRACTION_M)));
       await ecrireFichier(chemin('sortie'), texte);
       deps.ecrire(`${extrait.elements.length} éléments OSM.`);
+      return;
+    }
+    case 'extraire-alentours': {
+      const parcours = await lireParcours();
+      if (!urls.length) throw new Error(`option --overpass manquante.\n\n${AIDE}`);
+      const { extrait } = await telecharger(requeteAlentours(parcours, nombre('alentours', RAYON_ALENTOURS_PAR_DEFAUT_M)));
+      const simplifie = simplifierExtraitAlentours(extrait);
+      await ecrireFichier(chemin('sortie'), texteExtraitAlentours(simplifie));
+      deps.ecrire(`${extrait.elements.length} éléments OSM, ${simplifie.elements.length} gardés.`);
       return;
     }
     case 'tilemap': {
@@ -93,10 +134,14 @@ export async function executerDecor(argv: string[], deps: DependancesDecor): Pro
       const osm = await extraitOsm(() => requeteBande(parcours, nombre('rayon', RAYON_EXTRACTION_M)));
       const sortie = chemin('sortie');
       const demiLargeurM = nombre('demi-largeur', DEMI_LARGEUR_PAR_DEFAUT_M);
+      const rayonAlentoursM = nombre('alentours', RAYON_ALENTOURS_PAR_DEFAUT_M, true);
+      const osmAlentours = rayonAlentoursM > 0 ? await extraitAlentours(parcours, rayonAlentoursM) : null;
+      if (!osmAlentours) deps.ecrire('Sans alentours : bande détaillée seule.');
       const carte = genererDecor({
         osm,
         parcours,
         demiLargeurM,
+        ...(osmAlentours ? { alentours: { osm: osmAlentours, rayonM: rayonAlentoursM } } : {}),
         dossierKenney: relative(dirname(sortie), join(RACINE, 'assets/kenney')).split('\\').join('/'),
       });
       await ecrireFichier(sortie, `${JSON.stringify(carte)}\n`);
@@ -120,6 +165,15 @@ export async function executerDecor(argv: string[], deps: DependancesDecor): Pro
       return;
     default:
       throw new Error(`commande inconnue : « ${commande} ».\n\n${AIDE}`);
+  }
+}
+
+async function existe(fichier: string): Promise<boolean> {
+  try {
+    await access(fichier);
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -166,38 +220,6 @@ export async function inscrireDansIndex(
   );
   index.decors = [...index.decors.filter((d) => d.fichier !== fichier), { fichier, emprise, trace, demiLargeurM }];
   await ecrireFichier(fichierIndex, `${JSON.stringify(index, null, 1)}\n`);
-}
-
-/** Tolérance de simplification du tracé inscrit dans l'index (m) : négligeable devant la demi-bande. */
-const TOLERANCE_TRACE_INDEX_M = 3;
-
-/** Douglas-Peucker en projection locale : garde les sommets qui s'écartent de plus de `toleranceM`. */
-export function simplifierLigne(ligne: Position[], toleranceM: number): Position[] {
-  if (ligne.length <= 2) return [...ligne];
-  const origine = ligne[0]!;
-  const kx = 111_320 * Math.cos((origine[1] * Math.PI) / 180);
-  const ky = 110_540;
-  const plan = ligne.map(([lon, lat]) => [(lon - origine[0]) * kx, (lat - origine[1]) * ky] as const);
-  const garder = new Array<boolean>(ligne.length).fill(false);
-  garder[0] = garder[ligne.length - 1] = true;
-  const pile: [number, number][] = [[0, ligne.length - 1]];
-  while (pile.length > 0) {
-    const [i, j] = pile.pop()!;
-    const [ax, ay] = plan[i]!;
-    const [bx, by] = plan[j]!;
-    const l = Math.hypot(bx - ax, by - ay);
-    let [kMax, dMax] = [-1, 0];
-    for (let k = i + 1; k < j; k++) {
-      const [px, py] = plan[k]!;
-      const d = l === 0 ? Math.hypot(px - ax, py - ay) : Math.abs((bx - ax) * (ay - py) - (ax - px) * (by - ay)) / l;
-      if (d > dMax) [kMax, dMax] = [k, d];
-    }
-    if (kMax >= 0 && dMax > toleranceM) {
-      garder[kMax] = true;
-      pile.push([i, kMax], [kMax, j]);
-    }
-  }
-  return ligne.filter((_, k) => garder[k]);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

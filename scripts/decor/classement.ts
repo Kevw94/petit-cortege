@@ -26,7 +26,7 @@ export type Classement =
   | { sorte: 'cours-d-eau'; largeurM: number };
 
 /** Largeurs par défaut selon le type de rue : [chaussée, trottoir] en mètres. */
-const RUES: Record<string, [number, number]> = {
+export const RUES: Record<string, [number, number]> = {
   motorway: [14, 0],
   trunk: [14, 4],
   primary: [12, 4],
@@ -42,17 +42,17 @@ const LARGEUR_CHEMIN_M = 2;
 const LARGEUR_PISTE_CYCLABLE_M = 2;
 const LARGEUR_VOIE_M = 3.5;
 
-const VERTS: Record<string, string[]> = {
+export const VERTS: Record<string, string[]> = {
   leisure: ['park', 'garden', 'playground', 'pitch', 'dog_park'],
   landuse: ['grass', 'recreation_ground', 'village_green', 'cemetery', 'forest', 'meadow', 'allotments', 'flowerbed'],
   natural: ['wood', 'scrub', 'grassland', 'heath'],
 };
-const EAUX: Record<string, string[]> = {
+export const EAUX: Record<string, string[]> = {
   natural: ['water'],
   waterway: ['riverbank', 'dock'],
   landuse: ['basin', 'reservoir'],
 };
-const COURS_D_EAU: Record<string, number> = { river: 30, canal: 20, stream: 3, ditch: 2 };
+export const COURS_D_EAU: Record<string, number> = { river: 30, canal: 20, stream: 3, ditch: 2 };
 
 const correspond = (tags: Record<string, string>, table: Record<string, string[]>) =>
   Object.entries(table).some(([cle, valeurs]) => valeurs.includes(tags[cle] ?? ''));

@@ -73,10 +73,26 @@ describe('npm run decor', () => {
   });
 
   it('génère aussi la tilemap directement depuis l’URL Overpass, et remplace l’entrée de l’index', async () => {
-    await executer('tilemap', '--parcours', PARCOURS, '--overpass', urlOverpass, '--sortie', 'decors/mini.json');
-    expect(requetesRecues.at(-1)).toContain('around:150');
+    const avant = requetesRecues.length;
+    await executer(
+      'tilemap', '--parcours', PARCOURS, '--overpass', urlOverpass, '--sortie', 'decors/mini.json',
+      '--alentours-osm', 'alentours.json', '--alentours', '300',
+    );
+    // La bande, puis les alentours (sans bâtiments), enregistrés simplifiés.
+    expect(requetesRecues.slice(avant)).toEqual([expect.stringContaining('around:150'), expect.stringContaining('around:380')]);
+    expect(requetesRecues.at(-1)).not.toContain('building');
+    const alentours = await readFile(join(dossier, 'alentours.json'), 'utf8');
+    expect(alentours).not.toContain('"building"');
     const index = lireIndexDecors(await lireJson(join(dossier, 'decors/index.json')));
     expect(index.decors.map((d) => d.fichier)).toEqual(['mini.json']);
+    const decor = await lireDecor((await lireJson(join(dossier, 'decors/mini.json'))) as CarteTiled);
+    expect(decor.alentours?.tuilesParCase).toBe(2);
+
+    // Rejoué sans réseau depuis les extraits enregistrés.
+    const apres = requetesRecues.length;
+    await executer('tilemap', '--parcours', PARCOURS, '--osm', EXTRAIT, '--alentours-osm', 'alentours.json', '--sortie', 'decors/mini.json');
+    expect(requetesRecues).toHaveLength(apres);
+    expect((await lireDecor((await lireJson(join(dossier, 'decors/mini.json'))) as CarteTiled)).alentours).toBeDefined();
   });
 
   it('trace un parcours le long d’une rue de l’extrait, en GeoJSON', async () => {

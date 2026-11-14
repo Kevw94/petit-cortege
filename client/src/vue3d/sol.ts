@@ -1,5 +1,7 @@
 /**
- * Sol de la vue 3D : le décor OSM (tilemap Kenney, #12-#13) posé à plat. Une vue d'ensemble
+ * Sol de la vue 3D : le décor OSM (tilemap Kenney, #12-#13) posé à plat. Sous la bande, les
+ * alentours simplifiés (un pixel par case de 4 m, cuits une fois : rues, verts, eau, pâtés de
+ * maisons, fondus au bord dans la teinte du sol lointain). Sur la bande, une vue d'ensemble
  * (un pixel par tuile) couvre toute la carte ; près de la caméra, les blocs de 32 × 32 tuiles
  * sont cuits à la demande dans une texture chacun (16 px par tuile, `NearestFilter` : pixel
  * art net), avec un plafond de blocs gardés en mémoire.
@@ -9,6 +11,7 @@
  */
 import * as THREE from 'three';
 import { COUCHES_BATIMENTS, METRES_PAR_TUILE, TAILLE_BLOC, type BlocDecor, type Decor } from '@petit-cortege/shared';
+import { cuireAlentours } from '../decor/alentours';
 import { cuireBloc, dessinerVueDEnsemble, type ImagesTilesets } from '../decor/cuisson';
 
 /** Côté d'un bloc, en mètres. */
@@ -21,7 +24,7 @@ const BLOCS_CUITS_PAR_IMAGE = 2;
 const DISTANCE_DETAIL_M = 700;
 
 /** Ordre de dessin du sol (avant tout le reste). */
-export const ORDRE_SOL = { lointain: -11, ensemble: -10, blocs: -9, trace: -8, marques: -7, halo: -6 } as const;
+export const ORDRE_SOL = { lointain: -12, alentours: -11, ensemble: -10, blocs: -9, trace: -8, marques: -7, halo: -6 } as const;
 
 export function materiauDeSol(options: THREE.MeshBasicMaterialParameters, ordre: number): THREE.MeshBasicMaterial {
   const m = new THREE.MeshBasicMaterial({ ...options, depthWrite: false, depthTest: false });
@@ -62,6 +65,24 @@ export class Sol {
     this.#images = images;
     this.#anisotropie = anisotropie;
     this.#couches = decor.nomsCouches.filter((c) => !COUCHES_BATIMENTS.includes(c));
+    const alentours = cuireAlentours(decor, images);
+    if (alentours) {
+      const t = new THREE.CanvasTexture(alentours.canvas);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.magFilter = THREE.NearestFilter;
+      t.minFilter = THREE.LinearMipmapLinearFilter;
+      t.anisotropy = anisotropie;
+      this.groupe.add(
+        planAuSol(
+          alentours.x,
+          alentours.y,
+          alentours.largeur,
+          alentours.hauteur,
+          materiauDeSol({ map: t }, ORDRE_SOL.alentours),
+          ORDRE_SOL.alentours,
+        ),
+      );
+    }
     const texture = new THREE.CanvasTexture(dessinerVueDEnsemble(decor, images));
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.magFilter = THREE.NearestFilter;

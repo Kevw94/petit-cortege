@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { lireParcoursGeoJson } from '@petit-cortege/server';
-import { decorDuParcours, distanceM, lireIndexDecors, type Position } from '@petit-cortege/shared';
+import { decorDuParcours, distanceM, lireDecor, lireIndexDecors, type Position } from '@petit-cortege/shared';
 import { executerImport, type DependancesImportManifs } from '../import-manifs';
 import { controlerTrace, demiTours, nettoyerTrace } from '../import/controles';
 import { zonesEntrees } from '../import/decors';
@@ -429,12 +429,18 @@ describe('npm run import-manifs', () => {
     const argv = ['decors', '--fichier', '2026-11-14.json', '--overpass', 'https://premier.exemple/api/interpreter', '--overpass', 'https://second.exemple/api/interpreter'];
 
     expect(await executerImport(argv, deps(reseau))).toBe(0);
-    expect(reseau.demandes.map((u) => u.hostname)).toEqual(['premier.exemple', 'premier.exemple', 'second.exemple']);
+    // Bande puis alentours : chaque fois, le premier serveur (deux essais) puis le second.
+    expect(reseau.demandes.map((u) => u.hostname)).toEqual([
+      'premier.exemple', 'premier.exemple', 'second.exemple', 'premier.exemple', 'premier.exemple', 'second.exemple',
+    ]);
     expect(await readFile(join(dossier, 'donnees/osm/mini-2026-11-14/extrait-overpass.json'), 'utf8')).toBe(extrait);
+    const alentours = await readFile(join(dossier, 'donnees/osm/mini-2026-11-14/alentours-overpass.json'), 'utf8');
+    expect(alentours).not.toMatch(/"building"|Boulangerie/);
+    expect((await lireDecor(JSON.parse(await readFile(join(decors, 'mini-2026-11-14.json'), 'utf8')))).alentours).toBeDefined();
     const index = lireIndexDecors(JSON.parse(await readFile(join(decors, 'index.json'), 'utf8')));
     expect(index.decors).toEqual([expect.objectContaining({ fichier: 'mini-2026-11-14.json', demiLargeurM: 100, trace: [[2.36, 48.87], [2.365463, 48.87]] })]);
     expect(decorDuParcours(index, parcoursMini.geometry.coordinates)?.fichier).toBe('mini-2026-11-14.json');
-    expect(sorties.join('\n')).toMatch(/décor .*mini-2026-11-14\.json \(\d+ Ko\), extrait OSM \d+ Ko/);
+    expect(sorties.join('\n')).toMatch(/décor .*mini-2026-11-14\.json \(\d+ Ko\), extrait OSM \d+ Ko, alentours \d+ Ko/);
 
     const avant = reseau.demandes.length;
     expect(await executerImport(argv, deps(reseau))).toBe(0);
