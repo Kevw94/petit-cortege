@@ -5,6 +5,7 @@
  * (au plus 1 h après la fin, ADR 0001).
  */
 import type { Decor, EntreePubliee, FichierEntrees, ManifPubliee } from '@petit-cortege/shared';
+import { icone } from '../icones';
 import { composerImageFinale } from '../cortege/image-finale';
 import {
   partagerImage,
@@ -58,7 +59,7 @@ export async function afficherImageFinale(conteneur: HTMLElement, depart: Donnee
   conteneur.innerHTML = `
     <div class="vue-image-finale">
       <section class="carte">
-        <a class="retour" href="#/">← Toutes les manifs</a>
+        <a class="retour" href="#/">${icone('retour', 'icone icone-petite')}Toutes les manifs</a>
         <h1>${echapper(donnees.manif.intitule)}</h1>
         <p data-etat></p>
         <p data-toi hidden>Ton avatar est mis en valeur, sur cet appareil seulement (et dans l’image si tu la
@@ -67,8 +68,8 @@ export async function afficherImageFinale(conteneur: HTMLElement, depart: Donnee
       <canvas class="image-finale" width="${LARGEUR_IMAGE_FINALE}" height="${HAUTEUR_IMAGE_FINALE}"
         role="img"></canvas>
       <div class="partage-image">
-        <button type="button" class="rejoindre" data-partager hidden>Partager</button>
-        <button type="button" class="secondaire" data-telecharger>Télécharger</button>
+        <button type="button" class="bouton bouton-principal" data-partager hidden>${icone('partager')}Partager</button>
+        <button type="button" class="bouton bouton-secondaire" data-telecharger>${icone('telecharger')}Télécharger</button>
       </div>
       <p class="message" data-message-partage role="status"></p>
     </div>`;
