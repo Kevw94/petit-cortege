@@ -15,7 +15,7 @@ Contexte : porteur seul, sous pseudo, éditeur non professionnel (identité conn
 - Anti-triche (ADR 0001) + outil minimal de suppression d'avatar sur signalement.
 - Pages : mentions légales + adresse de signalement, vie privée (dont rétention des journaux), charte / « comment on choisit les manifs », CGU.
 - Jouable sur mobile.
-- Son synthétisé dans le navigateur (ADR 0008) : petite musique d'accueil, ambiance de foule dans la vue d'une manif (plus dense en marche et avec plus de soutiens), « Lancer un chant » local et sans paroles (le slogan de sa pancarte pulse en rythme), bouton pour couper le son, choix mémorisé sur l'appareil.
+- Son synthétisé dans le navigateur (ADR 0008) : petite musique d'accueil, ambiance de foule dans la vue d'une manif, avec un fond de voix inintelligibles qui discutent (plus dense en marche et avec plus de soutiens), « Lancer un chant » local et sans paroles (le slogan de sa pancarte pulse en rythme), bouton pour couper le son, choix mémorisé sur l'appareil.
 - Décor : script OSM semi-automatique + nettoyage manuel, pour 1 à 3 manifs ; aucun monument (place d'arrivée = place générique du tileset + nom de la place affiché). Aucun dessin à la main : Kenney CC0 + variantes et accessoires générés par script (ADR 0006).
 
 ## Hors V1
