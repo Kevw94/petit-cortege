@@ -26,6 +26,12 @@ export interface AvatarDuCortege {
   pancarte: number;
   /** Avatar du soutien sur cet appareil : mis en valeur, sur son écran seulement. */
   propre: boolean;
+  /**
+   * L'avatar avance en ce moment : parti (départ passé et entré), pas encore arrivé au bout
+   * du parcours, manif ouverte. Sert seulement au rendu (animation de marche, `marche.ts`) ;
+   * n'entre pas dans le calcul des positions.
+   */
+  enMarche: boolean;
 }
 
 export interface Cortege {
@@ -91,6 +97,8 @@ export function calculerCortege({ manif, entrees, propres = [], retraits = [], m
     const distanceM = terminee
       ? manif.longueurM
       : Math.min(manif.longueurM, Math.max(0, t - debutMarcheMs) * VITESSE_M_PAR_MS);
+    // Tout le groupe marche ensemble : après son début de marche, avant d'atteindre l'arrivée.
+    const enMarche = !terminee && t > debutMarcheMs && distanceM < manif.longueurM;
     for (const { marcheur, rang, colonne } of placerEnRangees(groupe)) {
       avatars.push({
         id: marcheur.id,
@@ -99,6 +107,7 @@ export function calculerCortege({ manif, entrees, propres = [], retraits = [], m
         apparence: marcheur.apparence,
         pancarte: marcheur.pancarte,
         propre: idsPropres.has(marcheur.id),
+        enMarche,
       });
     }
   }
