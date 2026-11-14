@@ -14,6 +14,17 @@ import type { PointM } from '../cadrage';
 import { cibleDeSuivi } from '../camera';
 import { calculerCortege, COLONNES_FOULE, PAS_FOULE_M } from '../cortege/cortege';
 import { composerFoule } from '../cortege/foule';
+import {
+  allureDeMarche,
+  allureImmobile,
+  marquerTronconsEnMarche,
+  METRES_PAR_PX_ATLAS,
+  phaseDeMarche,
+  phaseDeTampon,
+  requeteMouvementReduit,
+  sautDeMasse,
+  tronconEnMarche,
+} from '../cortege/marche';
 import { chargerImagesTilesets } from '../decor/cuisson';
 import { PAQUET, TEINTE_MASSE, VARIANTES_PAQUET } from '../foule/paquets';
 import { tamponsDeMasse } from '../foule/tampons';
@@ -343,6 +354,11 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
     el.style.transform = `translate(${Math.round(x - demi)}px, ${Math.round(p.y)}px)`;
   };
 
+  // Animation de marche : allure réutilisée d'un avatar à l'autre, tronçons où la foule avance.
+  const allure = allureImmobile();
+  const tronconsEnMarche = new Set<number>();
+  const mouvementReduit = requeteMouvementReduit();
+
   let dernier = performance.now();
   const image = () => {
     const maintenant = performance.now();
@@ -409,6 +425,10 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
     // Tampons à demi recouverts, comme en 2D : de loin, les paquets sont agrandis (taille
     // minimale à l'écran), le pas s'allonge d'autant.
     masse.vider();
+    const tempsS = maintenant / 1000;
+    const animer = !mouvementReduit.matches;
+    if (animer) marquerTronconsEnMarche(cortege.avatars, cortege.avanceeM, tronconsEnMarche);
+    else tronconsEnMarche.clear();
     const k = agrandissement(parametres.distance);
     const tampons = tamponsDeMasse(foule.troncons, {
       repereM: cortege.avanceeM,
@@ -420,30 +440,45 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
     });
     for (const t of tampons) {
       const p = placeur.placer(t.distanceM, t.decalageM);
-      if (aLEcran(p, 80)) masse.ajouter(versScene(p), PAQUET_M.largeur, PAQUET_M.hauteur, paquets.cadres[t.variante]!);
+      if (!aLEcran(p, 80)) continue;
+      // Ondulation légère par paquet, là où la foule avance.
+      const enMarche = tronconsEnMarche.size > 0 && tronconEnMarche(tronconsEnMarche, t.distanceM, cortege.avanceeM);
+      const saut = sautDeMasse(tempsS, phaseDeTampon(t.distanceM - cortege.avanceeM, t.decalageM), enMarche) * METRES_PAR_PX_ATLAS;
+      masse.ajouter(versScene(p), PAQUET_M.largeur, PAQUET_M.hauteur, paquets.cadres[t.variante]!, saut);
     }
     for (const b of [avatars, panneaux, panneauxLoin, avatarsPropres, panneauxPropres]) b.vider();
     const propres: PointM[] = [];
     for (const a of foule.dessines) {
       const pied = versScene(a.sol);
+      if (a.propre && propres.length >= PROPRES_MAX) continue;
+      // Pas de marche : sautillement continu et inclinaison ; la pancarte suit, un peu en retard.
+      allureDeMarche(allure, tempsS, phaseDeMarche(a.id), animer && a.enMarche);
+      const { sautM, inclinaisonRad, inclinaisonPancarteRad } = allure;
+      const leverPancarte = HAUTEUR_TETE_M + sautM;
       if (a.propre) {
-        if (propres.length >= PROPRES_MAX) continue;
         propres.push(a.sol);
-        avatarsPropres.ajouter(pied, AVATAR_M.largeur, AVATAR_M.hauteur, apparences.cadre(a.apparence));
-      } else avatars.ajouter(pied, AVATAR_M.largeur, AVATAR_M.hauteur, apparences.cadre(a.apparence));
+        avatarsPropres.ajouter(pied, AVATAR_M.largeur, AVATAR_M.hauteur, apparences.cadre(a.apparence), sautM, inclinaisonRad);
+      } else avatars.ajouter(pied, AVATAR_M.largeur, AVATAR_M.hauteur, apparences.cadre(a.apparence), sautM, inclinaisonRad);
       if (decoderPancarte(a.pancarte) === null) continue;
       if (a.propre) {
         const k = AGRANDISSEMENT_PANCARTE_PROPRE;
-        panneauxPropres.ajouter(pied, CADRE_PANCARTE_M.largeur * k, CADRE_PANCARTE_M.hauteur * k, pancartesPropres.cadre(a.pancarte), HAUTEUR_TETE_M);
+        panneauxPropres.ajouter(
+          pied,
+          CADRE_PANCARTE_M.largeur * k,
+          CADRE_PANCARTE_M.hauteur * k,
+          pancartesPropres.cadre(a.pancarte),
+          leverPancarte,
+          inclinaisonPancarteRad,
+        );
       } else {
         // Comme en 2D : de loin, seules la forme et la couleur se voient.
         const ecran = versEcran(pied.x, pied.y, pied.z);
         const pxParM = ecran ? (camera.projectionMatrix.elements[5]! * hauteur * 0.5) / ecran.w : 0;
         if (pxParM >= SEUIL_SLOGAN_PX_PAR_M) {
-          panneaux.ajouter(pied, CADRE_PANCARTE_M.largeur, CADRE_PANCARTE_M.hauteur, pancartes.cadre(a.pancarte), HAUTEUR_TETE_M);
+          panneaux.ajouter(pied, CADRE_PANCARTE_M.largeur, CADRE_PANCARTE_M.hauteur, pancartes.cadre(a.pancarte), leverPancarte, inclinaisonPancarteRad);
         } else {
           const cadre = pancartesLoin.cadre(cleSansSlogan(a.pancarte));
-          panneauxLoin.ajouter(pied, CADRE_PANCARTE_M.largeur, CADRE_PANCARTE_M.hauteur, cadre, HAUTEUR_TETE_M);
+          panneauxLoin.ajouter(pied, CADRE_PANCARTE_M.largeur, CADRE_PANCARTE_M.hauteur, cadre, leverPancarte, inclinaisonPancarteRad);
         }
       }
     }

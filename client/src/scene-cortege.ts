@@ -28,10 +28,20 @@ import { cadrerSur, deplacer, versEcran, zoomerAutour, type Cadrage, type PointM
 import { cadrerEnTroisiemePersonne, cibleDeSuivi, ECHELLE_SUIVI_PX_PAR_M, LISSAGE_SUIVI, suivre } from './camera';
 import { calculerCortege, type Cortege } from './cortege/cortege';
 import { composerFoule } from './cortege/foule';
+import {
+  allureDeMarche,
+  allureImmobile,
+  marquerTronconsEnMarche,
+  phaseDeMarche,
+  phaseDeTampon,
+  requeteMouvementReduit,
+  sautDeMasse,
+  tronconEnMarche,
+} from './cortege/marche';
 import { MasseDeFoule } from './foule/masse';
 import { DecorAffiche, prechargerDecor } from './decor/rendu';
 import { TraceAuSol } from './decor/trace';
-import { pancartesAffichees, type PorteurDePancarte } from './pancartes/affichage';
+import { pancartesAffichees } from './pancartes/affichage';
 import { dessinerPancarte, SlogansAffiches } from './pancartes/dessin';
 
 export interface DonneesScene {
@@ -107,6 +117,10 @@ export class SceneCortege extends Phaser.Scene {
   #suiviImmediat = true;
   #parcoursADessiner = true;
   #pincement: { ecart: number; milieu: PointPx } | null = null;
+  /** Animation de marche (`cortege/marche.ts`) : allure réutilisée d'un avatar à l'autre. */
+  readonly #allure = allureImmobile();
+  readonly #tronconsEnMarche = new Set<number>();
+  readonly #mouvementReduit = requeteMouvementReduit();
 
   constructor() {
     super('cortege');
@@ -220,6 +234,11 @@ export class SceneCortege extends Phaser.Scene {
       visible: (avatar) => aLEcran(avatar, { ...ecran, ...tailleSprite }),
     });
     const dessines = foule.dessines;
+    // Marche : temps de la scène (secondes) ; rien ne bouge si le mouvement réduit est demandé.
+    const tempsS = this.time.now / 1000;
+    const animer = !this.#mouvementReduit.matches;
+    if (animer) marquerTronconsEnMarche(cortege.avatars, cortege.avanceeM, this.#tronconsEnMarche);
+    else this.#tronconsEnMarche.clear();
     this.#masse.afficherLeLong(foule.troncons, {
       repereM: cortege.avanceeM,
       placer,
@@ -228,12 +247,31 @@ export class SceneCortege extends Phaser.Scene {
       ...ecran,
       profondeurMin: PROFONDEUR.masse,
       profondeurMax: PROFONDEUR.foule - 0.01,
+      sautPxAtlas: (t) =>
+        sautDeMasse(
+          tempsS,
+          phaseDeTampon(t.distanceM - cortege.avanceeM, t.decalageM),
+          this.#tronconsEnMarche.size > 0 && tronconEnMarche(this.#tronconsEnMarche, t.distanceM, cortege.avanceeM),
+        ),
     });
-    this.#placerSprites(dessines, echelleSprite);
 
-    // Pancartes tenues au-dessus de la tête.
+    // Pancartes tenues au-dessus de la tête ; porteur et pancarte suivent le pas (sautillement
+    // et balancement calés sur les pixels de l'atlas agrandi).
     const hauteurTete = HAUTEUR_TETE_PX * echelleSprite;
-    const porteurs: PorteurDePancarte[] = dessines.map((a) => ({ ...a, y: a.y - hauteurTete }));
+    const allure = this.#allure;
+    const porteurs = dessines.map((a) => {
+      allureDeMarche(allure, tempsS, phaseDeMarche(a.id), animer && a.enMarche);
+      const saut = allure.sautPxAtlas * echelleSprite;
+      return {
+        ...a,
+        xCorps: a.x + allure.decalagePxAtlas * echelleSprite,
+        yCorps: a.y - saut,
+        yPieds: a.y,
+        x: a.x + allure.decalagePancartePxAtlas * echelleSprite,
+        y: a.y - saut - hauteurTete,
+      };
+    });
+    this.#placerSprites(porteurs, echelleSprite);
     this.#foule.clear();
     const pancartes = pancartesAffichees(porteurs, { echelle: this.#cadrage!.echelle, ...ecran });
     for (const p of pancartes) if (!p.propre) dessinerPancarte(this.#foule, p);
@@ -242,10 +280,11 @@ export class SceneCortege extends Phaser.Scene {
     // dessiné par-dessus la foule, avec sa pancarte toujours lisible.
     this.#avatarsPropres.clear();
     this.#pancartesPropres.clear();
-    const propres = porteurs.filter((p) => p.propre);
+    // Le halo reste fixe : placé d'après la position du Cortège, sans le pas.
+    const propres = dessines.filter((p) => p.propre);
     const rayon = Math.max(CELLULE_APPARENCE.hauteur * echelleSprite * 0.55, 6);
     for (const p of propres) {
-      const centre = p.y + hauteurTete / 2;
+      const centre = p.y - hauteurTete / 2;
       this.#avatarsPropres.fillStyle(COULEUR_TOI, 0.35).fillCircle(p.x, centre, rayon + 6);
       this.#avatarsPropres.fillStyle(COULEUR_TOI, 0.8).fillCircle(p.x, centre, rayon);
       this.#avatarsPropres.lineStyle(2, 0x222222, 1).strokeCircle(p.x, centre, rayon);
@@ -254,13 +293,19 @@ export class SceneCortege extends Phaser.Scene {
     this.#slogans.afficher(pancartes, (p) => (p.propre ? PROFONDEUR.sloganToi : PROFONDEUR.slogans));
 
     const toi = pancartes.find((p) => p.propre) ?? propres[0];
-    if (toi) this.#toi.setPosition(toi.x, ('hauteur' in toi ? toi.y - toi.hauteur / 2 : toi.y) - 4);
+    if (toi) this.#toi.setPosition(toi.x, ('hauteur' in toi ? toi.y - toi.hauteur / 2 : toi.y - hauteurTete) - 4);
     this.#toi.setVisible(toi !== undefined);
     this.#donnees.surCortege(cortege);
   }
 
-  /** Un sprite par avatar dessiné (réservoir réutilisé), profondeur selon y : les plus bas devant. */
-  #placerSprites(avatars: readonly { x: number; y: number; apparence: number; propre: boolean }[], echelle: number): void {
+  /**
+   * Un sprite par avatar dessiné (réservoir réutilisé), profondeur selon les pieds (`yPieds`, position
+   * du Cortège sans le pas : l'ordre ne clignote pas) ; le sprite est posé à `xCorps`, `yCorps` (avec le pas).
+   */
+  #placerSprites(
+    avatars: readonly { xCorps: number; yCorps: number; yPieds: number; apparence: number; propre: boolean }[],
+    echelle: number,
+  ): void {
     avatars.forEach((avatar, i) => {
       let sprite = this.#sprites[i];
       if (!sprite) {
@@ -268,9 +313,9 @@ export class SceneCortege extends Phaser.Scene {
         this.#sprites.push(sprite);
       }
       sprite.setFrame(this.#apparences.cadre(avatar.apparence), false, false);
-      sprite.setPosition(avatar.x, avatar.y).setScale(echelle).setVisible(true);
+      sprite.setPosition(avatar.xCorps, avatar.yCorps).setScale(echelle).setVisible(true);
       sprite.setDepth(
-        avatar.propre ? PROFONDEUR.avatarToi : this.#profondeurSelonY(avatar.y),
+        avatar.propre ? PROFONDEUR.avatarToi : this.#profondeurSelonY(avatar.yPieds),
       );
     });
     for (let i = avatars.length; i < this.#sprites.length; i++) this.#sprites[i]!.setVisible(false);

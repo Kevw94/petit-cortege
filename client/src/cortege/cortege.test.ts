@@ -88,6 +88,37 @@ describe('Cortège', () => {
   });
 });
 
+describe('Cortège : avatars en marche (pour l’animation)', () => {
+  const enMarche = (maintenant: string, id: string, autres = entrees) =>
+    calculerCortege({ manif, entrees: autres, maintenant: new Date(maintenant) }).avatars.find((a) => a.id === id)?.enMarche;
+
+  it("n'avance pas avant le départ", () => {
+    expect(enMarche('2026-05-01T13:59:00Z', 'av-tot')).toBe(false);
+  });
+
+  it('avance après le départ, jusqu’à l’arrivée', () => {
+    expect(enMarche('2026-05-01T14:20:00Z', 'av-tot')).toBe(true);
+    expect(enMarche('2026-05-01T14:20:00Z', 'av-tard')).toBe(true);
+  });
+
+  it("s'arrête une fois arrivé au bout du parcours, même si d'autres marchent encore", () => {
+    // 14:45 : av-tot est arrivé (plafond), av-tard (entré à 14:15:40) marche encore.
+    expect(enMarche('2026-05-01T14:45:00Z', 'av-tot')).toBe(false);
+    expect(enMarche('2026-05-01T14:45:00Z', 'av-tard')).toBe(true);
+  });
+
+  it('ne marche plus une fois la manif terminée', () => {
+    const retardataire = minuteAvec(['av-dernier'], '2026-05-01T15:29:00Z');
+    expect(enMarche('2026-05-01T15:29:30Z', 'av-dernier', [...entrees, retardataire])).toBe(true);
+    expect(enMarche('2026-05-01T15:30:30Z', 'av-dernier', [...entrees, retardataire])).toBe(false);
+  });
+
+  it('ne change pas les positions', () => {
+    const cortege = calculerCortege({ manif, entrees, maintenant: new Date('2026-05-01T14:20:00Z') });
+    expect(distanceDe(cortege, 'av-tot')).toBeCloseTo(666.67, 1);
+  });
+});
+
 /** Fichier de minute fabriqué pour un test : avatars de manif-a entrés à `iso`. */
 function minuteAvec(ids: string[], iso: string): EntreesMinute {
   const t = Date.parse(iso) / 1000;
