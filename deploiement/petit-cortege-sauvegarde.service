@@ -1,0 +1,18 @@
+# Sauvegarde de la base (lancée chaque jour par petit-cortege-sauvegarde.timer).
+# Installé par `installer.sh`. Lancer à la main : systemctl start petit-cortege-sauvegarde.service
+[Unit]
+Description=Petit Cortège : sauvegarde de la base Postgres
+Documentation=file:///opt/petit-cortege/docs/deploiement.md
+After=postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/petit-cortege/deploiement/sauvegarde.sh
+# Variables facultatives (durée de conservation, dossier) : voir sauvegarde.sh
+#Environment=DUREE_JOURS=7
+SyslogIdentifier=petit-cortege-sauvegarde
+Nice=10
+IOSchedulingClass=idle
+PrivateTmp=true
+ProtectHome=true
