@@ -1,0 +1,82 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     4.726673,
+     49.773715
+    ]
+   },
+   "properties": {
+    "label": "Rue Forest 08000 Charleville-Mézières",
+    "score": 0.6932247214076246,
+    "name": "Rue Forest",
+    "postcode": "08000",
+    "citycode": "08105",
+    "city": "Charleville-Mézières",
+    "type": "street"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     4.71728,
+     49.767639
+    ]
+   },
+   "properties": {
+    "label": "Charleville-Mézières",
+    "score": 0.6655827272727273,
+    "type": "municipality",
+    "name": "Charleville-Mézières",
+    "postcode": "08000",
+    "citycode": "08105",
+    "city": "Charleville-Mézières"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     4.724995,
+     49.770864
+    ]
+   },
+   "properties": {
+    "label": "Avenue Forest 08000 Charleville-Mézières",
+    "score": 0.6387073796791444,
+    "name": "Avenue Forest",
+    "postcode": "08000",
+    "citycode": "08105",
+    "city": "Charleville-Mézières",
+    "type": "street"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -1.119244,
+     46.168739
+    ]
+   },
+   "properties": {
+    "label": "Rue de Charleville Mezieres 17000 La Rochelle",
+    "score": 0.5870528739002933,
+    "name": "Rue de Charleville Mezieres",
+    "postcode": "17000",
+    "citycode": "17300",
+    "city": "La Rochelle",
+    "type": "street"
+   }
+  }
+ ],
+ "query": "Forêt, Charleville-Mézières"
+}
