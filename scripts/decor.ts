@@ -92,14 +92,15 @@ export async function executerDecor(argv: string[], deps: DependancesDecor): Pro
       const parcours = await lireParcours();
       const osm = await extraitOsm(() => requeteBande(parcours, nombre('rayon', RAYON_EXTRACTION_M)));
       const sortie = chemin('sortie');
+      const demiLargeurM = nombre('demi-largeur', DEMI_LARGEUR_PAR_DEFAUT_M);
       const carte = genererDecor({
         osm,
         parcours,
-        demiLargeurM: nombre('demi-largeur', DEMI_LARGEUR_PAR_DEFAUT_M),
+        demiLargeurM,
         dossierKenney: relative(dirname(sortie), join(RACINE, 'assets/kenney')).split('\\').join('/'),
       });
       await ecrireFichier(sortie, `${JSON.stringify(carte)}\n`);
-      await inscrireDansIndex(join(dirname(sortie), CHEMIN_INDEX_DECORS), basename(sortie), carte, ecrireFichier);
+      await inscrireDansIndex(join(dirname(sortie), CHEMIN_INDEX_DECORS), basename(sortie), carte, parcours, demiLargeurM, ecrireFichier);
       return;
     }
     case 'parcours': {
@@ -141,11 +142,13 @@ function requeteRues(rues: string[], a: Position, b: Position): string {
   return `[out:json][timeout:60];way["highway"]["name"~${JSON.stringify(`^(${filtre})$`)}](${sud},${ouest},${nord},${est});out geom;`;
 }
 
-/** Ajoute (ou remplace) la carte dans l'index des décors de son dossier. */
-async function inscrireDansIndex(
+/** Ajoute (ou remplace) la carte dans l'index des décors de son dossier, avec son tracé simplifié. */
+export async function inscrireDansIndex(
   fichierIndex: string,
   fichier: string,
   carte: CarteTiled,
+  parcours: Parcours,
+  demiLargeurM: number,
   ecrireFichier: (f: string, c: string) => Promise<void>,
 ): Promise<void> {
   let index: IndexDecors = { v: VERSION_INDEX_DECORS, decors: [] };
@@ -158,8 +161,43 @@ async function inscrireDansIndex(
   const georef = { origine: [valeur('origine_lon'), valeur('origine_lat')] as Position };
   const [lonMax, latMin] = versPosition(georef, { x: carte.width, y: carte.height });
   const emprise: [number, number, number, number] = [georef.origine[0], latMin, lonMax, georef.origine[1]];
-  index.decors = [...index.decors.filter((d) => d.fichier !== fichier), { fichier, emprise }];
+  const trace = simplifierLigne(parcours.coordinates, TOLERANCE_TRACE_INDEX_M).map(
+    ([lon, lat]) => [Math.round(lon * 1e6) / 1e6, Math.round(lat * 1e6) / 1e6] as Position,
+  );
+  index.decors = [...index.decors.filter((d) => d.fichier !== fichier), { fichier, emprise, trace, demiLargeurM }];
   await ecrireFichier(fichierIndex, `${JSON.stringify(index, null, 1)}\n`);
+}
+
+/** Tolérance de simplification du tracé inscrit dans l'index (m) : négligeable devant la demi-bande. */
+const TOLERANCE_TRACE_INDEX_M = 3;
+
+/** Douglas-Peucker en projection locale : garde les sommets qui s'écartent de plus de `toleranceM`. */
+export function simplifierLigne(ligne: Position[], toleranceM: number): Position[] {
+  if (ligne.length <= 2) return [...ligne];
+  const origine = ligne[0]!;
+  const kx = 111_320 * Math.cos((origine[1] * Math.PI) / 180);
+  const ky = 110_540;
+  const plan = ligne.map(([lon, lat]) => [(lon - origine[0]) * kx, (lat - origine[1]) * ky] as const);
+  const garder = new Array<boolean>(ligne.length).fill(false);
+  garder[0] = garder[ligne.length - 1] = true;
+  const pile: [number, number][] = [[0, ligne.length - 1]];
+  while (pile.length > 0) {
+    const [i, j] = pile.pop()!;
+    const [ax, ay] = plan[i]!;
+    const [bx, by] = plan[j]!;
+    const l = Math.hypot(bx - ax, by - ay);
+    let [kMax, dMax] = [-1, 0];
+    for (let k = i + 1; k < j; k++) {
+      const [px, py] = plan[k]!;
+      const d = l === 0 ? Math.hypot(px - ax, py - ay) : Math.abs((bx - ax) * (ay - py) - (ax - px) * (by - ay)) / l;
+      if (d > dMax) [kMax, dMax] = [k, d];
+    }
+    if (kMax >= 0 && dMax > toleranceM) {
+      garder[kMax] = true;
+      pile.push([i, kMax], [kMax, j]);
+    }
+  }
+  return ligne.filter((_, k) => garder[k]);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

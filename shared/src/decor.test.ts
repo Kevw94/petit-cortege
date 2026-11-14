@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { tracerParcours, versPosition, versTuiles, type Georeference } from './decor';
+import {
+  decorDuParcours,
+  ecartAuTraceDuDecor,
+  tracerParcours,
+  versPosition,
+  versTuiles,
+  type EntreeIndexDecors,
+  type Georeference,
+  type IndexDecors,
+} from './decor';
+import type { Position } from './format';
 
 // Origine du décor : coin haut-gauche de la tuile (0, 0), à Paris.
 const geo: Georeference = { origine: [2.36, 48.87] };
@@ -50,5 +60,45 @@ describe('tracé du parcours au sol', () => {
       { x: 30, y: 10, angle: 90 },
     ]);
     expect(trace.arrivee.angle).toBe(90);
+  });
+});
+
+describe('choix du décor qui couvre le parcours', () => {
+  // Deux décors de République à Nation : l'un par le boulevard Voltaire (en diagonale),
+  // l'autre par la Bastille. Les deux emprises contiennent la place de la Bastille.
+  const republique: Position = [2.3639, 48.8673];
+  const bastille: Position = [2.3695, 48.8533];
+  const nation: Position = [2.3961, 48.8483];
+  const voltaire: EntreeIndexDecors = {
+    fichier: 'republique-nation.json',
+    emprise: [2.363, 48.847, 2.397, 48.868],
+    trace: [republique, nation],
+    demiLargeurM: 100,
+  };
+  const parBastille: EntreeIndexDecors = {
+    fichier: 'paris-2026-11-14.json',
+    emprise: [2.363, 48.847, 2.397, 48.868],
+    trace: [republique, bastille, nation],
+    demiLargeurM: 100,
+  };
+  const index: IndexDecors = { v: 1, decors: [voltaire, parBastille] };
+
+  it('prend le décor dont la bande couvre le parcours, pas le premier dont l’emprise le contient', () => {
+    expect(decorDuParcours(index, [republique, bastille, nation])?.fichier).toBe('paris-2026-11-14.json');
+    expect(decorDuParcours(index, [republique, nation])?.fichier).toBe('republique-nation.json');
+  });
+
+  it('mesure l’écart sur tout le parcours, pas seulement ses sommets', () => {
+    expect(ecartAuTraceDuDecor(voltaire, [republique, bastille, nation])).toBeGreaterThan(500);
+    expect(ecartAuTraceDuDecor(parBastille, [republique, bastille, nation])).toBeLessThan(1);
+    // Parcours direct République → Nation : ses sommets sont sur le tracé par la Bastille, pas son milieu.
+    expect(ecartAuTraceDuDecor(parBastille, [republique, nation])).toBeGreaterThan(500);
+  });
+
+  it('se rabat sur un décor d’index ancien (sans tracé) faute de mieux, sinon aucun', () => {
+    const ancien: EntreeIndexDecors = { fichier: 'ancien.json', emprise: [2.363, 48.847, 2.397, 48.868] };
+    expect(decorDuParcours({ v: 1, decors: [voltaire, ancien] }, [republique, bastille, nation])?.fichier).toBe('ancien.json');
+    expect(decorDuParcours({ v: 1, decors: [voltaire] }, [republique, bastille, nation])).toBeUndefined();
+    expect(decorDuParcours(index, [[5.37, 43.29], [5.38, 43.3]])).toBeUndefined();
   });
 });

@@ -218,6 +218,13 @@ export interface EntreeIndexDecors {
   fichier: string;
   /** Emprise géographique : [lon min, lat min, lon max, lat max]. */
   emprise: [number, number, number, number];
+  /**
+   * Parcours autour duquel la bande du décor a été générée (simplifié), et
+   * demi-largeur de cette bande en mètres : seule la bande est dessinée, pas
+   * toute l'emprise. Absents des index anciens (choix sur la seule emprise).
+   */
+  trace?: Position[];
+  demiLargeurM?: number;
 }
 
 export interface IndexDecors {
@@ -233,11 +240,72 @@ export function lireIndexDecors(json: unknown): IndexDecors {
   return index as IndexDecors;
 }
 
-/** Le décor dont l'emprise contient tout le parcours, s'il y en a un. */
+/**
+ * Part de la demi-largeur de la bande que le parcours peut s'écarter du tracé
+ * d'un décor : le cortège et ses abords restent dans la partie dessinée.
+ */
+export const COUVERTURE_DEMI_BANDE = 0.5;
+/** Pas d'échantillonnage du parcours pour mesurer la couverture, en mètres. */
+const PAS_COUVERTURE_M = 20;
+
+/** Points du parcours tous les `pasM` mètres environ (sommets compris), en projection locale. */
+function echantillonsParcours(parcours: Position[], pasM: number): Position[] {
+  const points: Position[] = [];
+  for (let i = 0; i < parcours.length; i++) {
+    const b = parcours[i]!;
+    const a = parcours[i - 1];
+    if (a) {
+      const { kx, ky } = metresParDegre({ origine: a });
+      const n = Math.floor(Math.hypot((b[0] - a[0]) * kx, (b[1] - a[1]) * ky) / pasM);
+      for (let k = 1; k <= n; k++) points.push([a[0] + ((b[0] - a[0]) * k) / (n + 1), a[1] + ((b[1] - a[1]) * k) / (n + 1)]);
+    }
+    points.push(b);
+  }
+  return points;
+}
+
+/** Distance (m) d'un point à une ligne brisée (projection locale autour du point). */
+function distanceALaLigne(p: Position, ligne: Position[]): number {
+  const { kx, ky } = metresParDegre({ origine: p });
+  const plan = ligne.map(([lon, lat]) => [(lon - p[0]) * kx, (lat - p[1]) * ky] as const);
+  let min = plan.length === 1 ? Math.hypot(plan[0]![0], plan[0]![1]) : Infinity;
+  for (let i = 1; i < plan.length; i++) {
+    const [ax, ay] = plan[i - 1]!;
+    const [bx, by] = plan[i]!;
+    const [dx, dy] = [bx - ax, by - ay];
+    const l2 = dx * dx + dy * dy;
+    const t = l2 === 0 ? 0 : Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2));
+    min = Math.min(min, Math.hypot(ax + t * dx, ay + t * dy));
+  }
+  return min;
+}
+
+/** Plus grand écart (m) entre le parcours et le tracé d'un décor. */
+export function ecartAuTraceDuDecor(entree: EntreeIndexDecors, parcours: Position[]): number {
+  if (!entree.trace || entree.trace.length === 0) return Infinity;
+  return Math.max(...echantillonsParcours(parcours, PAS_COUVERTURE_M).map((p) => distanceALaLigne(p, entree.trace!)));
+}
+
+/**
+ * Le décor qui couvre réellement le parcours. Une emprise rectangulaire ne
+ * suffit pas : un décor République → Nation par le boulevard Voltaire a une
+ * emprise qui contient la place de la Bastille, mais sa bande de tuiles n'y
+ * passe pas. Parmi les décors dont l'emprise contient le parcours, on garde
+ * celui dont la bande (tracé ± demi-largeur) le couvre avec le plus de marge ;
+ * un décor d'un index ancien, sans tracé, n'est choisi que faute de mieux.
+ */
 export function decorDuParcours(index: IndexDecors, parcours: Position[]): EntreeIndexDecors | undefined {
-  return index.decors.find(({ emprise: [x0, y0, x1, y1] }) =>
+  const candidats = index.decors.filter(({ emprise: [x0, y0, x1, y1] }) =>
     parcours.every(([lon, lat]) => lon >= x0 && lon <= x1 && lat >= y0 && lat <= y1),
   );
+  let choisi: EntreeIndexDecors | undefined;
+  let meilleurEcart = Infinity;
+  for (const entree of candidats) {
+    if (!entree.trace || !entree.demiLargeurM) continue;
+    const ecart = ecartAuTraceDuDecor(entree, parcours);
+    if (ecart <= entree.demiLargeurM * COUVERTURE_DEMI_BANDE && ecart < meilleurEcart) [choisi, meilleurEcart] = [entree, ecart];
+  }
+  return choisi ?? candidats.find((e) => !e.trace || !e.demiLargeurM);
 }
 
 // ---------------------------------------------------------------------------

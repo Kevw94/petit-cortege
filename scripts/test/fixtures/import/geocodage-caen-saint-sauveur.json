@@ -1,0 +1,63 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -0.369026,
+     49.182774
+    ]
+   },
+   "properties": {
+    "label": "Place Saint-Sauveur 14000 Caen",
+    "score": 0.9733718181818181,
+    "name": "Place Saint-Sauveur",
+    "postcode": "14000",
+    "citycode": "14118",
+    "city": "Caen",
+    "type": "street"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -0.367012,
+     49.18345
+    ]
+   },
+   "properties": {
+    "label": "Rue Saint-Sauveur 14000 Caen",
+    "score": 0.68487,
+    "name": "Rue Saint-Sauveur",
+    "postcode": "14000",
+    "citycode": "14118",
+    "city": "Caen",
+    "type": "street"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -0.842808,
+     47.755686
+    ]
+   },
+   "properties": {
+    "label": "route de saint-sauveur 53400 Saint-Quentin-les-Anges",
+    "score": 0.40799,
+    "name": "route de saint-sauveur",
+    "postcode": "53400",
+    "citycode": "53251",
+    "city": "Saint-Quentin-les-Anges",
+    "type": "street"
+   }
+  }
+ ],
+ "query": "Place Saint-Sauveur, Caen"
+}

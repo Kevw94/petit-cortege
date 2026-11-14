@@ -42,6 +42,10 @@ Puis ouvrir http://localhost:5173/#/manif/demo-republique-nation (départ 2 min 
 
 Variables utiles : `DATABASE_URL` (base de dev), `DATABASE_ADMIN_URL` (tests : une base jetable par fichier de test y est créée), `PORT_SERVEUR`, `PORT_CLIENT`, `DOSSIER_PUBLICATION`.
 
+## Mise en ligne
+
+Déploiement sur un VPS (Postgres + serveur Node + Caddy, sans Supabase : ADR 0005) : guide pas à pas dans [`docs/deploiement.md`](docs/deploiement.md), scripts et configuration dans [`deploiement/`](deploiement/).
+
 ## Tests
 
 Deux seams seulement (voir la spec) :

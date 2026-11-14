@@ -8,6 +8,7 @@
  * Les informations que seul le porteur connaît sont dans `a-completer.ts`.
  */
 import { IDS_PAGES_LEGALES, lienPageLegale, type IdPageLegale } from '../routage';
+import { icone } from '../icones';
 import { A_COMPLETER } from './a-completer';
 
 const TITRES: Record<IdPageLegale, string> = {
@@ -101,8 +102,11 @@ const CONTENUS: Record<IdPageLegale, () => string> = {
     <h2>Ce qui reste sur ton appareil</h2>
     <p>Le stockage local de ton navigateur (localStorage, pas un cookie) garde ton jeton de retrait et de quoi
       reconnaître tes propres avatars pour les mettre en valeur. Le site l’efface à la fin de la manif. Rien de
-      ce stockage n’est envoyé au serveur, sauf le jeton quand tu demandes toi-même un retrait. L’image finale
-      et le rappel de calendrier (.ics) sont fabriqués sur ton appareil.</p>
+      ce stockage n’est envoyé au serveur, sauf le jeton quand tu demandes toi-même un retrait. Il garde aussi
+      tes réglages (son coupé ou non, vue 2D ou 3D), qui ne quittent jamais ton appareil. L’image finale et le
+      rappel de calendrier (.ics) sont fabriqués sur ton appareil.</p>
+    <p>Les sons (musique, ambiance, chants) sont synthétisés par ton navigateur : aucun fichier audio n’est
+      téléchargé. Un chant lancé ne s’entend et ne se voit que sur ton appareil : rien n’est envoyé au serveur.</p>
 
     <h2>Anti-triche</h2>
     <p>Chaque entrée demande à ton appareil un petit calcul (une « preuve de travail », sans service tiers). Pour
@@ -217,7 +221,7 @@ const CONTENUS: Record<IdPageLegale, () => string> = {
 export function pageLegale(id: IdPageLegale): string {
   return `
     <article class="carte page-legale">
-      <a class="retour" href="#/">← Toutes les manifs</a>
+      <a class="retour" href="#/">${icone('retour', 'icone icone-petite')}Toutes les manifs</a>
       <h1>${TITRES[id]}</h1>
       ${CONTENUS[id]()}
       <p class="mise-a-jour">Dernière mise à jour : ${valeur('dateMiseAJour')}</p>

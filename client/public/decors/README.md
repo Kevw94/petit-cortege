@@ -10,6 +10,11 @@ Kenney (CC0) ; le code du dépôt garde sa propre licence (ADR 0006).
 - `index.json` : liste des décors et de leur emprise. Le client charge l'index puis **tous** les décors listés
   (requêtes identiques pour tous, ADR 0002), et choisit celui qui couvre le parcours de la manif.
 - `republique-nation.json` : République → Nation par le boulevard Voltaire (données sources dans `donnees/osm/`).
+- `paris-2026-11-14.json`, `nancy-2026-11-14.json`, `caen-2026-11-14.json` : manifs du 14 novembre 2026, générées par
+  `npm run import-manifs -- decors` (docs/import-manifs.md).
+
+Chaque entrée de l'index porte aussi le tracé simplifié du parcours et la demi-largeur de la bande : le client prend
+le décor dont la bande couvre le parcours, pas seulement l'emprise rectangulaire.
 
 Régénérer :
 

@@ -45,8 +45,8 @@ export function creerPanneauComposition(options: OptionsPanneauComposition): Pan
 
   const actions = document.createElement('div');
   actions.className = 'composition-actions';
-  const annuler = bouton('Annuler', 'secondaire', options.surAnnuler);
-  const valider = bouton(options.libelleValider, 'rejoindre', options.surValider);
+  const annuler = bouton('Annuler', 'bouton bouton-secondaire', options.surAnnuler);
+  const valider = bouton(options.libelleValider, 'bouton bouton-principal', options.surValider);
   actions.append(annuler, valider);
   const message = document.createElement('p');
   message.className = 'message';

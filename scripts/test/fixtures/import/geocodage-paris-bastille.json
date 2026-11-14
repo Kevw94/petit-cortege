@@ -1,0 +1,82 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     2.370213,
+     48.853711
+    ]
+   },
+   "properties": {
+    "label": "Place de la Bastille 75011 Paris",
+    "score": 0.9652136363636363,
+    "name": "Place de la Bastille",
+    "postcode": "75011",
+    "citycode": "75111",
+    "city": "Paris",
+    "type": "street"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     2.369945,
+     48.852769
+    ]
+   },
+   "properties": {
+    "label": "Place de la Bastille 75012 Paris",
+    "score": 0.9652090909090909,
+    "name": "Place de la Bastille",
+    "postcode": "75012",
+    "citycode": "75112",
+    "city": "Paris",
+    "type": "street"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     2.368195,
+     48.853372
+    ]
+   },
+   "properties": {
+    "label": "Place de la Bastille 75004 Paris",
+    "score": 0.9586772727272727,
+    "name": "Place de la Bastille",
+    "postcode": "75004",
+    "citycode": "75104",
+    "city": "Paris",
+    "type": "street"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     2.367928,
+     48.853849
+    ]
+   },
+   "properties": {
+    "label": "Rue de la Bastille 75004 Paris",
+    "score": 0.6887054545454545,
+    "name": "Rue de la Bastille",
+    "postcode": "75004",
+    "citycode": "75104",
+    "city": "Paris",
+    "type": "street"
+   }
+  }
+ ],
+ "query": "Place de la Bastille, Paris"
+}
