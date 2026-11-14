@@ -50,6 +50,10 @@ Message prédéfini, issu d'un catalogue, qu'un avatar peut scander ou porter.
 **Pancarte** :
 Ce que porte un avatar : un slogan du catalogue, mis en forme (couleur, forme). Rien n'y est importé par le soutien.
 
+**Chant** :
+Courte séquence rythmique sans paroles (tambour, mains, chœur « hé / ho » synthétisés), lancée par un soutien et jouée seulement sur son appareil.
+_À éviter_ : slogan scandé, hymne
+
 **Réaction** :
 Geste prédéfini d'un avatar (✊ ❤️ 👏 📣).
 
