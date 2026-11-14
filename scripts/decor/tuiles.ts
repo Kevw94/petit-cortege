@@ -25,6 +25,8 @@ export const TUILES = {
   /** Cœur d'îlot hors bâtiments (cours, terrains non cartographiés) : gravier gris. */
   ilot: ville(8, 24),
   vert: ville(0, 24),
+  /** Pâtés de maisons des alentours (sans bâtiments) : couleur moyenne du toit beige plein. */
+  pateDeMaisons: ville(30, 0),
   eau: rpg(3, 4),
   /** Quais en pierre autour de l'eau (pièce en 9 morceaux). */
   quai: {

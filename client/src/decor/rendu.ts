@@ -1,5 +1,6 @@
 /**
- * Rendu Phaser du décor : une vue d'ensemble (1 pixel par tuile, couleur
+ * Rendu Phaser du décor : sous tout, les alentours simplifiés (un pixel par case de 4 m,
+ * cuits une fois, fondus au bord dans la teinte du fond) ; une vue d'ensemble (1 pixel par tuile, couleur
  * moyenne de la tuile) toujours affichée, et, de près, les blocs de 32 × 32
  * tuiles visibles, dessinés à la demande dans une texture chacun (chargement
  * par blocs ; les blocs sortis de l'écran sont libérés au-delà d'un plafond).
@@ -22,6 +23,7 @@ import {
   type Decor,
 } from '@petit-cortege/shared';
 import type { PointM, PointPx } from '../cadrage';
+import { cuireAlentours } from './alentours';
 import { blocsVisibles, COTE_BLOC_M } from './blocs';
 import { cuireBloc, dessinerVueDEnsemble, IMAGES_TILESETS, type ImagesTilesets } from './cuisson';
 import { NomsDesPlaces } from './places';
@@ -56,6 +58,7 @@ export class DecorAffiche {
   readonly #scene: Phaser.Scene;
   readonly #decor: Decor;
   readonly #ensemble: Phaser.GameObjects.Image;
+  readonly #alentours: { image: Phaser.GameObjects.Image; x: number; y: number; largeur: number; hauteur: number } | null = null;
   readonly #blocs = new Map<BlocDecor, BlocAffiche>();
   readonly #couchesSol: string[];
   readonly #couchesBatiments: string[];
@@ -72,6 +75,13 @@ export class DecorAffiche {
     this.#images = (nom) =>
       scene.textures.exists(cleTexture(nom)) ? (scene.textures.get(cleTexture(nom)).getSourceImage() as CanvasImageSource) : undefined;
     this.#places = new NomsDesPlaces(scene, decor);
+    const alentours = cuireAlentours(decor, this.#images);
+    if (alentours) {
+      const cleAlentours = `decor-alentours-${Phaser.Math.RND.uuid()}`;
+      scene.textures.addCanvas(cleAlentours, alentours.canvas)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
+      const image = scene.add.image(0, 0, cleAlentours).setOrigin(0, 0).setDepth(PROFONDEUR_DECOR - 1);
+      this.#alentours = { image, x: alentours.x, y: alentours.y, largeur: alentours.largeur, hauteur: alentours.hauteur };
+    }
     const cle = `decor-ensemble-${Phaser.Math.RND.uuid()}`;
     scene.textures.addCanvas(cle, dessinerVueDEnsemble(decor, this.#images))!.setFilter(Phaser.Textures.FilterMode.NEAREST);
     this.#ensemble = scene.add.image(0, 0, cle).setOrigin(0, 0).setDepth(PROFONDEUR_DECOR);
@@ -88,6 +98,8 @@ export class DecorAffiche {
     profondeur: ProfondeurSelonY = () => PROFONDEUR_DECOR + 2,
   ): void {
     this.#image++;
+    const a = this.#alentours;
+    if (a) placer(a.image, vers({ x: a.x, y: a.y }), vers({ x: a.x + a.largeur, y: a.y + a.hauteur }));
     placer(this.#ensemble, vers({ x: 0, y: 0 }), vers({ x: this.#decor.largeur * METRES_PAR_TUILE, y: this.#decor.hauteur * METRES_PAR_TUILE }));
 
     const visibles = cadrage.echelle >= ECHELLE_MIN_BLOCS ? blocsVisibles(this.#decor, cadrage, ecran) : [];

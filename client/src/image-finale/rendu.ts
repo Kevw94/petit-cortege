@@ -20,6 +20,7 @@ import {
 } from '@petit-cortege/shared';
 import urlRpg from '../../../assets/kenney/rpg/Spritesheet/roguelikeSheet_transparent.png';
 import urlVille from '../../../assets/kenney/city/Spritesheet/roguelikeCity_transparent.png';
+import { COULEUR_FOND_CSS, cuireAlentours } from '../decor/alentours';
 import { CELLULE_APPARENCE, dessinerApparence, HAUTEUR_TETE_PX, URL_COUCHES_APPARENCE } from '../apparence/dessin';
 import type { AvatarImageFinale, ImageFinale } from '../cortege/image-finale';
 import { pancartesAffichees, type PancarteAffichee } from '../pancartes/affichage';
@@ -81,7 +82,7 @@ export function dessinerImageFinale(canvas: HTMLCanvasElement, donnees: DonneesI
   canvas.height = HAUTEUR_IMAGE_FINALE;
   const ctx = canvas.getContext('2d')!;
   ctx.imageSmoothingEnabled = false;
-  ctx.fillStyle = '#c9c3b6';
+  ctx.fillStyle = decor ? COULEUR_FOND_CSS : '#c9c3b6';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // Cadrage : la place d'arrivée au centre de la zone entre les bandeaux, échelle entière.
@@ -189,6 +190,13 @@ function dessinerDecor(
   versImage: (m: { x: number; y: number }) => { x: number; y: number },
   echelle: number,
 ): void {
+  // Alentours (s'ils existent) : au-delà de la bande, si la foule à l'arrivée déborde.
+  const alentours = cuireAlentours(decor, (nom) => ressources.tilesets.get(nom));
+  if (alentours) {
+    const a = versImage({ x: alentours.x, y: alentours.y });
+    const b = versImage({ x: alentours.x + alentours.largeur, y: alentours.y + alentours.hauteur });
+    ctx.drawImage(alentours.canvas, a.x, a.y, b.x - a.x, b.y - a.y);
+  }
   const cote = TAILLE_TUILE_PX * echelle;
   const origine = versImage({ x: 0, y: 0 }); // coin de la tuile (0, 0)
   const x0 = Math.floor(-origine.x / cote);
