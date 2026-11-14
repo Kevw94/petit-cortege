@@ -1,0 +1,110 @@
+{
+ "$commentaire": "Manifs du samedi 14 novembre 2026, relevé du matin (sources publiques). Mode d'emploi : docs/import-manifs.md. Ne rien ajouter qui ne soit pas annoncé.",
+ "manifs": [
+  {
+   "id": "paris-2026-11-14",
+   "intitule": "Manifestation du 14 novembre",
+   "ville": "Paris",
+   "depart": "2026-11-14T13:00",
+   "parcoursAnnonce": "Place de la République → place de la Bastille → place de la Nation : itinéraire commun validé par la préfecture de police pour les trois manifestations déclarées (relevé ; les sources ne nomment que les trois places).",
+   "etapes": [
+    { "adresse": "Place de la République, Paris" },
+    { "adresse": "Place de la Bastille, Paris" },
+    { "adresse": "Place de la Nation, Paris" }
+   ],
+   "sources": [
+    {
+     "libelle": "France 24 – Manifestations du 14 novembre : parcours, revendications, sécurité",
+     "url": "https://www.france24.com/fr/france/20261113-manifestations-du-14-novembre-parcours-revendications-s%C3%A9curit%C3%A9-ce-qu-il-faut-savoir"
+    },
+    {
+     "libelle": "Sortir à Paris – Manifestation du 14 novembre à Paris : le parcours validé",
+     "url": "https://www.sortiraparis.com/actualites/a-paris/articles/358215-manifestation-du-14-novembre-a-paris-le-parcours-valide-ce-samedi"
+    }
+   ],
+   "verifie": {
+    "declaree": "Trois manifestations déclarées, itinéraire commun validé par la préfecture de police (France 24 et Sortir à Paris, articles du 13 et du 14 novembre 2026).",
+    "sansInterdiction": "Parcours validé par la préfecture de police selon France 24 et Sortir à Paris (relevé du 14 novembre 2026 au matin) ; à revérifier juste avant le départ (ADR 0003)."
+   }
+  },
+  {
+   "id": "nancy-2026-11-14",
+   "intitule": "Manifestation du 14 novembre",
+   "ville": "Nancy",
+   "depart": "2026-11-14T14:00",
+   "parcoursAnnonce": "partira à 14h de la place Carnot, passera par la rue Stanislas, le boulevard Joffre, la rue Cyfflé, la rue des Quatres-Églises, la rue Charles III, la rue Saint-Dizier, de nouveau la rue Stanislas, la rue des Michottes pour revenir sur la place Carnot",
+   "etapes": [
+    { "adresse": "Place Carnot, Nancy" },
+    { "rue": "Rue Stanislas" },
+    { "rue": "Boulevard Joffre" },
+    { "rue": "Rue Cyfflé" },
+    { "rue": "Rue des Quatres-Églises" },
+    { "rue": "Rue Charles III" },
+    { "rue": "Rue Saint-Dizier" },
+    { "rue": "Rue Stanislas" },
+    { "rue": "Rue des Michottes" },
+    { "adresse": "Place Carnot, Nancy" }
+   ],
+   "zonesEvitees": [
+    { "adresse": "Place Stanislas, Nancy", "rayonM": 50 },
+    { "adresse": "Place de la Carrière, Nancy", "rayonM": 40 },
+    { "adresse": "Place Vaudémont, Nancy", "rayonM": 25 },
+    { "adresse": "Place Nelson Mandela, Nancy", "rayonM": 30 },
+    { "adresse": "Place Charles III, Nancy", "rayonM": 50 }
+   ],
+   "sources": [
+    {
+     "libelle": "France 3 Grand Est – Manifestations du 14 novembre 2026 : à quoi s'attendre en Lorraine",
+     "url": "https://france3-regions.franceinfo.fr/grand-est/meurthe-et-moselle/nancy/manifestations-du-14-novembre-2026-a-quoi-s-attendre-en-lorraine-3449493.html"
+    }
+   ],
+   "verifie": {
+    "declaree": "Cortège déclaré en préfecture de Meurthe-et-Moselle, parcours publié (France 3 Grand Est, relevé du 14 novembre 2026 au matin).",
+    "sansInterdiction": "Parcours déclaré en préfecture selon France 3 Grand Est (relevé du 14 novembre 2026 au matin) ; seul un périmètre du centre est interdit (places Stanislas, de la Carrière, Vaudémont, Nelson-Mandela, Charles-III), évité par le tracé ; à revérifier juste avant le départ (ADR 0003)."
+   }
+  },
+  {
+   "id": "caen-2026-11-14",
+   "intitule": "Manifestation du 14 novembre",
+   "ville": "Caen",
+   "depart": "2026-11-14T14:40",
+   "parcoursAnnonce": "Rendez-vous à 14h, marche à 14h40 : départ place Saint-Pierre, arrivée place Saint-Sauveur (relevé de la carte des organisateurs).",
+   "etapes": [
+    { "adresse": "Place Saint-Pierre, Caen" },
+    { "adresse": "Place Saint-Sauveur, Caen" }
+   ],
+   "sources": [
+    { "libelle": "Carte des organisateurs (26septembre.org)", "url": "https://26septembre.org/carte" }
+   ],
+   "verifie": {
+    "declaree": null,
+    "sansInterdiction": null
+   }
+  },
+  {
+   "id": "charleville-mezieres-2026-11-14",
+   "intitule": "Manifestation du 14 novembre",
+   "ville": "Charleville-Mézières",
+   "depart": "2026-11-14T14:00",
+   "parcoursAnnonce": "Metropolis, théâtre, Gambetta, Jaurès, Forêt, quais, Condé, Metropolis",
+   "etapes": [
+    { "adresse": "Cinéma Metropolis, Charleville-Mézières" },
+    { "adresse": "Théâtre, Charleville-Mézières" },
+    { "adresse": "Gambetta, Charleville-Mézières" },
+    { "adresse": "Jaurès, Charleville-Mézières" },
+    { "adresse": "Forêt, Charleville-Mézières" },
+    { "adresse": "Quais, Charleville-Mézières" },
+    { "adresse": "Condé, Charleville-Mézières" },
+    { "adresse": "Cinéma Metropolis, Charleville-Mézières" }
+   ],
+   "sources": [
+    { "libelle": "Carte des organisateurs (26septembre.org)", "url": "https://26septembre.org/carte" }
+   ],
+   "verifie": {
+    "declaree": null,
+    "sansInterdiction": null
+   },
+   "aVerifier": "Étapes non géocodables de façon fiable : « Metropolis » (le cinéma n'est pas dans la Base Adresse : seule la commune répond), « Forêt » (donne « Rue Forest » ou « Avenue Forest »), « quais » (aucun quai précis), « théâtre » (rue ou place du Théâtre), « Gambetta », « Jaurès », « Condé » (type de voie non précisé : boulevard, avenue, rue ou place ; scores autour de 0,7 seulement). Préciser chaque étape auprès des organisateurs (ou une « position » sourcée) avant de tracer."
+  }
+ ]
+}

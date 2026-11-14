@@ -1,0 +1,82 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     1.435808,
+     43.603671
+    ]
+   },
+   "properties": {
+    "label": "Place Saint Pierre 31000 Toulouse",
+    "score": 0.9761863636363635,
+    "name": "Place Saint Pierre",
+    "postcode": "31000",
+    "citycode": "31555",
+    "city": "Toulouse",
+    "type": "street"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -1.551325,
+     47.218054
+    ]
+   },
+   "properties": {
+    "label": "Place Saint Pierre 44000 Nantes",
+    "score": 0.9727236363636362,
+    "name": "Place Saint Pierre",
+    "postcode": "44000",
+    "citycode": "44109",
+    "city": "Nantes",
+    "type": "street"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     2.343707,
+     48.884395
+    ]
+   },
+   "properties": {
+    "label": "Place Saint-Pierre 75018 Paris",
+    "score": 0.9720572727272727,
+    "name": "Place Saint-Pierre",
+    "postcode": "75018",
+    "citycode": "75118",
+    "city": "Paris",
+    "type": "street"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     3.083089,
+     45.779425
+    ]
+   },
+   "properties": {
+    "label": "place Saint-Pierre 63000 Clermont-Ferrand",
+    "score": 0.9715436363636362,
+    "name": "place Saint-Pierre",
+    "postcode": "63000",
+    "citycode": "63113",
+    "city": "Clermont-Ferrand",
+    "type": "street"
+   }
+  }
+ ],
+ "query": "Place Saint-Pierre"
+}

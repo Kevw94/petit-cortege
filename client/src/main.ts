@@ -23,6 +23,12 @@ import { lienManif, lireRoute } from './routage';
 import { SceneCortege, type DonneesScene } from './scene-cortege';
 import type { VueCortege } from './vue-cortege';
 import { choisirModeVue, lireModeVue, memoriserModeVue, stockageLocal, webglDisponible, type ModeVue } from './vue3d/mode-vue';
+import { banniereCortege, carteManif } from './accueil';
+import { icone } from './icones';
+import { creerLimiteur, phaseAmbiance, reglagesAmbiance } from './son/ambiance';
+import { brancherChant } from './son/interface-chant';
+import { installerSon } from './son/interface-son';
+import type { SceneSon } from './son/moteur';
 
 /** Rafraîchissement des fichiers publiés (liste en cache court ≈ 1 min, minutes immuables). */
 const INTERVALLE_RAFRAICHISSEMENT_MS = 20_000;
@@ -31,6 +37,17 @@ const publication = new Publication();
 const interfaceEl = document.querySelector<HTMLDivElement>('#interface')!;
 /** Chaque navigation périme la vue précédente : ses chargements en cours n'écrivent plus rien. */
 const navigation = creerNavigation();
+/** Son synthétisé dans le navigateur (ADR 0008) : bouton visible sur toutes les vues. */
+const son = installerSon();
+
+/** Scène sonore de la vue ; elle se tait (fondu) dès qu'on quitte la vue. */
+function jouerScene(vue: Vue, scene: SceneSon): void {
+  if (!vue.courante) return;
+  son.scene(scene);
+  vue.surQuitter(() => son.scene('silence'));
+}
+
+const lienRetour = `<a class="retour" href="#/">${icone('retour', 'icone icone-petite')}Toutes les manifs</a>`;
 
 const heure = (iso: string) =>
   new Date(iso).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
@@ -58,33 +75,36 @@ async function afficherListe(vue: Vue): Promise<void> {
   const { manifs } = await vue.attendre(listeManifs());
   const ouvertes = manifs.filter((m) => !estTerminee(m));
   const terminees = manifs.filter((m) => estTerminee(m)).reverse(); // les plus récentes d'abord
-  const element = (m: (typeof manifs)[number], detail: string) => `<li><a href="${lienManif(m.id)}">
-              <strong>${echapper(m.intitule)}</strong>
-              ${echapper(m.ville)} · ${detail}
-            </a></li>`;
+  const maintenant = new Date();
   interfaceEl.innerHTML = `
-    <section class="carte">
-      <h1>Petit Cortège</h1>
-      <p>${ouvertes.length > 0 ? 'Choisis un cortège à rejoindre.' : 'Aucun cortège ouvert pour le moment.'}</p>
-      <ul class="liste">
-        ${ouvertes.map((m) => element(m, `départ ${heure(m.depart)} · fin ${heure(m.fin)}`)).join('')}
-      </ul>
+    <section class="accueil">
+      <header class="accueil-entete">
+        ${banniereCortege()}
+        <h1>Petit Cortège</h1>
+        <p class="accroche">Soutiens une manif à distance : ton avatar rejoint un cortège virtuel en pixel art
+          qui suit le parcours et l’horaire annoncés. Sans compte, sans traceur.</p>
+      </header>
+      <h2 class="sous-titre">Cortèges ouverts</h2>
+      ${
+        ouvertes.length > 0
+          ? `<ul class="liste-manifs">${ouvertes.map((m) => carteManif(m, maintenant)).join('')}</ul>`
+          : '<p class="vide">Aucun cortège ouvert pour le moment. Reviens le jour d’une grande manif !</p>'
+      }
       ${
         terminees.length === 0
           ? ''
           : `<h2 class="sous-titre">Terminées : revoir l’image finale</h2>
-      <ul class="liste">
-        ${terminees.map((m) => element(m, `terminée ${heure(m.fin)}`)).join('')}
-      </ul>`
+      <ul class="liste-manifs">${terminees.map((m) => carteManif(m, maintenant)).join('')}</ul>`
       }
     </section>`;
+  jouerScene(vue, 'accueil');
 }
 
 async function afficherManif(id: string, vue: Vue): Promise<void> {
   const manif = (await vue.attendre(listeManifs())).manifs.find((m) => m.id === id);
   if (!manif) {
     interfaceEl.innerHTML = `<section class="carte"><p>Cette manif n'existe pas ou n'est plus publiée.</p>
-      <a class="retour" href="#/">← Toutes les manifs</a></section>`;
+      ${lienRetour}</section>`;
     return;
   }
   // Décor OSM : tous les décors publiés sont demandés, quelle que soit la manif (ADR 0002).
@@ -100,23 +120,30 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
   }
 
   interfaceEl.innerHTML = `
-    <section class="carte">
-      <a class="retour" href="#/">← Toutes les manifs</a>
+    <section class="carte carte-manif-info">
+      ${lienRetour}
       <h1>${echapper(manif.intitule)}</h1>
       <p>${echapper(manif.ville)} · départ ${heure(manif.depart)}</p>
-      <p data-etat></p>
+      <p class="etat-cortege" data-etat></p>
     </section>
     <div class="camera" role="group" aria-label="Caméra">
-      <button type="button" data-suivre hidden>Suivre</button>
-      <button type="button" data-ensemble>Vue d’ensemble</button>
-      <button type="button" class="zoom" data-zoom="1.5" aria-label="Rapprocher">+</button>
-      <button type="button" class="zoom" data-zoom="0.6667" aria-label="Éloigner">−</button>
-      <button type="button" data-mode hidden></button>
+      <div class="barre-outils">
+        <button type="button" class="bouton bouton-icone" data-ensemble aria-label="Vue d’ensemble" title="Vue d’ensemble">${icone('ensemble')}</button>
+        <button type="button" class="bouton bouton-icone" data-zoom="1.5" aria-label="Rapprocher" title="Rapprocher">${icone('plus')}</button>
+        <button type="button" class="bouton bouton-icone" data-zoom="0.6667" aria-label="Éloigner" title="Éloigner">${icone('moins')}</button>
+        <button type="button" class="bouton bouton-icone bouton-mode" data-mode hidden></button>
+      </div>
+      <button type="button" class="bouton bouton-secondaire bouton-suivre" data-suivre hidden>${icone('suivre')}Suivre</button>
     </div>
     <section class="action">
-      <button type="button" class="rejoindre" data-rejoindre hidden>Rejoindre le cortège</button>
-      <button type="button" class="retirer" data-retirer hidden>Retirer mon avatar</button>
-      <button type="button" class="rappel" data-rappel hidden>Rappel pour voir l’image finale</button>
+      <button type="button" class="bouton bouton-principal" data-rejoindre hidden>Rejoindre le cortège</button>
+      <div class="actions-secondaires">
+        <button type="button" class="bouton bouton-secondaire" data-chant
+          title="Un chant sans paroles, joué sur ton appareil seulement : personne d’autre ne l’entend.">${icone('chant')}Lancer un chant</button>
+        <button type="button" class="bouton bouton-secondaire" data-rappel hidden
+          aria-label="Rappel pour voir l’image finale" title="Rappel pour voir l’image finale (fichier d’agenda)">${icone('rappel')}Rappel</button>
+        <button type="button" class="bouton bouton-secondaire" data-retirer hidden>Retirer mon avatar</button>
+      </div>
       <p class="message" data-message role="status"></p>
     </section>
     <p class="attribution">${ATTRIBUTION_OSM.replace('OpenStreetMap', '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>')}</p>`;
@@ -128,6 +155,7 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
   const suivreEl = interfaceEl.querySelector<HTMLButtonElement>('[data-suivre]')!;
   const ensembleEl = interfaceEl.querySelector<HTMLButtonElement>('[data-ensemble]')!;
   const modeEl = interfaceEl.querySelector<HTMLButtonElement>('[data-mode]')!;
+  const chantEl = interfaceEl.querySelector<HTMLButtonElement>('[data-chant]')!;
 
   // Rappel d'agenda (.ics) généré ici, au titre neutre, à l'heure de fin (ADR 0002 : seul
   // le fragment désigne la manif, jamais envoyé au serveur).
@@ -148,7 +176,14 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
   let propresRetirables = propres.filter((e) => jetonDeRetrait(e.a, new Date()) !== undefined);
   let dernierTexte = '';
   let finAnnoncee = false;
+  // Ambiance sonore : réglée au plus une fois par seconde (le rappel arrive à chaque image).
+  const ambianceAJour = creerLimiteur(1_000);
   const surCortege = (cortege: Cortege) => {
+    const maintenantMs = Date.now();
+    if (ambianceAJour(maintenantMs)) {
+      const phase = phaseAmbiance(cortege.etat, Date.parse(donnees.manif.depart), maintenantMs);
+      son.reglerAmbiance(reglagesAmbiance({ soutiens: cortege.avatars.length, phase }));
+    }
     // Compteur : avatars du cortège à l'heure locale (publiés et entrés, plus les siens) ;
     // c'est ce qui est dessiné. Le `compteur` de la liste des manifs sert à la liste.
     if (cortege.etat === 'terminee') {
@@ -168,6 +203,8 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
     if (retirerEl.hidden === peutRetirer) retirerEl.hidden = !peutRetirer;
     const peutRappeler = cortege.etat === 'ouverte' && !composition;
     if (rappelEl.hidden === peutRappeler) rappelEl.hidden = !peutRappeler;
+    const peutChanter = cortege.etat === 'ouverte' && !composition;
+    if (chantEl.hidden === peutChanter) chantEl.hidden = !peutChanter;
     if (propres.length > 0 && !envoiEnCours && !messageEl.textContent) {
       messageEl.textContent = 'Tu marches avec le cortège. Tu peux fermer la page : ton avatar continue.';
     }
@@ -278,7 +315,8 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
     }
     vueCortege = creee;
     mode = voulu;
-    modeEl.textContent = mode === '3d' ? 'Vue 2D' : 'Vue 3D';
+    modeEl.textContent = mode === '3d' ? '2D' : '3D';
+    modeEl.title = mode === '3d' ? 'Vue 2D' : 'Vue 3D';
     modeEl.setAttribute('aria-label', mode === '3d' ? 'Passer à la vue 2D (de dessus)' : 'Passer à la vue 3D (troisième personne)');
     modeEl.hidden = !webgl;
   };
@@ -293,6 +331,15 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
   for (const bouton of interfaceEl.querySelectorAll<HTMLButtonElement>('[data-zoom]')) {
     bouton.addEventListener('click', () => vueCortege?.zoomer(Number(bouton.dataset.zoom)));
   }
+  // Ambiance de manif et chant local (rien n'est envoyé : ADR 0008).
+  jouerScene(vue, 'manif');
+  brancherChant({
+    bouton: chantEl,
+    parent: interfaceEl,
+    moteur: son,
+    pancartePropre: () => propres.at(-1)?.pa ?? null,
+    vue,
+  });
   vue.surQuitter(() => {
     changement++;
     vueCortege?.detruire();
@@ -367,6 +414,7 @@ async function afficherManifTerminee(
     }),
   );
   interfaceEl.replaceChildren(...brouillon.childNodes);
+  jouerScene(vue, 'accueil');
   // Les retraits de la dernière heure peuvent encore changer l'image ; ses avatars mis en
   // valeur disparaissent 1 h après la fin (purge du stockage local).
   vue.rafraichir({
@@ -407,7 +455,7 @@ async function naviguer(): Promise<void> {
   const route = lireRoute(window.location.hash);
   try {
     if (route.page === 'manif') await afficherManif(route.id, vue);
-    else if (route.page === 'legale') interfaceEl.innerHTML = pageLegale(route.id);
+    else if (route.page === 'legale') interfaceEl.innerHTML = pageLegale(route.id); // en silence
     else await afficherListe(vue);
   } catch (erreur) {
     // Vue quittée pendant un chargement : la nouvelle vue s'affiche, rien à faire.

@@ -242,12 +242,12 @@ export function enHeureDeParis(instant: Date): string {
 }
 
 /** Date du jour (AAAA-MM-JJ) à Paris. */
-function jourAParis(instant: Date): string {
+export function jourAParis(instant: Date): string {
   return new Intl.DateTimeFormat('fr-CA', { timeZone: FUSEAU_PAR_DEFAUT }).format(instant);
 }
 
 /** « Saint-Étienne » → « saint-etienne ». */
-function enIdentifiant(texte: string): string {
+export function enIdentifiant(texte: string): string {
   return texte
     .normalize('NFD')
     .replace(/\p{M}/gu, '')

@@ -1,0 +1,15 @@
+# Déclenche la sauvegarde de la base chaque nuit. Installé et activé par `installer.sh`.
+# Voir l'état : systemctl list-timers petit-cortege-sauvegarde.timer
+[Unit]
+Description=Petit Cortège : sauvegarde quotidienne de la base
+
+[Timer]
+# 03h20, heure du serveur (UTC si tu n'as pas réglé le fuseau).
+OnCalendar=*-*-* 03:20:00
+# Décalage aléatoire : évite de tomber pile sur d'autres tâches.
+RandomizedDelaySec=10min
+# Si le VPS était éteint à l'heure prévue, rattrape au démarrage.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

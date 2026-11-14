@@ -24,6 +24,8 @@ export interface VueMasse {
   /** Profondeurs de la masse : sous les avatars tirés. */
   profondeurMin: number;
   profondeurMax: number;
+  /** Ondulation de marche d'un tampon, en pixels entiers de l'atlas (0 par défaut : immobile). */
+  sautPxAtlas?: (tampon: Tampon) => number;
 }
 
 /** Largeur de la bande de foule : celle de la grille du Cortège, plus un demi-pas de chaque côté. */
@@ -66,21 +68,23 @@ export class MasseDeFoule {
       variantes: VARIANTES_PAQUET,
       maximum: TAMPONS_MAX,
     });
-    const aLEcran: (Tampon & { x: number; y: number })[] = [];
+    const aLEcran: (Tampon & { x: number; y: number; saut: number })[] = [];
     for (const tampon of tampons) {
       const { x, y } = vue.placer(tampon.distanceM, tampon.decalageM);
       if (x + largeurPx / 2 < 0 || x - largeurPx / 2 > largeur || y < 0 || y - hauteurPx > hauteur) continue;
-      aLEcran.push({ ...tampon, x, y });
+      // Ondulation : le paquet monte d'un pixel de l'atlas agrandi ; la profondeur reste celle du sol.
+      const saut = vue.sautPxAtlas ? vue.sautPxAtlas(tampon) * echelleSprite : 0;
+      aLEcran.push({ ...tampon, x, y, saut });
     }
     this.afficher(aLEcran, echelleSprite, vue.profondeurMin, vue.profondeurMax);
   }
 
   /**
-   * Affiche les tampons (pieds en pixels écran), à l'échelle des sprites d'avatars, entre
+   * Affiche les tampons (pieds en pixels écran, `saut` : ondulation de marche en pixels écran), à l'échelle des sprites d'avatars, entre
    * les profondeurs `profondeurMin` et `profondeurMax` selon y (les plus bas devant).
    */
   afficher(
-    tampons: readonly (Tampon & { x: number; y: number })[],
+    tampons: readonly (Tampon & { x: number; y: number; saut?: number })[],
     echelle: number,
     profondeurMin: number,
     profondeurMax: number,
@@ -95,7 +99,7 @@ export class MasseDeFoule {
       const relatif = Math.min(Math.max(tampon.y / hauteurEcran, 0), 1);
       image
         .setFrame(String(tampon.variante), false, false)
-        .setPosition(tampon.x, tampon.y)
+        .setPosition(tampon.x, tampon.y - (tampon.saut ?? 0))
         .setScale(echelle)
         .setDepth(profondeurMin + relatif * (profondeurMax - profondeurMin))
         .setVisible(true);

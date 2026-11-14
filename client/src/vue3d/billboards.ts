@@ -5,6 +5,14 @@
  * Le quad est parallèle à l'écran (comme les sprites 2D : pas de déformation), dressé à
  * partir des pieds selon le « haut » de la caméra. De loin, les sprites gardent une taille
  * minimale à l'écran (comme `ECHELLE_SPRITE_MIN` en 2D) pour que la foule reste visible.
+ *
+ * Animation de marche (`cortege/marche.ts`) : le sautillement s'ajoute au `lever` et
+ * l'inclinaison (`pencher`) fait tourner le quad dans le plan de l'écran autour des pieds.
+ * Les deux sont calculés côté CPU au moment d'`ajouter` (quelques sinus par avatar, au plus
+ * 2 000 par image) plutôt que dans le shader avec une phase par instance et un uniforme de
+ * temps : la logique reste dans le module pur testé, commune aux vues 2D et 3D, et l'arrêt
+ * (avant le départ, à l'arrivée, mouvement réduit) ne demande rien de plus au GPU. Coût :
+ * un flottant de plus par instance.
  */
 import * as THREE from 'three';
 import type { Point3 } from './repere';
@@ -18,6 +26,7 @@ const vertex = /* glsl */ `
   attribute vec2 aTaille;
   attribute vec4 aUv;
   attribute float aLever;
+  attribute float aPencher;
   uniform float uPxMin;
   uniform float uHauteurEcran;
   varying vec2 vUv;
@@ -29,7 +38,12 @@ const vertex = /* glsl */ `
     // Pixels par mètre à la distance des pieds ; agrandi si l'avatar ferait moins de uPxMin.
     float pxParM = projectionMatrix[1][1] * uHauteurEcran * 0.5 / max(-pied.z, 0.001);
     float echelle = max(1.0, uPxMin / (${HAUTEUR_REFERENCE_M.toFixed(1)} * pxParM));
-    vec3 monde = aPied + droite * (coin.x * aTaille.x * echelle) + haut * ((aLever + coin.y * aTaille.y) * echelle);
+    // Coin du quad autour des pieds, incliné de aPencher (positif : le haut part vers la droite).
+    vec2 local = vec2(coin.x * aTaille.x, aLever + coin.y * aTaille.y) * echelle;
+    float c = cos(aPencher);
+    float s = sin(aPencher);
+    local = vec2(c * local.x + s * local.y, c * local.y - s * local.x);
+    vec3 monde = aPied + droite * local.x + haut * local.y;
     vec4 mvPosition = viewMatrix * vec4(monde, 1.0);
     gl_Position = projectionMatrix * mvPosition;
     vUv = vec2(mix(aUv.x, aUv.z, coin.x + 0.5), mix(aUv.w, aUv.y, coin.y));
@@ -69,6 +83,7 @@ export class Billboards {
   readonly #tailles: THREE.InstancedBufferAttribute;
   readonly #uvs: THREE.InstancedBufferAttribute;
   readonly #levers: THREE.InstancedBufferAttribute;
+  readonly #penchers: THREE.InstancedBufferAttribute;
   readonly #materiau: THREE.ShaderMaterial;
   readonly capacite: number;
   #nombre = 0;
@@ -89,10 +104,12 @@ export class Billboards {
     this.#tailles = attribut(2);
     this.#uvs = attribut(4);
     this.#levers = attribut(1);
+    this.#penchers = attribut(1);
     g.setAttribute('aPied', this.#pieds);
     g.setAttribute('aTaille', this.#tailles);
     g.setAttribute('aUv', this.#uvs);
     g.setAttribute('aLever', this.#levers);
+    g.setAttribute('aPencher', this.#penchers);
     g.instanceCount = 0;
     this.#geometrie = g;
     this.#materiau = new THREE.ShaderMaterial({
@@ -125,15 +142,24 @@ export class Billboards {
   /**
    * Ajoute une instance : pieds, taille (m), cadre dans la texture (u0, v0 en haut à gauche,
    * u1, v1 en bas à droite, v vers le bas), et `lever` (m) : le sprite commence à cette hauteur
-   * au-dessus des pieds (pancarte tenue au-dessus de la tête). Renvoie faux si c'est plein.
+   * au-dessus des pieds (pancarte tenue au-dessus de la tête, ou sautillement de marche), et
+   * `pencher` (radians) : inclinaison autour des pieds dans le plan de l'écran. Renvoie faux si c'est plein.
    */
-  ajouter(pied: Point3, largeur: number, hauteur: number, uv: readonly [number, number, number, number], lever = 0): boolean {
+  ajouter(
+    pied: Point3,
+    largeur: number,
+    hauteur: number,
+    uv: readonly [number, number, number, number],
+    lever = 0,
+    pencher = 0,
+  ): boolean {
     if (this.#nombre >= this.capacite) return false;
     const i = this.#nombre++;
     this.#pieds.setXYZ(i, pied.x, pied.y, pied.z);
     this.#tailles.setXY(i, largeur, hauteur);
     this.#uvs.setXYZW(i, uv[0], uv[1], uv[2], uv[3]);
     this.#levers.setX(i, lever);
+    this.#penchers.setX(i, pencher);
     return true;
   }
 
@@ -146,6 +172,7 @@ export class Billboards {
       [this.#tailles, 2],
       [this.#uvs, 4],
       [this.#levers, 1],
+      [this.#penchers, 1],
     ] as const) {
       a.clearUpdateRanges();
       if (n > 0) a.addUpdateRange(0, n * taille);

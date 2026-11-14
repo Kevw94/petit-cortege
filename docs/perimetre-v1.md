@@ -6,7 +6,7 @@ Contexte : porteur seul, sous pseudo, éditeur non professionnel (identité conn
 
 ## Dans la V1
 
-- Liste des manifs ouvertes ; manifs saisies à la main par l'équipe (parcours tracé avec uMap → GeoJSON, sources citées), sélection sur l'ampleur (ADR 0003).
+- Liste des manifs ouvertes ; manifs relevées par l'équipe dans un fichier du jour (étapes annoncées publiquement, sources citées), parcours calculé par API (géocodage + itinéraire piéton) puis relu et validé à la main avant publication (`npm run import-manifs`, ADR 0009 ; uMap reste possible), sélection sur l'ampleur (ADR 0003).
 - « Rejoindre le cortège » : apparence de l'avatar (catalogue neutre, accessoires inclusifs) + pancarte (slogan générique + couleur + forme, sans picto).
 - Un seul compteur « soutiens ».
 - Retrait de son avatar (jeton en localStorage) ; mise en valeur locale de son propre avatar, pendant la marche et dans l'image finale.
@@ -15,11 +15,12 @@ Contexte : porteur seul, sous pseudo, éditeur non professionnel (identité conn
 - Anti-triche (ADR 0001) + outil minimal de suppression d'avatar sur signalement.
 - Pages : mentions légales + adresse de signalement, vie privée (dont rétention des journaux), charte / « comment on choisit les manifs », CGU.
 - Jouable sur mobile.
+- Son synthétisé dans le navigateur (ADR 0008) : petite musique d'accueil, ambiance de foule dans la vue d'une manif (plus dense en marche et avec plus de soutiens), « Lancer un chant » local et sans paroles (le slogan de sa pancarte pulse en rythme), bouton pour couper le son, choix mémorisé sur l'appareil.
 - Décor : script OSM semi-automatique + nettoyage manuel, pour 1 à 3 manifs ; aucun monument (place d'arrivée = place générique du tileset + nom de la place affiché). Aucun dessin à la main : Kenney CC0 + variantes et accessoires générés par script (ADR 0006).
 
 ## Hors V1
 
-Notifications push, réactions, mini-jeu de chants, météo, prises de parole, chiffres officiels, organisateurs et slogans spécifiques, import Démosphère / Mobilizon, formulaire de proposition, monuments (dont communautaires), pictos sur les pancartes, texte libre sur les pancartes, association et dons.
+Notifications push, réactions, chants partagés en réseau et mini-jeu de chants, météo, prises de parole, chiffres officiels, organisateurs et slogans spécifiques, import Démosphère / Mobilizon, formulaire de proposition, monuments (dont communautaires), pictos sur les pancartes, texte libre sur les pancartes, association et dons.
 
 À reconsidérer (association, dons, contact des organisateurs avec un kit identique pour tous) si le projet décolle, si une équipe se forme, ou avant un lancement public sur une grande journée nationale.
 
@@ -46,5 +47,6 @@ Discret, sur une grande journée nationale, sans démarchage des organisateurs. 
 - Assets : décor et personnages modulaires Kenney CC0 (Roguelike Modern City, Roguelike Characters) ; eau et berges (quais en pierre, berges naturelles) du Roguelike RPG pack, même série ; variantes d'apparence (teint, cheveux, vêtements) par script de changement de palette, dont une gamme d'environ 6 teints ; accessoires inclusifs (fauteuil, poussette, canne) générés par script dans la palette Kenney (ADR 0006).
 - Au-delà d'un seuil de densité (≈ 1 avatar par tuile), masse de foule texturée, pendant la marche comme dans l'image finale. Avatars dessinés au premier plan : ceux dont le hachage de l'identifiant est sous un seuil (tirage stable quand des avatars arrivent ou partent).
 - Performance (prototype #4, `docs/perf-prototype.md`, mesuré en émulation Moto G4, CPU ×4–×6, WebGL logiciel ; à confirmer sur un vrai téléphone) : seuil de densité confirmé à ≈ 1 avatar par tuile, plus un **budget dur de 2 000 avatars dessinés individuellement par image**, quel que soit le zoom (au-delà : masse de foule + premier plan tiré par hachage). À l'échelle de jeu, 20 000 avatars en marche tiennent ≈ 55 images/s (≈ 300 visibles) si le Cortège est recalculé à ≈ 4 Hz et non à chaque image (sinon 19–37 images/s). Rendu : un `Image` Phaser par avatar visible (profondeur = y, élimination hors écran), apparences précomposées dans une texture ; `SpriteGPULayer` à réévaluer sur un vrai GPU pour la vue d'ensemble.
+- Animation de marche (`client/src/cortege/marche.ts`, procédurale, sans asset) : les avatars qui avancent (`enMarche` du Cortège : partis, pas encore arrivés, manif ouverte) sautillent d'un pixel de l'atlas (≈ 0,125 m) et se balancent légèrement (demi-pixel en 2D, ≈ 2,5° en 3D) à ≈ 1,8 pas/s, chacun à sa phase tirée de son identifiant ; la pancarte suit avec un petit retard, le halo « toi » reste fixe ; la masse de foule ondule par paquet là où elle avance. Immobiles avant le départ, à l'arrivée, manif terminée ou avec `prefers-reduced-motion`. Purement visuel : positions du Cortège inchangées ; en 3D, décalages calculés côté CPU à l'ajout des billboards (un attribut d'inclinaison par instance).
 - Pancartes : de loin, seules la couleur et la forme se voient ; le slogan est lisible au zoom ou sur son propre avatar.
 - Si le style des sprites change, les anciennes images finales changent aussi : accepté (ou versionner le moteur de rendu).

@@ -10,6 +10,7 @@ export {
   ajouterManif,
   decalerDepart,
   ErreurModeration,
+  FORMAT_ID_MANIF,
   listerManifs,
   retirerManif,
   supprimerAvatar,

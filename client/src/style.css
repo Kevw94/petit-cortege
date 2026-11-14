@@ -1,13 +1,55 @@
+/*
+ * Petit système d'interface : papier (#f4f1ea), encre, accent rouge, bords francs et
+ * ombres « découpées » dans l'esprit pixel art. Tout est en variables ci-dessous.
+ * Aucune police ni ressource tierce (ADR 0002) : polices du système.
+ */
 :root {
+  /* Couleurs */
   --fond: #f4f1ea;
-  --texte: #222;
+  --papier: #fffdf7;
+  --papier-voile: rgb(255 253 247 / 0.95);
+  --encre: #2b2b2b;
+  --encre-douce: #5c574d;
+  --ligne: #e0d9c9;
+  --creux: #ece6d8;
   --accent: #c0392b;
+  --accent-fonce: #9a2d21;
+  --jaune: #f3cf3d;
+  --focus: #1f5fbf;
+  --texte: var(--encre);
+  /* Rayons */
+  --rayon-s: 6px;
+  --rayon: 10px;
+  --rayon-l: 14px;
+  --rayon-pilule: 999px;
+  /* Ombres : une ombre portée franche (papier découpé), une douce pour les feuilles. */
+  --ombre-franche: 0 3px 0 var(--encre);
+  --ombre-franche-basse: 0 1px 0 var(--encre);
+  --ombre-douce: 0 2px 12px rgb(43 43 43 / 0.16);
+  /* Espacements */
+  --espace-1: 4px;
+  --espace-2: 8px;
+  --espace-3: 12px;
+  --espace-4: 16px;
+  --espace-5: 24px;
+  /* Cible tactile minimale */
+  --cible: 44px;
+  --trait: 2px;
+  /* Bouton de son, en haut à droite : l'interface lui laisse la place. */
+  --reserve-son: calc(var(--cible) + 2 * var(--espace-3));
+  /* Pied de page légal (hauteur approximative, une ligne ou deux sur mobile). */
+  --pied: calc(max(6px, env(safe-area-inset-bottom)) + 2.6rem);
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color: var(--texte);
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* `hidden` l'emporte toujours, même sur un bouton en flex. */
+[hidden] {
+  display: none !important;
 }
 
 html,
@@ -31,23 +73,129 @@ body {
   pointer-events: none;
   /* Au-dessus du pied de page : le panneau de composition le recouvre. */
   z-index: 2;
-  padding: max(12px, env(safe-area-inset-top)) 12px 12px;
+  padding: max(var(--espace-3), env(safe-area-inset-top)) max(var(--reserve-son), env(safe-area-inset-right))
+    var(--espace-3) max(var(--espace-3), env(safe-area-inset-left));
 }
 
 #interface > * {
   pointer-events: auto;
 }
 
+h1,
+h2,
+h3 {
+  letter-spacing: -0.01em;
+}
+
+/* ---------------------------------------------------------------- Boutons */
+
+.bouton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--espace-2);
+  min-height: var(--cible);
+  min-width: var(--cible);
+  padding: 10px 18px;
+  border: var(--trait) solid var(--encre);
+  border-radius: var(--rayon);
+  background: var(--papier);
+  color: var(--encre);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 650;
+  line-height: 1.15;
+  text-align: center;
+  box-shadow: var(--ombre-franche);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 80ms ease-out,
+    box-shadow 80ms ease-out,
+    background-color 120ms;
+}
+
+.bouton:hover {
+  background: #fff;
+}
+
+.bouton:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: var(--ombre-franche-basse);
+}
+
+.bouton:focus-visible,
+.carte-manif:focus-visible,
+a:focus-visible,
+.choix button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.bouton:disabled {
+  background: var(--creux);
+  color: var(--encre-douce);
+  border-color: var(--encre-douce);
+  cursor: not-allowed;
+  transform: translateY(2px);
+  box-shadow: var(--ombre-franche-basse);
+}
+
+.bouton-principal {
+  background: var(--accent);
+  color: #fff;
+  font-size: 1.05rem;
+  padding-inline: 24px;
+}
+
+.bouton-principal:hover {
+  background: var(--accent-fonce);
+}
+
+.bouton-icone {
+  padding: 0;
+  width: var(--cible);
+}
+
+.bouton-icone[aria-pressed='false'] {
+  color: var(--encre-douce);
+  background: var(--creux);
+}
+
+.icone {
+  width: 24px;
+  height: 24px;
+  flex: none;
+}
+
+.icone-petite {
+  width: 16px;
+  height: 16px;
+}
+
+/* Bouton de son : en haut à droite sur toutes les vues, au-dessus de tout. */
+.bouton-son {
+  position: fixed;
+  top: max(var(--espace-3), env(safe-area-inset-top));
+  right: max(var(--espace-3), env(safe-area-inset-right));
+  z-index: 4;
+}
+
+/* ----------------------------------------------------------------- Cartes */
+
 .carte {
-  background: rgb(255 255 255 / 0.92);
-  border-radius: 10px;
+  background: var(--papier-voile);
+  border: var(--trait) solid var(--encre);
+  border-radius: var(--rayon-l);
   padding: 10px 14px;
   max-width: 28rem;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 0.15);
+  box-shadow: var(--ombre-franche);
 }
 
 .carte h1 {
   font-size: 1.1rem;
+  line-height: 1.25;
   margin: 0 0 4px;
 }
 
@@ -56,28 +204,180 @@ body {
   font-size: 0.9rem;
 }
 
-.liste {
-  list-style: none;
-  padding: 0;
-  margin: 8px 0 0;
-}
-
-.liste a {
-  display: block;
-  padding: 10px 0;
-  color: inherit;
-  text-decoration: none;
-  border-top: 1px solid #ddd;
-}
-
-.liste a strong {
-  display: block;
+.carte h2.sous-titre {
+  font-size: 0.95rem;
+  margin: 14px 0 0;
 }
 
 a.retour {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--cible);
+  /* Cible de 44 px sans agrandir la carte. */
+  margin: -10px 0 -8px -6px;
+  padding: 0 6px;
+  border-radius: var(--rayon-s);
   color: var(--accent);
   font-size: 0.9rem;
+  font-weight: 650;
+  text-decoration: none;
 }
+
+a.retour:hover {
+  text-decoration: underline;
+}
+
+.etat-cortege {
+  font-weight: 650;
+}
+
+/* ----------------------------------------------------------------- Accueil */
+
+.accueil {
+  max-width: 34rem;
+  margin: 0 auto;
+  max-height: calc(100dvh - var(--pied) - 1.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  /* Place pour l'ombre des cartes et le contour de focus. */
+  padding: 2px 6px var(--espace-4);
+}
+
+.accueil-entete {
+  padding: var(--espace-4) var(--espace-4) var(--espace-3);
+  background: var(--papier);
+  border: var(--trait) solid var(--encre);
+  border-radius: var(--rayon-l);
+  box-shadow: var(--ombre-franche);
+}
+
+.banniere {
+  display: block;
+  width: 100%;
+  max-width: 22rem;
+  height: auto;
+  margin: 0 0 var(--espace-3);
+}
+
+.accueil-entete h1 {
+  margin: 0;
+  font-size: 1.7rem;
+  line-height: 1.1;
+}
+
+.accroche {
+  margin: var(--espace-2) 0 0;
+  color: var(--encre-douce);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.accueil .sous-titre {
+  margin: var(--espace-5) var(--espace-1) var(--espace-2);
+  color: var(--encre-douce);
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.liste-manifs {
+  display: grid;
+  gap: var(--espace-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.carte-manif {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  background: var(--papier);
+  border: var(--trait) solid var(--encre);
+  border-radius: var(--rayon-l);
+  box-shadow: var(--ombre-franche);
+  color: inherit;
+  text-decoration: none;
+  touch-action: pan-y;
+  transition:
+    transform 80ms ease-out,
+    box-shadow 80ms ease-out;
+}
+
+.carte-manif:hover {
+  background: #fff;
+}
+
+.carte-manif:active {
+  transform: translateY(2px);
+  box-shadow: var(--ombre-franche-basse);
+}
+
+.carte-manif-haut,
+.carte-manif-bas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.pastille-etat {
+  padding: 2px 8px;
+  border-radius: var(--rayon-pilule);
+  background: var(--creux);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.carte-manif[data-etat='en-marche'] .pastille-etat {
+  background: var(--accent);
+  color: #fff;
+}
+
+.carte-manif[data-etat='bientot'] .pastille-etat {
+  background: var(--jaune);
+}
+
+.carte-manif-compteur {
+  color: var(--encre-douce);
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.carte-manif-titre {
+  font-size: 1.15rem;
+  line-height: 1.25;
+}
+
+.carte-manif-bas {
+  color: var(--encre-douce);
+  font-size: 0.88rem;
+}
+
+.carte-manif-heure b {
+  color: var(--encre);
+  font-size: 1rem;
+}
+
+.carte-manif[data-etat='terminee'] {
+  box-shadow: var(--ombre-franche-basse);
+}
+
+.vide {
+  margin: 0;
+  padding: var(--espace-3) var(--espace-4);
+  border: var(--trait) dashed var(--ligne);
+  border-radius: var(--rayon-l);
+  color: var(--encre-douce);
+  background: var(--papier-voile);
+}
+
+/* ------------------------------------------------------------ Pied de page */
 
 /* Pied de page légal (#17), visible sur toutes les vues, par-dessus le canvas. */
 .pied-de-page {
@@ -90,28 +390,37 @@ a.retour {
   text-align: center;
   font-size: 0.75rem;
   line-height: 1.8;
-  background: rgb(244 241 234 / 0.85);
+  background: rgb(244 241 234 / 0.9);
+  border-top: 1px solid var(--ligne);
 }
 
 .pied-de-page a {
-  color: var(--texte);
+  color: var(--encre);
   white-space: nowrap;
 }
 
-/* Pages légales : texte long, défilable dans la carte (le body ne défile pas). */
+/* --------------------------------------------------------- Pages légales */
+
+/* Texte long, défilable dans la carte (le body ne défile pas). */
 .page-legale {
   max-width: 42rem;
   margin: 0 auto;
-  max-height: calc(100dvh - 5.5rem);
+  max-height: calc(100dvh - var(--pied) - 1.5rem);
   overflow-y: auto;
   overscroll-behavior: contain;
   touch-action: pan-y;
   line-height: 1.5;
+  padding: 12px 18px 16px;
+}
+
+.page-legale h1 {
+  font-size: 1.35rem;
+  margin: 4px 0 8px;
 }
 
 .page-legale h2 {
   font-size: 1rem;
-  margin: 16px 0 4px;
+  margin: 18px 0 4px;
 }
 
 .page-legale p,
@@ -123,6 +432,10 @@ a.retour {
 .page-legale ul {
   padding-left: 1.2rem;
   margin: 4px 0;
+}
+
+.page-legale a:not(.retour) {
+  color: var(--accent-fonce);
 }
 
 .page-legale mark {
@@ -137,17 +450,18 @@ a.retour {
   font-size: 0.8rem;
 }
 
-/* Action principale en bas de l'écran, à portée de pouce sur mobile. */
+/* -------------------------------------------------------- Vue d'une manif */
+
+/* Actions en bas de l'écran, à portée de pouce sur mobile, au-dessus du pied de page. */
 #interface > .action {
   position: fixed;
-  left: 12px;
-  right: 12px;
-  /* Au-dessus du pied de page légal (#17). */
-  bottom: calc(max(6px, env(safe-area-inset-bottom)) + 4rem);
+  left: max(var(--espace-3), env(safe-area-inset-left));
+  right: max(var(--espace-3), env(safe-area-inset-right));
+  bottom: calc(var(--pied) + 1.4rem);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: var(--espace-2);
   pointer-events: none;
 }
 
@@ -155,42 +469,23 @@ a.retour {
   pointer-events: auto;
 }
 
-button.rejoindre {
+.action .bouton-principal {
   min-height: 48px;
-  padding: 12px 28px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
-  font: inherit;
-  font-size: 1.05rem;
-  font-weight: 600;
-  box-shadow: 0 2px 6px rgb(0 0 0 / 0.25);
-  cursor: pointer;
-  touch-action: manipulation;
+  padding-inline: 28px;
 }
 
-button.rejoindre:disabled {
-  opacity: 0.6;
+.actions-secondaires {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--espace-2);
+  pointer-events: none;
 }
 
-/* Action secondaire, discrète mais assez grande pour le doigt. */
-button.retirer,
-button.rappel {
-  min-height: 44px;
-  padding: 10px 20px;
-  border: 1px solid #999;
-  border-radius: 999px;
-  background: rgb(255 255 255 / 0.92);
-  color: var(--texte);
-  font: inherit;
-  font-size: 0.95rem;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-button.retirer:disabled {
-  opacity: 0.6;
+.actions-secondaires > .bouton {
+  pointer-events: auto;
+  padding: 8px 14px;
+  font-size: 0.9rem;
 }
 
 .message:empty {
@@ -201,78 +496,235 @@ button.retirer:disabled {
   margin: 0;
   max-width: 28rem;
   padding: 6px 12px;
-  border-radius: 8px;
-  background: rgb(255 255 255 / 0.92);
+  border: 1px solid var(--ligne);
+  border-radius: var(--rayon);
+  background: var(--papier-voile);
   font-size: 0.9rem;
   text-align: center;
 }
 
-/* Panneau de composition avant d'entrer (#11 pancarte, #10 apparence) : feuille en bas
-   d'écran sur mobile, défilable au doigt, boutons toujours visibles en bas. */
+/* Caméra : une barre d'outils (vue d'ensemble, zoom, 2D / 3D) puis « Suivre », à droite,
+   sous le bouton de son, dans la marge que la carte d'info lui laisse. */
+#interface > .camera {
+  position: fixed;
+  right: max(var(--espace-3), env(safe-area-inset-right));
+  top: calc(max(var(--espace-3), env(safe-area-inset-top)) + var(--cible) + var(--espace-4));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--espace-2);
+  pointer-events: none;
+}
+
+.camera > * {
+  pointer-events: auto;
+}
+
+.bouton-suivre {
+  padding: 6px 12px 6px 8px;
+  font-size: 0.9rem;
+}
+
+.barre-outils {
+  display: flex;
+  flex-direction: column;
+  background: var(--papier);
+  border: var(--trait) solid var(--encre);
+  border-radius: var(--rayon-l);
+  box-shadow: var(--ombre-franche);
+  overflow: hidden;
+}
+
+.barre-outils > .bouton {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.barre-outils > .bouton + .bouton {
+  border-top: var(--trait) solid var(--ligne);
+}
+
+.barre-outils > .bouton:hover {
+  background: #fff;
+}
+
+.barre-outils > .bouton:active {
+  transform: none;
+  box-shadow: none;
+  background: var(--creux);
+}
+
+.barre-outils > .bouton:focus-visible {
+  outline-offset: -3px;
+}
+
+.bouton-mode {
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+/* Mention des données cartographiques (ODbL), toujours visible sur la vue d'une manif. */
+#interface > .attribution {
+  position: fixed;
+  right: 0;
+  bottom: calc(var(--pied) + 2px);
+  margin: 0;
+  padding: 1px 6px;
+  font-size: 0.7rem;
+  background: rgb(255 255 255 / 0.85);
+  border-radius: 4px 0 0 4px;
+}
+
+#interface > .attribution a {
+  color: inherit;
+}
+
+/* Chant local : le slogan de sa pancarte (ou une pulsation) au centre, en rythme. */
+#interface > .chant-visuel {
+  position: fixed;
+  left: 50%;
+  top: 44%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: apparition 200ms ease-out;
+}
+
+/* Tailles et marges en rem : le conteneur, centré et ajusté au contenu, ne peut servir
+   de référence aux pourcentages de .pancarte. */
+#interface .chant-pancarte {
+  width: 11rem;
+  padding: 0.9rem;
+  font-size: 1.35rem;
+  box-shadow: 0 4px 0 rgb(43 43 43 / 0.6);
+}
+
+#interface .chant-pancarte[data-forme='portrait'] {
+  width: 7.5rem;
+  font-size: 1.15rem;
+}
+
+#interface .chant-pancarte[data-forme='rond'] {
+  width: 10rem;
+  padding: 1.5rem;
+}
+
+#interface .chant-pancarte[data-forme='losange'] {
+  width: 11.5rem;
+  padding: 2.8rem;
+  font-size: 1.15rem;
+  box-shadow: none;
+}
+
+.chant-visuel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--espace-3);
+}
+
+.chant-legende {
+  margin: 0;
+  padding: 2px 10px;
+  border-radius: var(--rayon-pilule);
+  background: rgb(43 43 43 / 0.78);
+  color: #fff;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.chant-pouls {
+  display: flex;
+  gap: 10px;
+  padding: 14px 18px;
+  background: var(--papier-voile);
+  border: var(--trait) solid var(--encre);
+  border-radius: var(--rayon-l);
+  box-shadow: var(--ombre-franche);
+}
+
+.chant-pouls > span {
+  width: 14px;
+  height: 14px;
+  background: var(--accent);
+}
+
+@keyframes apparition {
+  from {
+    opacity: 0;
+  }
+}
+
+/* --------------------------------------------------- Panneau de composition */
+
+/* Avant d'entrer (#11 pancarte, #10 apparence) : feuille en bas d'écran sur mobile,
+   défilable au doigt, boutons toujours visibles en bas. */
 #interface > .composition {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 2;
+  z-index: 3;
   margin: 0 auto;
   max-width: 32rem;
   max-height: 82dvh;
   display: flex;
   flex-direction: column;
-  background: #fff;
-  border-radius: 14px 14px 0 0;
-  box-shadow: 0 -2px 10px rgb(0 0 0 / 0.2);
+  background: var(--papier);
+  border: var(--trait) solid var(--encre);
+  border-bottom: 0;
+  border-radius: var(--rayon-l) var(--rayon-l) 0 0;
+  box-shadow: 0 -4px 16px rgb(0 0 0 / 0.18);
 }
 
 .composition-contenu {
   overflow-y: auto;
   overscroll-behavior: contain;
   touch-action: pan-y;
-  padding: 12px 14px 4px;
+  padding: 14px 16px 4px;
+}
+
+.composition-section + .composition-section {
+  margin-top: var(--espace-4);
+  padding-top: var(--espace-3);
+  border-top: var(--trait) dashed var(--ligne);
 }
 
 .composition h2 {
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   margin: 0 0 8px;
 }
 
 .composition h3 {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #555;
-  margin: 12px 0 6px;
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--encre-douce);
+  margin: 14px 0 6px;
 }
 
 .composition > .message {
-  margin: 6px 14px 0;
+  margin: 6px 16px 0;
   max-width: none;
   padding: 0;
+  border: 0;
+  background: none;
 }
 
 .composition-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--espace-2);
   justify-content: flex-end;
-  padding: 10px 14px max(10px, env(safe-area-inset-bottom));
-  border-top: 1px solid #eee;
+  padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+  border-top: var(--trait) solid var(--ligne);
 }
 
-.composition-actions button.rejoindre {
+.composition-actions .bouton-principal {
   flex: 1;
-  padding: 12px 16px;
-}
-
-button.secondaire {
-  min-height: 48px;
-  padding: 12px 18px;
-  border: 1px solid #ccc;
-  border-radius: 999px;
-  background: #fff;
-  color: var(--texte);
-  font: inherit;
-  touch-action: manipulation;
-  cursor: pointer;
+  padding-inline: 16px;
 }
 
 .choix {
@@ -282,21 +734,28 @@ button.secondaire {
 }
 
 .choix button {
-  min-height: 44px;
-  min-width: 44px;
-  border: 2px solid #ddd;
-  border-radius: 10px;
+  min-height: var(--cible);
+  min-width: var(--cible);
+  border: var(--trait) solid var(--ligne);
+  border-radius: var(--rayon);
   background: #fff;
   color: var(--texte);
   font: inherit;
   font-size: 0.92rem;
   touch-action: manipulation;
   cursor: pointer;
+  transition: border-color 120ms;
+}
+
+.choix button:hover {
+  border-color: var(--encre-douce);
 }
 
 .choix button[aria-pressed='true'] {
-  border-color: var(--texte);
-  box-shadow: 0 0 0 2px #fff inset;
+  border-color: var(--encre);
+  box-shadow:
+    0 0 0 2px #fff inset,
+    var(--ombre-franche-basse);
 }
 
 .choix-slogans button {
@@ -304,12 +763,12 @@ button.secondaire {
 }
 
 .choix-slogans button[aria-pressed='true'] {
-  background: #f1efe8;
-  font-weight: 600;
+  background: var(--creux);
+  font-weight: 650;
 }
 
 .choix-couleurs button {
-  width: 44px;
+  width: var(--cible);
   background: var(--fond);
 }
 
@@ -428,33 +887,19 @@ button.secondaire {
   width: 24px;
 }
 
-/* Mention des données cartographiques (ODbL), toujours visible sur la vue d'une manif. */
-#interface > .attribution {
-  position: fixed;
-  right: 0;
-  bottom: calc(max(6px, env(safe-area-inset-bottom)) + 2.6rem);
-  margin: 0;
-  padding: 1px 6px;
-  font-size: 0.7rem;
-  background: rgb(255 255 255 / 0.8);
-  border-radius: 4px 0 0 4px;
-}
-
-#interface > .attribution a {
-  color: inherit;
-}
+/* ------------------------------------------------------------ Image finale */
 
 /* Image finale d'une manif terminée (#15) : carte puis image, défilables. */
 .vue-image-finale {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  max-height: calc(100dvh - 4.5rem);
+  gap: var(--espace-3);
+  max-height: calc(100dvh - var(--pied) - 1.5rem);
   overflow-y: auto;
   overscroll-behavior: contain;
   touch-action: pan-y;
-  padding-bottom: 12px;
+  padding: 2px 2px var(--espace-3);
 }
 
 .vue-image-finale .carte {
@@ -465,12 +910,11 @@ button.secondaire {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 8px;
+  gap: var(--espace-2);
   width: min(100%, 28rem);
 }
 
-.partage-image button {
-  padding-inline: 16px;
+.partage-image .bouton {
   flex: 1 1 10rem;
 }
 
@@ -478,54 +922,28 @@ canvas.image-finale {
   display: block;
   width: min(100%, 28rem, calc((100dvh - 12rem) * 0.8));
   height: auto;
-  border-radius: 6px;
-  box-shadow: 0 1px 6px rgb(0 0 0 / 0.25);
+  border: var(--trait) solid var(--encre);
+  border-radius: var(--rayon);
+  box-shadow: var(--ombre-franche);
 }
 
-.carte h2.sous-titre {
-  font-size: 0.95rem;
-  margin: 14px 0 0;
+/* ------------------------------------------------------- Mouvement réduit */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .bouton:active:not(:disabled),
+  .carte-manif:active {
+    transform: none;
+  }
 }
 
-/* Caméra à la troisième personne : boutons « Suivre » et « Vue d'ensemble », à droite de l'écran. */
-#interface > .camera {
-  position: fixed;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  pointer-events: none;
-}
-
-.camera > button {
-  pointer-events: auto;
-  min-height: 44px;
-  padding: 8px 14px;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  color: #222;
-  font: inherit;
-  font-size: 0.9rem;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
-  cursor: pointer;
-}
-
-.camera > button[hidden] {
-  display: none;
-}
-
-/* Boutons de zoom ronds (+ / −), 44 px au doigt. */
-.camera > button.zoom {
-  align-self: flex-end;
-  width: 44px;
-  padding: 0;
-  font-size: 1.3rem;
-  font-weight: 600;
-  line-height: 1;
-}
+/* ------------------------------------------------------------------ Vue 3D */
 
 /* Vue 3D (Three.js) : le canvas remplit #jeu ; étiquettes HTML posées par-dessus. */
 #jeu > canvas.vue-3d {

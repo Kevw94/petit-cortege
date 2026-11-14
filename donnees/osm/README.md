@@ -32,4 +32,10 @@ Ils sont publiés ici sous la même licence (ODbL), indépendamment de la licenc
     --sortie donnees/osm/republique-nation/extrait-overpass.json
   ```
 
+Manifs du 14 novembre 2026 (`paris-2026-11-14/`, `nancy-2026-11-14/`, `caen-2026-11-14/`) : `extrait-overpass.json`,
+réponse brute d'Overpass (bande de 150 m autour du parcours calculé), écrite par
+`npm run import-manifs -- decors --fichier donnees/manifs/2026-11-14.json` (miroirs overpass.kumi.systems et maps.mail.ru,
+14 novembre 2026) et rejouée sans réseau tant qu'elle existe. Les parcours sont dans `donnees/manifs/2026-11-14/`
+(docs/import-manifs.md).
+
 La tilemap dérivée (base de données dérivée, ODbL elle aussi) est dans `client/public/decors/`.
