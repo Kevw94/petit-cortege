@@ -8,7 +8,7 @@
  * chargé que pour la vue d'une manif en 3D.
  */
 import * as THREE from 'three';
-import { decoderPancarte, METRES_PAR_TUILE, versTuiles, type Georeference, type Position } from '@petit-cortege/shared';
+import { decoderPancarte, MARGE_RAYON_VUE_DE_HAUT_M, METRES_PAR_TUILE, versTuiles, type Georeference, type Position } from '@petit-cortege/shared';
 import { BUDGET_AVATARS_DESSINES } from '../apparence/affichage';
 import type { PointM } from '../cadrage';
 import { cibleDeSuivi } from '../camera';
@@ -57,7 +57,7 @@ import { TraceAuSol3D } from './trace';
 const CHAMP_DEG = CHAMP_VERTICAL_DEG;
 /** Ciel pâle ; la brume a la même couleur, si bien que la ville se fond dans l'horizon. */
 const COULEUR_CIEL = 0xcfdde6;
-/** Sol au-delà des alentours : la teinte des pâtés de maisons, dans laquelle leur bord se fond, noyée dans la brume. */
+/** Sol au-delà du plan de la ville (vue déplacée loin du parcours) : le fond, où le bord du plan se fond. */
 const COULEUR_SOL_LOINTAIN = COULEUR_FOND;
 const COTE_SOL_LOINTAIN_M = 40_000;
 /** Un avatar : cellule de 24 × 16 px de l'atlas = 3 m × 2 m (16 px par tuile de 2 m). */
@@ -123,7 +123,9 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
   const xs = pointsParcours.map((p) => p.x);
   const ys = pointsParcours.map((p) => p.y);
   const centreParcours = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
-  const rayonParcours = Math.max(...pointsParcours.map((p) => Math.hypot(p.x - centreParcours.x, p.y - centreParcours.y))) + 40;
+  // Même rayon que celui dont le générateur déduit l'emprise du plan de la ville (`empriseDuPlan`).
+  const rayonParcours =
+    Math.max(...pointsParcours.map((p) => Math.hypot(p.x - centreParcours.x, p.y - centreParcours.y))) + MARGE_RAYON_VUE_DE_HAUT_M;
 
   // Sol lointain, sous tout le reste : au-delà des alentours, la ville continue dans la brume
   // au lieu de s'arrêter sur le vide.

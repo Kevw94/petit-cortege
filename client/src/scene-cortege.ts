@@ -39,7 +39,7 @@ import {
   tronconEnMarche,
 } from './cortege/marche';
 import { MasseDeFoule } from './foule/masse';
-import { COULEUR_FOND_CSS } from './decor/alentours';
+import { COULEUR_FOND_CSS, echelleMinDansLePlan, rectangleNetDuPlan, type RectangleM } from './decor/alentours';
 import { DecorAffiche, prechargerDecor } from './decor/rendu';
 import { TraceAuSol } from './decor/trace';
 import { pancartesAffichees } from './pancartes/affichage';
@@ -95,6 +95,8 @@ function projeteur(georef: Georeference) {
 export class SceneCortege extends Phaser.Scene {
   #donnees!: DonneesScene;
   #decor: DecorAffiche | null = null;
+  /** Partie nette du plan de la ville (hors fondu) : le dézoom maximal n'en sort pas. */
+  #planNet: RectangleM | null = null;
   #trace!: TraceAuSol;
   #foule!: Phaser.GameObjects.Graphics;
   #avatarsPropres!: Phaser.GameObjects.Graphics;
@@ -154,6 +156,7 @@ export class SceneCortege extends Phaser.Scene {
     this.#projeter = projeteur(decor?.georef ?? { origine: manif.parcours.coordinates[0]! });
     if (decor) {
       this.#decor = new DecorAffiche(this, decor);
+      this.#planNet = rectangleNetDuPlan(decor.alentours);
       // Au-delà du décor, la teinte des pâtés de maisons (celle où se fondent les alentours), pas le papier.
       this.cameras.main.setBackgroundColor(COULEUR_FOND_CSS);
     }
@@ -343,7 +346,11 @@ export class SceneCortege extends Phaser.Scene {
     const xs = points.map((p) => p.x);
     const ys = points.map((p) => p.y);
     const emprise = { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) };
-    return cadrerSur(emprise, this.#ecran(), MARGE_PX);
+    const ensemble = cadrerSur(emprise, this.#ecran(), MARGE_PX);
+    if (!this.#planNet) return ensemble;
+    // Dézoom maximal borné au plan de la ville : centré sur le parcours, l'écran reste dans le plan.
+    const dansLePlan = echelleMinDansLePlan(this.#planNet, ensemble.centre, this.#ecran(), ensemble.echelle);
+    return { ...ensemble, echelleMin: Math.max(ensemble.echelleMin, dansLePlan) };
   }
 
   #changerCadrage(cadrage: Cadrage): void {
