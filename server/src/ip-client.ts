@@ -1,6 +1,7 @@
 /**
- * Clé de limite de débit d'un soutien : sa vraie IP, lue dans l'en-tête du CDN
- * quand la connexion vient d'un proxy de confiance, sinon l'adresse de la connexion.
+ * Clé de limite de débit d'un soutien : sa vraie IP, lue dans l'en-tête du
+ * reverse proxy quand la connexion vient d'un proxy de confiance, sinon
+ * l'adresse de la connexion.
  * Ne sert qu'en mémoire (ADR 0001) : jamais écrite ni journalisée.
  */
 import { BlockList, isIP } from 'node:net';
@@ -11,7 +12,7 @@ export interface OptionsIpClient {
    * (dans ce cas, l'adresse la plus à droite qui n'est pas un proxy de confiance).
    */
   enteteIp: string;
-  /** Adresses ou sous-réseaux CIDR des proxys (CDN) dont on croit l'en-tête. Vide = jamais. */
+  /** Adresses ou sous-réseaux CIDR des proxys dont on croit l'en-tête. Vide = jamais. */
   proxysDeConfiance: readonly string[];
 }
 

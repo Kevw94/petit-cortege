@@ -10,7 +10,7 @@ export default defineConfig({
     host: true,
     port: Number(process.env.PORT_CLIENT ?? 5173),
     proxy: {
-      // Fichiers publiés : servis par le serveur en dev, par le CDN en prod.
+      // Fichiers publiés : servis par le serveur en dev comme en production.
       '/publie': `http://127.0.0.1:${PORT_SERVEUR}`,
       '/api': `http://127.0.0.1:${PORT_SERVEUR}`,
     },

@@ -3,8 +3,8 @@
  *
  * Tous les fichiers sont identiques pour tous les clients et aucun chemin ne
  * contient d'identifiant de manif (ADR 0002). Les chemins sont relatifs à la
- * racine de publication, servie sous `PREFIXE_PUBLICATION` (CDN en prod,
- * serveur de dev en local).
+ * racine de publication, servie sous `PREFIXE_PUBLICATION` (le même
+ * serveur en production, le serveur de dev en local).
  */
 
 export const VERSION_FORMAT = 1 as const;

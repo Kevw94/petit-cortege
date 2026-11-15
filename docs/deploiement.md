@@ -4,7 +4,9 @@ Guide pas à pas, pour quelqu'un qui n'a jamais déployé de site. Il suit l'ord
 
 Tout vient du dossier [`deploiement/`](../deploiement/) : `installer.sh`, `mettre-a-jour.sh`, `Caddyfile`, `petit-cortege.service`, `petit-cortege.env.exemple`, `sauvegarde.sh` (+ minuterie), `moderation.sh`, `import-manifs.sh`. Les scripts sont commentés : les lire est la meilleure façon de comprendre ce qu'ils font.
 
-> **État de validation (à lire).** Ce qui a été essayé pour de vrai, en local : la construction du client, le serveur de production lancé comme le fera systemd avec un fichier d'environnement issu de l'exemple, la création et la modération d'une manif, la sauvegarde et la restauration, le `Caddyfile` (validé et exercé en HTTP avec Caddy 2.6.2, sans TLS) et l'app complète dans un vrai Chrome derrière les en-têtes du `Caddyfile`. **Pas essayé** : `installer.sh` sur un VPS vierge, l'émission du certificat Let's Encrypt, l'unité systemd chargée par systemd (seulement `systemd-analyze verify`), la dernière version de Caddy, le CDN. Si une étape échoue chez toi, c'est probablement là : lis le message, puis la section « En cas de problème ».
+> **État de validation (à lire).** Ce qui a été essayé pour de vrai, en local : la construction du client, le serveur de production lancé comme le fera systemd avec un fichier d'environnement issu de l'exemple, la création et la modération d'une manif, la sauvegarde et la restauration, le `Caddyfile` (validé et exercé en HTTP avec Caddy 2.6.2, sans TLS) et l'app complète dans un vrai Chrome derrière les en-têtes du `Caddyfile`. **Pas essayé** : `installer.sh` sur un VPS vierge, l'émission du certificat Let's Encrypt, l'unité systemd chargée par systemd (seulement `systemd-analyze verify`), la dernière version de Caddy. Si une étape échoue chez toi, c'est probablement là : lis le message, puis la section « En cas de problème ».
+
+> **Production (15 novembre 2026).** https://petit-cortege.fr tourne sur un VPS OVH à Strasbourg (Ubuntu 24.04). Nginx est le reverse proxy. Les fichiers statiques et publiés sont servis par ce VPS, sans CDN et sans Caddy. Les scripts de ce dossier installent encore Caddy : ils décrivent une autre façon de mettre en ligne, pas la machine actuelle. Les pages légales décrivent cet hébergement (ADR 0005).
 
 ## Ce que tu mets en place
 
@@ -23,7 +25,7 @@ Un seul serveur, trois programmes (Caddy, Node, Postgres), environ 10 €/mois d
 
 ### Un VPS
 
-Un serveur virtuel sous **Debian 12 ou Ubuntu 24.04**, avec un accès `root` en SSH et une adresse IPv4 (IPv6 en plus si possible), dans l'Union européenne (l'ADR 0005 prévoit Hetzner ; un autre hébergeur convient, voir l'étape 4 pour adapter les textes légaux). Note, dans la console de l'hébergeur : l'**adresse IP** du serveur, et le **lieu** du centre de données (il sert aux mentions légales).
+Un serveur virtuel sous **Debian 12 ou Ubuntu 24.04**, avec un accès `root` en SSH et une adresse IPv4 (IPv6 en plus si possible), dans l'Union européenne. La production est un VPS OVH à Strasbourg (ADR 0005) ; un autre hébergeur convient, voir l'étape 4 pour adapter les textes légaux. Note, dans la console de l'hébergeur : l'**adresse IP** du serveur, et le **lieu** du centre de données (il sert aux mentions légales).
 
 Pour un premier test, la plus petite offre suffit largement. Pour une vraie journée de mobilisation, voir « Charge attendue » à l'étape 7.
 
@@ -42,9 +44,9 @@ Le projet est édité par un particulier, sous pseudonyme, à titre non professi
 
 Tu as peut-être lu qu'il faut « mettre en place Supabase ». Ce n'était pas faux au début du projet, mais l'**ADR 0005** a tranché autrement : **Postgres + un petit serveur Node, tous deux sur ton VPS**. La raison : il n'y a pas de temps réel (ADR 0004), donc Supabase n'apporterait plus grand-chose, alors que le projet repose sur la maîtrise des journaux (ADR 0002) : sur ton propre serveur, tu décides ce qui est enregistré et pour combien de temps. Postgres s'installe donc sur le VPS (le script s'en charge) : **pas de compte Supabase, pas de clé, rien à configurer là-bas.**
 
-### Le CDN Bunny est facultatif
+### Pas de CDN
 
-L'ADR 0005 prévoit un CDN (Bunny, dans l'UE) pour les fichiers statiques. **Pour un premier test, ce n'est pas nécessaire** : ce guide sert tout depuis le VPS. La section 9 explique quoi changer pour l'ajouter plus tard.
+L'ADR 0005 sert les fichiers statiques et publiés depuis le VPS. C'est le cas de https://petit-cortege.fr, et c'est aussi ce que fait ce guide. La section 9 reste une piste, non utilisée, si l'on voulait un jour un CDN.
 
 ## 1. DNS : pointer le domaine vers le VPS
 
@@ -227,27 +229,27 @@ Le fichier [`client/src/pages/a-completer.ts`](../client/src/pages/a-completer.t
 
 Le plus propre : **modifie ce fichier sur ton ordinateur, commite, pousse**, puis clone (ou `git pull`) sur le VPS. Ainsi le VPS ne contient aucune modification locale et `mettre-a-jour.sh` n'est jamais gêné. Si tu préfères éditer sur le VPS (`sudo nano /opt/petit-cortege/client/src/pages/a-completer.ts`), commite-le sur place, sinon `mettre-a-jour.sh` refusera de continuer (il ne met pas à jour par-dessus des modifications non commitées).
 
+Le fichier commité décrit https://petit-cortege.fr (OVH, Strasbourg, sans CDN). Si tu déploies ailleurs, change les valeurs, puis les phrases de `pages-legales.ts` qui nomment OVH.
+
 | Champ | Quoi mettre |
 |-------|-------------|
-| `pseudo` | Ton pseudonyme d'éditeur (aussi directeur de la publication). |
-| `emailSignalement` | Une adresse e-mail dédiée, **que tu lis vraiment** : c'est elle qui reçoit les signalements de contenus (obligation LCEN de retrait « prompt »). |
-| `coordonneesHetzner` | Raison sociale, adresse postale et téléphone **de ton hébergeur de VPS**, recopiés depuis ses mentions légales (« Impressum » / « Mentions légales » sur son site). Ne les devine pas. Le nom du champ dit Hetzner mais il sert pour n'importe quel hébergeur. |
-| `centreDeDonnees` | La ville et le pays du centre de données, indiqués dans la console du fournisseur quand tu as créé le VPS (ex. « Falkenstein (Allemagne) »). |
-| `coordonneesBunny` | Coordonnées du CDN **si tu en utilises un**. Sans CDN (ce guide) : mets `sans objet` (une valeur qui ne commence pas par `[À COMPLÉTER` suffit à la faire accepter) et modifie `pages-legales.ts` comme ci-dessous. |
-| `critereAmpleur` | Une phrase qui complète « nous ajoutons une manif quand… », sur l'**ampleur** et jamais sur la cause (ADR 0003). Exemple fourni dans le fichier. |
+| `pseudo` | Ton pseudonyme d'éditeur (aussi directeur de la publication). En production : `kevw94`. |
+| `emailSignalement` | Une adresse e-mail dédiée, **que tu lis vraiment** : c'est elle qui reçoit les signalements de contenus (obligation LCEN de retrait « prompt »). En production : `contact@petit-cortege.fr`. |
+| `coordonneesHebergeur` | Raison sociale, adresse postale et identifiants **de ton hébergeur de VPS**, recopiés depuis ses mentions légales. Ne les devine pas. En production : OVH SAS, d'après https://www.ovhcloud.com/fr/terms-and-conditions/ (pas de téléphone sur cette page). |
+| `centreDeDonnees` | La ville et le pays du centre de données, indiqués dans la console du fournisseur. En production : « Strasbourg (SBG), France ». |
+| `critereAmpleur` | Une phrase qui complète « nous ajoutons une manif quand… », sur l'**ampleur** et jamais sur la cause (ADR 0003). |
 | `dureeSauvegardes` | Mets **`7 jours`** : c'est `DUREE_JOURS=7` dans `deploiement/sauvegarde.sh` (voir l'étape 8). Si tu changes l'un, change l'autre. Pense que les sauvegardes peuvent contenir des hachages de jetons de retrait (ADR 0001). |
-| `licenceCode` | La licence du code et le lien vers le dépôt, ou « code non publié ». |
-| `dateMiseAJour` | Date du jour, ex. « 14 novembre 2026 ». |
+| `licenceCode` | La licence du code et le lien vers le dépôt, ou « code non publié ». En production : licence MIT et https://github.com/Kevw94/petit-cortege. |
+| `dateMiseAJour` | Date du jour, ex. « 15 novembre 2026 ». |
 
-### Si ton hébergeur n'est pas Hetzner, ou si tu n'as pas de CDN
+### Si l'hébergeur ou le lieu change
 
-Le fichier [`client/src/pages/pages-legales.ts`](../client/src/pages/pages-legales.ts) écrit **en dur** « Hetzner » et « Bunny » dans les phrases. Remplir `a-completer.ts` ne suffit donc pas. À modifier (les numéros de ligne sont ceux de la version actuelle, cherche le texte) :
+[`pages-legales.ts`](../client/src/pages/pages-legales.ts) nomme OVH, la France et Strasbourg, et dit que les fichiers sont servis depuis le même serveur. Changer seulement `a-completer.ts` ne suffit pas. À relire :
 
-1. **Mentions légales, paragraphe « Hébergement »** (vers la ligne 57) : remplace « par Hetzner » par le nom de ton hébergeur.
-2. **Même paragraphe, sans CDN** (vers les lignes 58-59) : **supprime** le paragraphe `<p>Les fichiers du site et du cortège… Bunny : …</p>`, ou remplace-le par « Les fichiers du site sont servis depuis ce même serveur. »
-3. **Vie privée, « Journaux techniques »** (vers la ligne 116) : sans CDN, **supprime** la ligne `<li>Les journaux du CDN sont désactivés ou anonymisés.</li>`.
-4. **Vie privée, « Hébergement dans l'Union européenne et Cloud Act »** (vers la ligne 123) : remplace la première phrase « Le serveur est hébergé par Hetzner et les fichiers sont distribués par Bunny, deux sociétés européennes, dans l'Union européenne » par ce qui est vrai chez toi (ex. « Le serveur est hébergé par <hébergeur>, société <pays>, dans l'Union européenne »). La suite sur le Cloud Act parle de « nos fournisseurs » : relis-la pour qu'elle reste exacte (ex. « notre hébergeur »). **Ne l'affirme que si c'est vrai** : renseigne-toi sur la maison mère de ton hébergeur.
-5. **Test** : `client/src/pages/pages-legales.test.ts` (vers les lignes 42-43) vérifie que les pages contiennent « Hetzner » et « Bunny ». Adapte-le, sinon `npm test` échouera. Lance ensuite :
+1. **Mentions légales, « Hébergement »** : le nom OVH et « société française » sont dans la phrase, les coordonnées et le centre de données viennent de `a-completer.ts`.
+2. **Vie privée, « Journaux techniques »** : pas de CDN. Le programme qui reçoit les entrées n'enregistre pas d'adresse IP ; la page ne décrit pas les journaux d'accès de Nginx, absents de ce dépôt.
+3. **Vie privée, « Hébergement en France et Cloud Act »** : OVH, société française, fichiers sur le même serveur. Ne pas affirmer que l'hébergeur échappe au Cloud Act sans source vérifiable.
+4. **Test** : `client/src/pages/pages-legales.test.ts` vérifie OVH, Strasbourg, l'absence de « Hetzner », « Bunny » et « CDN ». Adapte-le, sinon `npm test` échouera. Lance ensuite :
 
 ```sh
 npm test -- client/src/pages
@@ -483,20 +485,20 @@ sudo bash /opt/petit-cortege/deploiement/mettre-a-jour.sh --sans-pull
 
 Pour revenir ensuite sur la branche principale : `sudo git checkout main`. Attention : les migrations de la base ne se défont pas. Un retour arrière du code est sans risque tant que les migrations ajoutées entre-temps sont compatibles avec l'ancien code (elles sont des ajouts, en général) ; sinon, restaure la sauvegarde de la veille (ci-dessus).
 
-## 9. Plus tard : ajouter le CDN Bunny (UE)
+## 9. Plus tard : un CDN (non utilisé)
 
-> Cette section n'a **pas été essayée** (aucun accès à Bunny ici). Les réglages exacts de l'interface Bunny sont à vérifier chez eux ; ce qui suit dit **quoi** changer et pourquoi.
+> **Pas le site en production.** petit-cortege.fr n'a pas de CDN : les fichiers partent du VPS (pages légales, ADR 0005). Cette section n'a **pas été essayée**. Elle décrit une piste Bunny ; les réglages exacts sont à vérifier chez eux. L'ajouter exigerait de réécrire les pages légales et leur test, qui ne parlent plus d'un CDN.
 
-Le CDN sert à décharger le VPS de la bande passante des fichiers publiés (le test de charge compte sur ≈ 3,65 $ pour 100 000 soutiens, **avec compression** : docs/test-de-charge.md).
+Le CDN servirait à décharger le VPS de la bande passante des fichiers publiés (le test de charge compte sur ≈ 3,65 $ pour 100 000 soutiens, **avec compression** : docs/test-de-charge.md).
 
-**Une tension avec l'ADR 0005 à connaître.** L'ADR veut que les POST arrivent sur le VPS, pas sur le CDN. Or le client appelle l'API en chemin relatif (`/api/…`) : avec le CDN devant tout le domaine, les POST d'entrée passent par lui. Deux options : (a) mettre tout le domaine derrière le CDN avec ses journaux coupés, comme ci-dessous ; (b) faire servir l'API sous un autre nom de domaine, ce qui demande une petite modification du client (URL de l'API), hors du périmètre de ce guide. Décide laquelle avant de commencer.
+**Une tension à connaître.** Les pages légales et l'ADR 0005 gardent les POST et les fichiers sur le VPS. Or le client appelle l'API en chemin relatif (`/api/…`) : avec un CDN devant tout le domaine, les POST d'entrée passent par lui. Deux options : (a) mettre tout le domaine derrière le CDN avec ses journaux coupés, comme ci-dessous ; (b) faire servir l'API sous un autre nom de domaine, ce qui demande une petite modification du client (URL de l'API), hors du périmètre de ce guide. Décide laquelle avant de commencer.
 
 Changements pour l'option (a) :
 
 1. **Origine** : dans la « pull zone » Bunny, l'origine est ton VPS en HTTPS. Comme le domaine public passera chez Bunny, il faut un **nom d'origine** distinct qui pointe sur le VPS (ex. `origine.<ton-domaine>`, enregistrement `A` vers le VPS) : ajoute-le comme **second site** dans le `Caddyfile` (même contenu, autre nom) pour qu'il obtienne son certificat, et configure l'en-tête `Host` envoyé à l'origine en conséquence. Le domaine public devient un `CNAME` vers Bunny.
 2. **Règles de cache** : que le CDN **respecte les `Cache-Control` de l'origine** (le `Caddyfile` pose déjà `max-age=30` sur `manifs.json` et `retraits.json`, `immutable` sur `entrees/*` et `assets/*`, `no-cache` sur `index.html` et `decors/*`) ; **ne pas mettre en cache `/api/*`** (règle de contournement) ; compression gzip ou brotli activée (c'est elle qui fait le facteur 3 du test de charge).
 3. **`PROXYS_DE_CONFIANCE` et en-tête d'IP** : la chaîne devient CDN → Caddy → Node. Pour le serveur Node, rien ne change : il reçoit toujours ses requêtes de Caddy (`127.0.0.1`), donc `PROXYS_DE_CONFIANCE=127.0.0.1,::1` et `ENTETE_IP_CLIENT` inchangé (`X-Forwarded-For`). Ce qui change, c'est Caddy : derrière un CDN, l'adresse qu'il voit est celle du CDN, pas celle du visiteur. Il doit donc lire la vraie IP dans l'en-tête du CDN (`CDN-RequestClientIP` chez Bunny, à vérifier) **uniquement quand la connexion vient d'une plage d'adresses du CDN** (sinon n'importe qui forge l'en-tête et contourne la limite par IP), puis la transmettre à Node dans `X-Forwarded-For`. Dans le `Caddyfile`, cela se fait avec les options globales `trusted_proxies` (plages du CDN) et `client_ip_headers`, ou à défaut avec une condition `remote_ip` ; leur effet exact dépend de ta version de Caddy : lis sa documentation. Les plages d'adresses de Bunny sont publiées par Bunny et changent : ne les recopie pas une fois pour toutes. **C'est la partie la plus délicate : après la modification, refais le test de l'étape 5 (en-tête forgé) en passant par le CDN et en direct sur le VPS.** Option complémentaire : n'autoriser dans `ufw` que les plages du CDN sur 443.
-4. **Journaux du CDN** : **désactive les journaux d'accès** dans les réglages de la zone (ou anonymise les IP si c'est la seule option offerte), car ils associeraient une IP à des URL. Garde la page Vie privée exacte : « Les journaux du CDN sont désactivés ou anonymisés » (et remets les phrases Bunny supprimées à l'étape 4, avec `coordonneesBunny`).
+4. **Journaux du CDN** : **désactive les journaux d'accès** dans les réglages de la zone (ou anonymise les IP si c'est la seule option offerte), car ils associeraient une IP à des URL. La page Vie privée ne mentionne plus de CDN : il faudrait la réécrire, avec le test, pour décrire ce choix sans rien affirmer d'invérifiable.
 5. **Test** : relis `/publie/manifs.json` via le domaine public et vérifie les en-têtes (`cache-control`, et `content-encoding` côté CDN) ; relance un test de charge avant une vraie manif.
 
 ## Liste de contrôle avant ouverture
@@ -504,7 +506,7 @@ Changements pour l'option (a) :
 - [ ] Le domaine répond (`dig +short A <ton-domaine>` donne l'IP du VPS) et le site s'ouvre en HTTPS sans alerte.
 - [ ] Connexion SSH par clé seulement, pas de connexion directe en `root`, `ufw` actif (22, 80, 443), `ufw logging off`.
 - [ ] `sudo ss -tlnp` : Postgres et le serveur Node n'écoutent que sur `127.0.0.1`.
-- [ ] `a-completer.ts` entièrement rempli : aucun `[À COMPLÉTER` visible sur les 4 pages légales (relues dans le navigateur) ; `pages-legales.ts` adapté si l'hébergeur n'est pas Hetzner ou s'il n'y a pas de CDN.
+- [ ] `a-completer.ts` sans `[À COMPLÉTER` sur les 4 pages légales (relues dans le navigateur) ; `pages-legales.ts` adapté si l'hébergeur n'est pas OVH à Strasbourg ou si un CDN est ajouté.
 - [ ] `dureeSauvegardes` du site = `DUREE_JOURS` de la sauvegarde (7 jours).
 - [ ] `systemctl status petit-cortege` : actif ; `curl https://<ton-domaine>/api/defi` répond ; `curl -si …/publie/manifs.json` : 200 et `cache-control: public, max-age=30`.
 - [ ] Le test de limite par IP avec `X-Forwarded-For` forgé (étape 5) donne des `429`.

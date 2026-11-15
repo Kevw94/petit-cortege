@@ -5,11 +5,13 @@
 si le CDN compresse les fichiers JSON (gzip). Sans compression, le coût monte à environ 11 $. Le serveur
 tient le pic (≈ 550 entrées/s) une fois corrigé un goulot dans l'anti-rejeu ALTCHA : avant la correction,
 il s'effondrait. Ces chiffres viennent d'une copie locale, pas de la production : il faudra les rejouer après
-le déploiement (#18).
+le déploiement (#18). L'hypothèse de coût ci-dessous utilise des tarifs Bunny et mentionne un
+forfait Hetzner. Ce n'est pas l'hébergement en ligne : petit-cortege.fr est un VPS OVH à
+Strasbourg, sans CDN. Le volume de bande passante reste un volume, pas une facture Bunny.
 
 ## Méthode
 
-Il n'y a pas eu de déploiement (#18 n'est pas fait) : la simulation tourne sur une **copie locale**, dans le
+Au moment de ce test, le site n'était pas encore en production (#18) : la simulation tourne sur une **copie locale**, dans le
 conteneur de développement :
 
 ```sh
