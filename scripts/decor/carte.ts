@@ -29,7 +29,7 @@ import {
   type PointTuiles,
   type Position,
 } from '@petit-cortege/shared';
-import { genererAlentours, RAYON_ALENTOURS_PAR_DEFAUT_M } from './alentours';
+import { genererAlentours } from './alentours';
 import { autotilerBatiments } from './batiments';
 import { classer, estBatiment, Terrain, type Classement } from './classement';
 import { lireExtrait, type ExtraitOverpass, type ObjetOsm } from './osm';
@@ -46,8 +46,8 @@ export interface OptionsDecor {
   espacementFlechesM?: number;
   /** Chemin du dossier assets/kenney relatif au fichier de la carte (pour Tiled). */
   dossierKenney?: string;
-  /** Alentours simplifiés autour de la bande (extrait sans bâtiments) ; absents : bande seule. */
-  alentours?: { osm: ExtraitOverpass; rayonM?: number };
+  /** Plan de la ville autour de la bande (extrait sans bâtiments) ; absent : bande seule. Demi-côté (m) : défaut `empriseDuPlan`. */
+  alentours?: { osm: ExtraitOverpass; demiCoteM?: number };
 }
 
 export const DEMI_LARGEUR_PAR_DEFAUT_M = 100;
@@ -175,7 +175,7 @@ export function genererDecor(options: OptionsDecor): CarteTiled {
         osm: options.alentours.osm,
         parcours: options.parcours,
         georef,
-        rayonM: options.alentours.rayonM ?? RAYON_ALENTOURS_PAR_DEFAUT_M,
+        ...(options.alentours.demiCoteM ? { demiCoteM: options.alentours.demiCoteM } : {}),
       }),
     );
   }
@@ -291,16 +291,18 @@ export function coucheTuiles(
   tuile: (g: Grille, x: number, y: number) => number,
   /** Position (en cases, multiple de TAILLE_BLOC) de la case (0, 0) de la grille. */
   decalage: { x: number; y: number } = { x: 0, y: 0 },
+  /** Côté des blocs (multiple de TAILLE_BLOC ; plus grand pour le plan de la ville). */
+  cote = TAILLE_BLOC,
 ): CoucheTuilesTiled {
   const chunks: BlocTiled[] = [];
-  for (let by = 0; by * TAILLE_BLOC < grille.hauteur; by++) {
-    for (let bx = 0; bx * TAILLE_BLOC < grille.largeur; bx++) {
-      const gids = new Uint32Array(TAILLE_BLOC * TAILLE_BLOC);
+  for (let by = 0; by * cote < grille.hauteur; by++) {
+    for (let bx = 0; bx * cote < grille.largeur; bx++) {
+      const gids = new Uint32Array(cote * cote);
       let plein = false;
-      for (let y = 0; y < TAILLE_BLOC; y++) {
-        for (let x = 0; x < TAILLE_BLOC; x++) {
-          const gid = tuile(grille, bx * TAILLE_BLOC + x, by * TAILLE_BLOC + y);
-          gids[y * TAILLE_BLOC + x] = gid;
+      for (let y = 0; y < cote; y++) {
+        for (let x = 0; x < cote; x++) {
+          const gid = tuile(grille, bx * cote + x, by * cote + y);
+          gids[y * cote + x] = gid;
           if (gid !== 0) plein = true;
         }
       }
@@ -308,16 +310,16 @@ export function coucheTuiles(
       const octets = Buffer.alloc(gids.length * 4);
       gids.forEach((gid, i) => octets.writeUInt32LE(gid, i * 4));
       chunks.push({
-        x: decalage.x + bx * TAILLE_BLOC,
-        y: decalage.y + by * TAILLE_BLOC,
-        width: TAILLE_BLOC,
-        height: TAILLE_BLOC,
+        x: decalage.x + bx * cote,
+        y: decalage.y + by * cote,
+        width: cote,
+        height: cote,
         data: deflateSync(octets, { level: 9 }).toString('base64'),
       });
     }
   }
-  const largeurBlocs = Math.ceil(grille.largeur / TAILLE_BLOC) * TAILLE_BLOC;
-  const hauteurBlocs = Math.ceil(grille.hauteur / TAILLE_BLOC) * TAILLE_BLOC;
+  const largeurBlocs = Math.ceil(grille.largeur / cote) * cote;
+  const hauteurBlocs = Math.ceil(grille.hauteur / cote) * cote;
   return {
     type: 'tilelayer',
     id,

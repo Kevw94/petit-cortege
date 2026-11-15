@@ -434,7 +434,7 @@ describe('npm run import-manifs', () => {
       'premier.exemple', 'premier.exemple', 'second.exemple', 'premier.exemple', 'premier.exemple', 'second.exemple',
     ]);
     expect(await readFile(join(dossier, 'donnees/osm/mini-2026-11-14/extrait-overpass.json'), 'utf8')).toBe(extrait);
-    const alentours = await readFile(join(dossier, 'donnees/osm/mini-2026-11-14/alentours-overpass.json'), 'utf8');
+    const alentours = await readFile(join(dossier, 'donnees/osm/mini-2026-11-14/plan-overpass.json'), 'utf8');
     expect(alentours).not.toMatch(/"building"|Boulangerie/);
     expect((await lireDecor(JSON.parse(await readFile(join(decors, 'mini-2026-11-14.json'), 'utf8')))).alentours).toBeDefined();
     const index = lireIndexDecors(JSON.parse(await readFile(join(decors, 'index.json'), 'utf8')));

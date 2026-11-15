@@ -27,6 +27,9 @@ export const TUILES = {
   vert: ville(0, 24),
   /** Pâtés de maisons des alentours (sans bâtiments) : couleur moyenne du toit beige plein. */
   pateDeMaisons: ville(30, 0),
+  /** Toits pleins d'ardoise claire et de zinc (teintes des îlots du plan de la ville). */
+  toitArdoiseClaire: ville(22, 0),
+  toitZinc: ville(14, 0),
   eau: rpg(3, 4),
   /** Quais en pierre autour de l'eau (pièce en 9 morceaux). */
   quai: {

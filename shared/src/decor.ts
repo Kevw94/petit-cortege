@@ -15,8 +15,12 @@ export const TAILLE_TUILE_PX = 16;
 export const TAILLE_BLOC = 32;
 /** Valeur de la propriété `format` d'une carte de décor (version : propriété `version_format`). */
 export const FORMAT_DECOR = 'petit-cortege-decor';
-/** 2 : couche `alentours` facultative (résolution réduite) ; les cartes en version 1 restent lues. */
-export const VERSION_FORMAT_DECOR = 2;
+/**
+ * 3 : la couche `alentours` devient le plan de la ville (emprise couvrant le dézoom maximal),
+ * en blocs de côté multiple de TAILLE_BLOC cases. Les cartes en version 2 (blocs de 32 cases)
+ * et 1 (sans alentours) restent lues.
+ */
+export const VERSION_FORMAT_DECOR = 3;
 export const ATTRIBUTION_OSM = '© les contributeurs d’OpenStreetMap';
 /**
  * Couches de tuiles des bâtiments (toits et murs, puis fenêtres et portes) : le
@@ -34,6 +38,67 @@ export const COUCHES_BATIMENTS: readonly string[] = ['batiments', 'facades'];
  */
 export const COUCHE_ALENTOURS = 'alentours';
 export const PROPRIETE_TUILES_PAR_CASE = 'tuiles_par_case';
+/**
+ * Propriété facultative de la couche des alentours : gids des teintes des pâtés de maisons,
+ * séparés par des virgules. Le premier est celui des cases d'îlot ; chaque îlot (cases d'îlot
+ * contiguës) prend l'une de ces teintes, choisie de façon déterministe : pas d'aplat uniforme.
+ */
+export const PROPRIETE_TEINTES_ILOTS = 'teintes_ilots';
+
+/*
+ * Emprise du plan de la ville (couche des alentours) : au dézoom maximal centré sur le
+ * parcours, tout l'écran doit être couvert par le plan, du téléphone en portrait au
+ * paysage 21:9, et son bord fondu doit rester hors champ.
+ */
+/** Formats d'écran couverts (largeur / hauteur) : du portrait 9:19,5 au paysage 21:9. */
+export const ASPECT_ECRAN_MIN = 9 / 19.5;
+export const ASPECT_ECRAN_MAX = 2560 / 1080; // « 21:9 » des écrans réels (64:27)
+/**
+ * Vue 3D de haut (client/src/vue3d) : marge ajoutée au rayon du parcours (m). Le champ de la
+ * caméra n'entre pas dans le calcul : la vue de haut fait tenir ce cercle à l'écran quel qu'il soit.
+ */
+export const MARGE_RAYON_VUE_DE_HAUT_M = 40;
+/** Largeur du fondu au bord du plan vers le fond (m). */
+export const FONDU_PLAN_M = 240;
+/** Marge du plan au-delà du champ et du fondu (perspective, arrondis) : part du rayon à voir. */
+const MARGE_PLAN = 0.05;
+/** Côté maximal du plan (m) : au-delà, poids et extraction OSM deviennent déraisonnables. */
+export const COTE_MAX_PLAN_M = 12_000;
+
+/**
+ * Demi-diagonale de l'écran au sol, en multiple du rayon du cercle que la vue de haut fait
+ * tenir à l'écran, au pire des formats couverts : l'écran tient dans le cercle de ce rayon
+ * quelle que soit l'orientation de la caméra. Paysage (aspect a ≥ 1) : le cercle tient en
+ * hauteur, l'écran fait a × 1 rayons ; portrait : il tient en largeur, l'écran fait 1 × 1/a.
+ */
+export function facteurDiagonaleEcran(aspectMin = ASPECT_ECRAN_MIN, aspectMax = ASPECT_ECRAN_MAX): number {
+  return Math.max(...[aspectMin, aspectMax].map((a) => Math.hypot(1, Math.max(a, 1 / a))));
+}
+
+export interface EmpriseDuPlan {
+  /** Centre (m, depuis l'origine du décor : x vers l'est, y vers le sud) : centre du rectangle englobant du parcours. */
+  centre: PointTuiles;
+  /** Demi-côté du carré couvert (m), fondu compris. */
+  demiCote: number;
+  /** Vrai si la borne COTE_MAX_PLAN_M a réduit le plan. */
+  borne: boolean;
+}
+
+/**
+ * Emprise du plan pour un parcours (points en mètres) : le carré centré sur le parcours qui
+ * contient l'écran entier au dézoom maximal de la vue 3D (vue de haut, cercle du parcours à
+ * l'écran) dans tous les formats couverts, plus le fondu et une marge ; borné à COTE_MAX_PLAN_M.
+ * La vue 2D borne son dézoom pour rester dans ce carré (client/src/scene-cortege.ts).
+ */
+export function empriseDuPlan(points: readonly PointTuiles[]): EmpriseDuPlan {
+  const xs = points.map((p) => p.x);
+  const ys = points.map((p) => p.y);
+  const centre = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
+  const rayon = Math.max(...points.map((p) => Math.hypot(p.x - centre.x, p.y - centre.y))) + MARGE_RAYON_VUE_DE_HAUT_M;
+  const voulu = rayon * facteurDiagonaleEcran() * (1 + MARGE_PLAN) + FONDU_PLAN_M;
+  const demiCote = Math.min(voulu, COTE_MAX_PLAN_M / 2);
+  return { centre, demiCote, borne: demiCote < voulu };
+}
 /** Couche d'objets des noms de places traversées (objets ponctuels : `name` = nom, propriété `arrivee`). */
 export const COUCHE_PLACES = 'places';
 
@@ -357,6 +422,8 @@ export interface AlentoursDecor {
   hauteur: number;
   /** Gids, ligne par ligne (largeur × hauteur) ; 0 hors des alentours. */
   gids: Uint32Array;
+  /** Teintes des pâtés de maisons (gids ; le premier est celui des cases d'îlot), absentes des cartes anciennes. */
+  teintesIlots?: number[];
 }
 
 export interface PlaceDecor {
@@ -432,23 +499,30 @@ export async function lireDecor(carte: CarteTiled): Promise<Decor> {
 async function lireAlentours(couche: CoucheTuilesTiled, tuilesParCase: number): Promise<AlentoursDecor | undefined> {
   if (!Number.isInteger(tuilesParCase) || tuilesParCase < 1) throw new Error('Alentours : tuiles_par_case illisible');
   if (couche.chunks.length === 0) return undefined;
+  // Version 2 : blocs de 32 cases ; version 3 : blocs plus grands (côté multiple de 32).
+  const multiple = (v: number) => Number.isInteger(v) && v > 0 && v % TAILLE_BLOC === 0;
   for (const bloc of couche.chunks) {
-    if (bloc.width !== TAILLE_BLOC || bloc.height !== TAILLE_BLOC || bloc.x % TAILLE_BLOC || bloc.y % TAILLE_BLOC) {
+    if (!multiple(bloc.width) || !multiple(bloc.height) || bloc.x % TAILLE_BLOC || bloc.y % TAILLE_BLOC) {
       throw new Error(`Bloc des alentours mal aligné (${bloc.x}, ${bloc.y})`);
     }
   }
   const x = Math.min(...couche.chunks.map((b) => b.x));
   const y = Math.min(...couche.chunks.map((b) => b.y));
-  const largeur = Math.max(...couche.chunks.map((b) => b.x)) + TAILLE_BLOC - x;
-  const hauteur = Math.max(...couche.chunks.map((b) => b.y)) + TAILLE_BLOC - y;
+  const largeur = Math.max(...couche.chunks.map((b) => b.x + b.width)) - x;
+  const hauteur = Math.max(...couche.chunks.map((b) => b.y + b.height)) - y;
   const gids = new Uint32Array(largeur * hauteur);
   for (const bloc of couche.chunks) {
     const donnees = await decompresser(bloc.data);
-    for (let r = 0; r < TAILLE_BLOC; r++) {
-      gids.set(donnees.subarray(r * TAILLE_BLOC, (r + 1) * TAILLE_BLOC), (bloc.y - y + r) * largeur + (bloc.x - x));
+    if (donnees.length !== bloc.width * bloc.height) throw new Error(`Bloc des alentours tronqué (${bloc.x}, ${bloc.y})`);
+    for (let r = 0; r < bloc.height; r++) {
+      gids.set(donnees.subarray(r * bloc.width, (r + 1) * bloc.width), (bloc.y - y + r) * largeur + (bloc.x - x));
     }
   }
-  return { tuilesParCase, x, y, largeur, hauteur, gids };
+  const teintes = String(couche.properties?.find((p) => p.name === PROPRIETE_TEINTES_ILOTS)?.value ?? '')
+    .split(',')
+    .map(Number)
+    .filter((g) => Number.isInteger(g) && g > 0);
+  return { tuilesParCase, x, y, largeur, hauteur, gids, ...(teintes.length ? { teintesIlots: teintes } : {}) };
 }
 
 /** Gid de la tuile (x, y) d'une couche ; 0 si vide ou hors des blocs. */

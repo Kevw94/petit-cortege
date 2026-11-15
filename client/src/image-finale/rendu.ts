@@ -190,12 +190,16 @@ function dessinerDecor(
   versImage: (m: { x: number; y: number }) => { x: number; y: number },
   echelle: number,
 ): void {
-  // Alentours (s'ils existent) : au-delà de la bande, si la foule à l'arrivée déborde.
+  // Plan de la ville (s'il existe) : au-delà de la bande, si la foule à l'arrivée déborde ;
+  // cases nettes (pixel art), comme en jeu.
   const alentours = cuireAlentours(decor, (nom) => ressources.tilesets.get(nom));
   if (alentours) {
     const a = versImage({ x: alentours.x, y: alentours.y });
     const b = versImage({ x: alentours.x + alentours.largeur, y: alentours.y + alentours.hauteur });
+    const lisse = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = false;
     ctx.drawImage(alentours.canvas, a.x, a.y, b.x - a.x, b.y - a.y);
+    ctx.imageSmoothingEnabled = lisse;
   }
   const cote = TAILLE_TUILE_PX * echelle;
   const origine = versImage({ x: 0, y: 0 }); // coin de la tuile (0, 0)
