@@ -1,6 +1,6 @@
 /**
  * Routage par fragment (ADR 0002) : l'identifiant de manif reste dans le
- * fragment (`#/manif/<id>`), jamais envoyé au serveur ni au CDN.
+ * fragment (`#/manif/<id>`), jamais envoyé au serveur.
  * Ne pas « corriger » vers un routage par chemin ou des paramètres de requête.
  */
 export const IDS_PAGES_LEGALES = ['mentions-legales', 'vie-privee', 'charte', 'cgu'] as const;

@@ -1,6 +1,7 @@
 {
   "name": "petit-cortege",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "workspaces": [
     "shared",

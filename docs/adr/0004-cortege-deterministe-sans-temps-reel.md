@@ -1,6 +1,6 @@
 # Cortège déterministe, sans temps réel
 
-La position d'un avatar se calcule côté client à partir du parcours, de l'heure de départ et de son heure d'entrée (≈ 2 km/h, plafonnée à la longueur du parcours ; les retardataires partent du point de départ). Il n'y a donc ni WebSocket ni présence : le client lit un instantané statique identique pour tous, servi par CDN, et rejoindre un cortège est un simple POST. Choisi pour le coût (100 000 soutiens = quelques euros de bande passante) et pour la vie privée (ADR 0002 : un fichier identique pour tous ne relie aucune IP à une manif).
+La position d'un avatar se calcule côté client à partir du parcours, de l'heure de départ et de son heure d'entrée (≈ 2 km/h, plafonnée à la longueur du parcours ; les retardataires partent du point de départ). Il n'y a donc ni WebSocket ni présence : le client lit un instantané statique identique pour tous, servi par le même serveur, et rejoindre un cortège est un simple POST. Choisi pour le coût (100 000 soutiens = quelques euros de bande passante) et pour la vie privée (ADR 0002 : un fichier identique pour tous ne relie aucune IP à une manif).
 
 ## Mouvement
 
