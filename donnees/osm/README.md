@@ -38,20 +38,27 @@ réponse brute d'Overpass (bande de 150 m autour du parcours calculé), écrite 
 14 novembre 2026) et rejouée sans réseau tant qu'elle existe. Les parcours sont dans `donnees/manifs/2026-11-14/`
 (docs/import-manifs.md).
 
-### Alentours
+### Plan de la ville
 
-Chaque dossier contient aussi `alentours-overpass.json` : les alentours du parcours (700 m de part et d'autre, bande
-comprise), pour la carte simplifiée autour de la bande détaillée. Ce n'est **pas** la réponse brute d'Overpass :
-la requête ne demande ni bâtiments ni chemins (rues de `motorway` à `living_street` et `pedestrian`, places,
-espaces verts, eau), puis l'extrait est réduit à ce que le rendu utilise (objets que le décor dessine, tags lus par
-le classement, sans noms ; géométrie arrondie à 10⁻⁵ degré et simplifiée à 1,5 m), un élément par ligne. Il reste
-lisible comme une réponse Overpass (`lireExtrait`) et rejouable sans réseau. Obtenu par
-`npm run import-manifs -- decors` (manifs du 14 novembre) ou, pour la démo :
+Le plan simplifié autour de la bande couvre un carré de plusieurs kilomètres (≈ 8 à 9 km de côté pour un défilé
+parisien de 3 à 4 km, voir `client/public/decors/README.md`). Il est téléchargé par **pavés** d'au plus 3 km de côté
+(une requête Overpass par pavé, pause de 5 s entre deux, chaque requête avec ses réessais et ses serveurs dans
+l'ordre), sans bâtiments ni chemins (rues de `motorway` à `living_street` et `pedestrian`, places, espaces verts,
+eau), puis réduit à ce que le rendu utilise (objets que le décor dessine, tags lus par le classement, sans noms ;
+géométrie arrondie à 10⁻⁵ degré et simplifiée à 2 m), un élément par ligne. Les pavés déjà reçus sont gardés dans `<id>/.paves-plan/` (ignoré par
+git) : une panne en cours de route ne fait pas tout reprendre ; un pavé refusé (délai dépassé) est redécoupé en
+quatre : `plan-overpass.json`, lisible comme
+une réponse Overpass (`lireExtrait`) et rejouable sans réseau. Ce fichier n'est versionné que s'il reste sous
+≈ 3 Mo : versionné pour Nancy (0,7 Mo) et Caen (0,8 Mo) ; ignoré par git (`.gitignore`) pour République → Nation
+(5,3 Mo) et Paris (6 Mo), à régénérer (≈ 10 à 40 min selon les serveurs) par :
 
 ```sh
-npm run decor -- extraire-alentours --parcours donnees/osm/republique-nation/parcours.geojson \
+NODE_USE_ENV_PROXY=1 npm run decor -- extraire-alentours --parcours donnees/osm/republique-nation/parcours.geojson \
   --overpass https://maps.mail.ru/osm/tools/overpass/api/interpreter --overpass https://overpass.kumi.systems/api/interpreter \
-  --sortie donnees/osm/republique-nation/alentours-overpass.json
+  --sortie donnees/osm/republique-nation/plan-overpass.json
 ```
+
+(manifs du 14 novembre : `--parcours donnees/manifs/2026-11-14/<id>.geojson`, ou `npm run import-manifs -- decors`,
+qui télécharge le plan absent). L'ancien `alentours-overpass.json` (700 m autour du parcours, format 2) n'est plus lu.
 
 La tilemap dérivée (base de données dérivée, ODbL elle aussi) est dans `client/public/decors/`.

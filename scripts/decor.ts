@@ -24,7 +24,7 @@ import { DEMI_LARGEUR_PAR_DEFAUT_M, genererDecor } from './decor/carte';
 import { itineraireLeLongDe } from './decor/itineraire';
 import type { ExtraitOverpass } from './decor/osm';
 import { RAYON_EXTRACTION_M, requeteBande } from './decor/overpass';
-import { RAYON_ALENTOURS_PAR_DEFAUT_M, requeteAlentours, simplifierExtraitAlentours, texteExtraitAlentours } from './decor/alentours';
+import { cacheDePaves, telechargerPlan, texteExtraitAlentours } from './decor/alentours';
 import { interrogerOverpass, URLS_OVERPASS_PAR_DEFAUT } from './import/overpass';
 import { reseauReel, type Reseau } from './import/reseau';
 import { simplifierLigne } from './decor/geometrie';
@@ -41,18 +41,22 @@ export interface DependancesDecor {
   dossierCourant: string;
   /** Accès réseau (Overpass) ; défaut : fetch, 4 essais par serveur avec attente croissante. */
   reseau?: Reseau;
+  /** Pause entre deux pavés du plan (ms) ; défaut : PAUSE_ENTRE_PAVES_MS. */
+  pauseEntrePavesMs?: number;
 }
 
 const AIDE = `Commandes :
   extraire --parcours <geojson> --overpass <url> --sortie <extrait.json> [--rayon <m>]
       Enregistre la réponse Overpass brute (bande autour du parcours ; rues, verts, eau, bâtiments, places).
-  extraire-alentours --parcours <geojson> --overpass <url> --sortie <alentours.json> [--alentours <m>]
-      Enregistre l'extrait simplifié des alentours (rues, verts, eau ; sans bâtiments).
+  extraire-alentours --parcours <geojson> --overpass <url> --sortie <plan.json> [--alentours <m>]
+      Enregistre l'extrait simplifié du plan de la ville (rues, verts, eau ; sans bâtiments),
+      téléchargé par pavés de 3 km.
   tilemap --parcours <geojson> (--osm <extrait.json> | --overpass <url>) --sortie <carte.json>
-          [--alentours-osm <alentours.json>] [--alentours <m>] [--demi-largeur <m>] [--rayon <m>]
-      Génère la tilemap Tiled (ODbL) et l'inscrit dans l'index.json de son dossier. Alentours
-      (défaut ${RAYON_ALENTOURS_PAR_DEFAUT_M} m, 0 : aucun) : --alentours-osm est relu s'il existe, sinon
-      téléchargé par --overpass puis enregistré ; sans l'un ni l'autre, la bande seule.
+          [--alentours-osm <plan.json>] [--alentours <m>] [--demi-largeur <m>] [--rayon <m>]
+      Génère la tilemap Tiled (ODbL) et l'inscrit dans l'index.json de son dossier. Plan de la
+      ville autour de la bande (carré couvrant le dézoom maximal ; --alentours : demi-côté imposé
+      en m, 0 : aucun plan) : --alentours-osm est relu s'il existe, sinon téléchargé par
+      --overpass puis enregistré ; sans l'un ni l'autre, la bande seule.
   --overpass <url> est répétable : serveurs essayés dans l'ordre, chacun avec réessais.
   parcours (--osm <extrait.json> | --overpass <url>) --rue <nom> [--rue <place traversée>…] --depart <lon,lat> --arrivee <lon,lat> --sortie <geojson>
       Trace un parcours le long des chemins OSM d'une rue (avec --overpass : chemins de ce nom autour des deux points).`;
@@ -99,16 +103,16 @@ export async function executerDecor(argv: string[], deps: DependancesDecor): Pro
     if (urls.length) return (await telecharger(requete())).extrait;
     throw new Error(`donner --osm ou --overpass.\n\n${AIDE}`);
   };
-  /** Extrait simplifié des alentours : relu s'il existe, sinon téléchargé (et enregistré si --alentours-osm). */
-  const extraitAlentours = async (parcours: Parcours, rayonM: number): Promise<ExtraitOverpass | null> => {
+  /** Demi-côté imposé du plan (--alentours, m) ; undefined : automatique ; 0 : aucun plan. */
+  const demiCotePlan = () => (v.alentours === undefined ? undefined : nombre('alentours', 0, true));
+  /** Extrait simplifié du plan : relu s'il existe, sinon téléchargé (et enregistré si --alentours-osm). */
+  const extraitAlentours = async (parcours: Parcours, demiCoteM: number | undefined): Promise<ExtraitOverpass | null> => {
     const fichier = v['alentours-osm'] ? chemin('alentours-osm') : null;
     if (fichier && (await existe(fichier))) return JSON.parse(await readFile(fichier, 'utf8')) as ExtraitOverpass;
     if (!urls.length) return null;
-    const { extrait, url } = await telecharger(requeteAlentours(parcours, rayonM));
-    const simplifie = simplifierExtraitAlentours(extrait);
-    deps.ecrire(`Alentours (${new URL(url).host}) : ${extrait.elements.length} éléments OSM, ${simplifie.elements.length} gardés.`);
-    if (fichier) await ecrireFichier(fichier, texteExtraitAlentours(simplifie));
-    return simplifie;
+    const plan = await telechargerPlan(parcours, telecharger, deps.ecrire, { demiCoteM, pauseMs: deps.pauseEntrePavesMs, cache: fichier ? cacheDePaves(fichier) : undefined });
+    if (fichier) await ecrireFichier(fichier, texteExtraitAlentours(plan));
+    return plan;
   };
 
   switch (commande) {
@@ -123,10 +127,13 @@ export async function executerDecor(argv: string[], deps: DependancesDecor): Pro
     case 'extraire-alentours': {
       const parcours = await lireParcours();
       if (!urls.length) throw new Error(`option --overpass manquante.\n\n${AIDE}`);
-      const { extrait } = await telecharger(requeteAlentours(parcours, nombre('alentours', RAYON_ALENTOURS_PAR_DEFAUT_M)));
-      const simplifie = simplifierExtraitAlentours(extrait);
-      await ecrireFichier(chemin('sortie'), texteExtraitAlentours(simplifie));
-      deps.ecrire(`${extrait.elements.length} éléments OSM, ${simplifie.elements.length} gardés.`);
+      const plan = await telechargerPlan(parcours, telecharger, deps.ecrire, {
+        demiCoteM: demiCotePlan(),
+        pauseMs: deps.pauseEntrePavesMs,
+        cache: cacheDePaves(chemin('sortie')),
+      });
+      await ecrireFichier(chemin('sortie'), texteExtraitAlentours(plan));
+      deps.ecrire(`${plan.elements.length} objets gardés.`);
       return;
     }
     case 'tilemap': {
@@ -134,14 +141,14 @@ export async function executerDecor(argv: string[], deps: DependancesDecor): Pro
       const osm = await extraitOsm(() => requeteBande(parcours, nombre('rayon', RAYON_EXTRACTION_M)));
       const sortie = chemin('sortie');
       const demiLargeurM = nombre('demi-largeur', DEMI_LARGEUR_PAR_DEFAUT_M);
-      const rayonAlentoursM = nombre('alentours', RAYON_ALENTOURS_PAR_DEFAUT_M, true);
-      const osmAlentours = rayonAlentoursM > 0 ? await extraitAlentours(parcours, rayonAlentoursM) : null;
-      if (!osmAlentours) deps.ecrire('Sans alentours : bande détaillée seule.');
+      const demiCoteM = demiCotePlan();
+      const osmAlentours = demiCoteM === 0 ? null : await extraitAlentours(parcours, demiCoteM);
+      if (!osmAlentours) deps.ecrire('Sans plan de la ville : bande détaillée seule.');
       const carte = genererDecor({
         osm,
         parcours,
         demiLargeurM,
-        ...(osmAlentours ? { alentours: { osm: osmAlentours, rayonM: rayonAlentoursM } } : {}),
+        ...(osmAlentours ? { alentours: { osm: osmAlentours, ...(demiCoteM ? { demiCoteM } : {}) } } : {}),
         dossierKenney: relative(dirname(sortie), join(RACINE, 'assets/kenney')).split('\\').join('/'),
       });
       await ecrireFichier(sortie, `${JSON.stringify(carte)}\n`);
