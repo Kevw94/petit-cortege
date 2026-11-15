@@ -1,6 +1,7 @@
 /**
- * Alentours du décor : carte simplifiée (rues, verts, eau, pâtés de maisons) autour de la
- * bande détaillée, à résolution réduite (cases de 2 × 2 tuiles). Extrait inventé autour de
+ * Plan de la ville (couche `alentours`) : carte simplifiée (rues, verts, eau, pâtés de maisons)
+ * sur le carré couvrant le dézoom maximal, à résolution réduite (cases de 4 × 4 tuiles, 8 m).
+ * Extrait inventé autour de
  * (2.36, 48.87), en mètres (x vers l'est, y vers le sud) : le parcours suit un boulevard
  * est-ouest sur 400 m (y = 0) ; à 300 m au nord une rue résidentielle, un chemin piéton et
  * un bâtiment ; à 400 m au sud un parc en multipolygone (deux morceaux) ; une rue à 1 km.
@@ -8,8 +9,12 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { deflateSync } from 'node:zlib';
 import {
   COUCHE_ALENTOURS,
+  empriseDuPlan,
+  facteurDiagonaleEcran,
+  FONDU_PLAN_M,
   lireDecor,
   versTuiles,
   type CarteTiled,
@@ -18,7 +23,18 @@ import {
   type Parcours,
   type Position,
 } from '@petit-cortege/shared';
-import { requeteAlentours, simplifierExtraitAlentours, texteExtraitAlentours } from '../decor/alentours';
+import {
+  fusionnerExtraits,
+  paves,
+  rectangleDuPlan,
+  requetePlan,
+  requetesPlan,
+  simplifierExtraitAlentours,
+  TEINTES_ILOTS,
+  telechargerPlan,
+  tuilesParCasePour,
+  texteExtraitAlentours,
+} from '../decor/alentours';
 import { genererDecor } from '../decor/carte';
 import { lireExtrait, type ElementOverpass, type ExtraitOverpass } from '../decor/osm';
 import { TUILES } from '../decor/tuiles';
@@ -69,20 +85,78 @@ const caseEn = (x: number, y: number) => {
 beforeAll(async () => {
   const osm = JSON.parse(await readFile(join(FIXTURES, 'extrait-mini.json'), 'utf8'));
   parcours = JSON.parse(await readFile(join(FIXTURES, 'parcours-mini.geojson'), 'utf8')).geometry;
-  carte = genererDecor({ osm, parcours, demiLargeurM: 100, alentours: { osm: simplifierExtraitAlentours(ALENTOURS), rayonM: 700 } });
+  carte = genererDecor({ osm, parcours, demiLargeurM: 100, alentours: { osm: simplifierExtraitAlentours(ALENTOURS) } });
   decor = await lireDecor(carte);
   sansAlentours = await lireDecor(genererDecor({ osm, parcours, demiLargeurM: 100 }));
 });
 
-describe('requête Overpass des alentours', () => {
-  it('demande rues, verts et eau autour du parcours, sans bâtiments', () => {
-    const requete = requeteAlentours(parcours, 700);
-    expect(requete).toContain('(around:780,48.870000,2.360000,48.870000,2.365463)');
-    expect(requete).toMatch(/way\(around[^;]*\["highway"~"\^\(motorway\|trunk/);
+describe('emprise du plan', () => {
+  it('couvre l’écran entier au dézoom maximal dans tous les formats, plus le fondu', () => {
+    // 21:9 : l'écran fait 21/9 × 1 rayons, sa demi-diagonale ≈ 2,54 rayons.
+    expect(facteurDiagonaleEcran()).toBeCloseTo(Math.hypot(1, 2560 / 1080), 6);
+    const e = empriseDuPlan([{ x: 0, y: 0 }, { x: 400, y: 0 }]);
+    expect(e.centre).toEqual({ x: 200, y: 0 });
+    expect(e.demiCote).toBeGreaterThan((200 + 40) * Math.hypot(1, 2560 / 1080) + FONDU_PLAN_M);
+    expect(e.demiCote).toBeLessThan(1000);
+    expect(e.borne).toBe(false);
+  });
+
+  it('grandit avec le parcours (plusieurs km pour un défilé parisien), borné à 12 km de côté', () => {
+    const paris = empriseDuPlan([{ x: 0, y: 0 }, { x: 3000, y: 1200 }]);
+    expect(2 * paris.demiCote).toBeGreaterThan(8000);
+    expect(2 * paris.demiCote).toBeLessThan(10_000);
+    const immense = empriseDuPlan([{ x: 0, y: 0 }, { x: 9000, y: 0 }]);
+    expect(2 * immense.demiCote).toBe(12_000);
+    expect(immense.borne).toBe(true);
+  });
+});
+
+describe('résolution du plan', () => {
+  it('cases de 4 m pour un petit plan (jusqu’à ≈ 4 km de côté), de 8 m au-delà, la même sur tout le plan', () => {
+    expect(tuilesParCasePour(1500)).toBe(2);
+    expect(tuilesParCasePour(2048)).toBe(2);
+    expect(tuilesParCasePour(2100)).toBe(4);
+    expect(tuilesParCasePour(4500)).toBe(4);
+  });
+});
+
+describe('requêtes Overpass du plan', () => {
+  it('demande rues, verts et eau par rectangle, sans bâtiments ni chemins', () => {
+    const requete = requetePlan({ sud: 48.86, ouest: 2.35, nord: 48.88, est: 2.37 });
+    expect(requete).toContain('[bbox:48.860000,2.350000,48.880000,2.370000]');
+    expect(requete).toMatch(/way\["highway"~"\^\(motorway\|trunk/);
     expect(requete).toContain('["leisure"~"^(park|');
-    expect(requete).toContain('relation(around');
+    expect(requete).toContain('relation["type"="multipolygon"]');
     expect(requete).not.toContain('building');
     expect(requete).not.toContain('footway');
+  });
+
+  it('découpe une grande emprise en pavés d’au plus 3 km qui la recouvrent exactement', () => {
+    const r = { sud: 48.82, ouest: 2.3, nord: 48.9, est: 2.42 }; // ≈ 8,8 × 8,8 km
+    const p = paves(r);
+    expect(p).toHaveLength(9);
+    expect(Math.min(...p.map((x) => x.sud))).toBe(r.sud);
+    expect(Math.max(...p.map((x) => x.est))).toBeCloseTo(r.est, 12);
+    // Le petit parcours de la fixture tient en un pavé.
+    expect(requetesPlan(parcours)).toHaveLength(1);
+    const plan = rectangleDuPlan(parcours);
+    expect(plan.nord - plan.sud).toBeGreaterThan(1.7 / 110.54);
+  });
+
+  it('télécharge pavé par pavé et fusionne sans doublons', async () => {
+    const vues: string[] = [];
+    const extrait = await telechargerPlan(
+      parcours,
+      async (requete) => {
+        vues.push(requete);
+        return { extrait: ALENTOURS, url: 'https://overpass.exemple/api/interpreter' };
+      },
+      () => {},
+      { demiCoteM: 2000, pauseMs: 0 },
+    );
+    expect(vues).toHaveLength(4);
+    expect(extrait.elements.map((e) => e.id)).toEqual([1, 2, 5, 7]);
+    expect(fusionnerExtraits([extrait, extrait]).elements).toHaveLength(4);
   });
 });
 
@@ -102,13 +176,18 @@ describe('extrait simplifié des alentours', () => {
   });
 });
 
-describe('couche des alentours', () => {
-  it('est une couche de tuiles à part, en cases de 2 × 2 tuiles, absente des couches de la bande', () => {
+describe('couche du plan de la ville', () => {
+  it('est une couche de tuiles à part, en cases de 2 × 2 tuiles (petit plan) et grands blocs, avec les teintes des îlots', () => {
     const couche = carte.layers.find((c) => c.name === COUCHE_ALENTOURS) as CoucheTuilesTiled;
     expect(couche.type).toBe('tilelayer');
-    expect(couche.properties).toEqual([{ name: 'tuiles_par_case', type: 'int', value: 2 }]);
+    expect(couche.properties).toEqual([
+      { name: 'tuiles_par_case', type: 'int', value: 2 },
+      { name: 'teintes_ilots', type: 'string', value: TEINTES_ILOTS.join(',') },
+    ]);
+    expect(couche.chunks.every((b) => b.width === 256 && b.height === 256)).toBe(true);
     expect(decor.nomsCouches).not.toContain(COUCHE_ALENTOURS);
     expect(decor.alentours?.tuilesParCase).toBe(2);
+    expect(decor.alentours?.teintesIlots).toEqual(TEINTES_ILOTS);
     // Elle déborde de l'emprise de la bande (blocs aux coordonnées négatives).
     expect(decor.alentours!.x).toBeLessThan(0);
     expect(decor.alentours!.y).toBeLessThan(0);
@@ -124,18 +203,39 @@ describe('couche des alentours', () => {
   it('dessine rues, verts et pâtés de maisons hors de la bande, sans bâtiment ni chemin', () => {
     expect(caseEn(300, 0)).toBe(TUILES.chaussee);
     expect(caseEn(300, -300)).toBe(TUILES.chaussee);
-    // Trottoirs de part et d'autre de la chaussée (rue de 12 m en tout).
-    const travers = Array.from({ length: 25 }, (_, i) => caseEn(300, -312 + i));
+    // Boulevard (primary) : trottoirs de part et d'autre de la chaussée.
+    const travers = Array.from({ length: 13 }, (_, i) => caseEn(300, -24 + 4 * i));
     expect(travers).toContain(TUILES.trottoir);
     expect(travers.indexOf(TUILES.trottoir)).toBeLessThan(travers.indexOf(TUILES.chaussee));
-    expect(caseEn(200, -320)).toBe(TUILES.pateDeMaisons); // chemin piéton ignoré
-    expect(caseEn(120, -365)).toBe(TUILES.pateDeMaisons); // bâtiment ignoré
+    expect(caseEn(200, -340)).toBe(TUILES.ilot); // chemin piéton ignoré
+    expect(caseEn(120, -365)).toBe(TUILES.ilot); // bâtiment ignoré
     expect(caseEn(200, 430)).toBe(TUILES.vert);
   });
 
-  it('s’arrête au rayon des alentours', () => {
-    expect(caseEn(300, -650)).toBe(TUILES.pateDeMaisons);
-    expect(caseEn(300, -760)).toBe(0);
-    expect(caseEn(300, -1000)).toBe(0);
+  it('couvre un carré homogène autour du parcours, sans halo, et s’arrête à son bord', () => {
+    const { demiCote } = empriseDuPlan([{ x: 0, y: 0 }, { x: 400, y: 0 }]);
+    // Même contenu près du parcours et loin de lui, dans les coins du carré compris.
+    expect(caseEn(200 + demiCote - 20, -demiCote + 20)).toBe(TUILES.ilot);
+    expect(caseEn(200 - demiCote + 20, demiCote - 20)).toBe(TUILES.ilot);
+    expect(caseEn(-150, -300)).toBe(TUILES.chaussee); // rue du Nord loin dans le carré
+    expect(caseEn(200, -demiCote - 30)).toBe(0);
+    expect(caseEn(300, -1000)).toBe(0); // rue Lointaine hors du plan
+  });
+});
+
+describe('lecture des cartes anciennes', () => {
+  it('lit encore une couche des alentours de version 2 (blocs de 32 cases de 4 m, sans teintes)', async () => {
+    const gids = new Uint32Array(32 * 32).fill(TUILES.pateDeMaisons);
+    const octets = Buffer.alloc(gids.length * 4);
+    gids.forEach((g, i) => octets.writeUInt32LE(g, i * 4));
+    const couche: CoucheTuilesTiled = {
+      ...(carte.layers.find((c) => c.name === COUCHE_ALENTOURS) as CoucheTuilesTiled),
+      properties: [{ name: 'tuiles_par_case', type: 'int', value: 2 }],
+      chunks: [-64, -32].map((x) => ({ x, y: -32, width: 32, height: 32, data: deflateSync(octets).toString('base64') })),
+    };
+    const ancienne = await lireDecor({ ...carte, layers: carte.layers.map((c) => (c.name === COUCHE_ALENTOURS ? couche : c)) });
+    expect(ancienne.alentours).toMatchObject({ tuilesParCase: 2, x: -64, y: -32, largeur: 64, hauteur: 32 });
+    expect(ancienne.alentours!.teintesIlots).toBeUndefined();
+    expect(ancienne.alentours!.gids[100]).toBe(TUILES.pateDeMaisons);
   });
 });

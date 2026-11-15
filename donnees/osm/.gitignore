@@ -1,0 +1,5 @@
+# Pavés du plan de la ville en cours de téléchargement (cache, régénérable)
+.paves-plan/
+# Extraits du plan de la ville de plus de 3 Mo : non versionnés, à régénérer (README.md)
+republique-nation/plan-overpass.json
+paris-2026-11-14/plan-overpass.json

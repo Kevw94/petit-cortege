@@ -78,8 +78,8 @@ describe('npm run decor', () => {
       'tilemap', '--parcours', PARCOURS, '--overpass', urlOverpass, '--sortie', 'decors/mini.json',
       '--alentours-osm', 'alentours.json', '--alentours', '300',
     );
-    // La bande, puis les alentours (sans bâtiments), enregistrés simplifiés.
-    expect(requetesRecues.slice(avant)).toEqual([expect.stringContaining('around:150'), expect.stringContaining('around:380')]);
+    // La bande, puis le plan de la ville (sans bâtiments, un pavé ici), enregistré simplifié.
+    expect(requetesRecues.slice(avant)).toEqual([expect.stringContaining('around:150'), expect.stringContaining('[bbox:')]);
     expect(requetesRecues.at(-1)).not.toContain('building');
     const alentours = await readFile(join(dossier, 'alentours.json'), 'utf8');
     expect(alentours).not.toContain('"building"');
