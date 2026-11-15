@@ -28,11 +28,11 @@ import { retirerParLeSoutien } from './retrait';
 export interface OptionsServeur {
   sql: Sql;
   horloge: Horloge;
-  /** Dossier où la tâche de publication écrit les fichiers (servi par le CDN en prod). */
+  /** Dossier où la tâche de publication écrit les fichiers (servi par le serveur web en prod). */
   dossierPublication: string;
   /** 0 = port libre choisi par le système. */
   port: number;
-  /** Servir aussi le dossier de publication (dev et tests ; en prod c'est le CDN). */
+  /** Servir aussi le dossier de publication (dev et tests ; en prod, le serveur web s'en charge). */
   servirPublication?: boolean;
   /** Preuve de travail, limites de débit, alerte (voir `antiTricheDepuisEnv`). */
   antiTriche: OptionsAntiTriche;
@@ -107,7 +107,7 @@ export function creerApp(
   });
 
   if (options.servirPublication ?? true) {
-    // Fichiers réécrits à chaque publication : cache court (en prod, règle équivalente sur le CDN).
+    // Fichiers réécrits à chaque publication : cache court (en prod, la même règle sur le serveur web).
     for (const chemin of [CHEMIN_LISTE_MANIFS, CHEMIN_RETRAITS]) {
       app.use(`${PREFIXE_PUBLICATION}${chemin}`, async (c, next) => {
         await next();

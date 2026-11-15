@@ -17,7 +17,7 @@ export interface ConfigPrincipale {
   port: number;
   /** Pause entre la fin d'un passage de publication et le début du suivant. */
   intervallePublicationMs: number;
-  /** Servir le dossier de publication sous /publie/ (origine du CDN) ; sinon le serveur web s'en charge. */
+  /** Servir le dossier de publication sous /publie/ ; sinon le serveur web s'en charge. */
   servirPublication: boolean;
   antiTriche: OptionsAntiTriche;
 }

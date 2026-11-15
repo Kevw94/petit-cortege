@@ -37,22 +37,48 @@ describe('pages légales et de confiance', () => {
     expect(lireRoute('#/manif/vie-privee')).toEqual({ page: 'manif', id: 'vie-privee' });
   });
 
-  it('les mentions légales donnent une adresse de signalement et nomment les hébergeurs', () => {
+  it('les mentions légales donnent une adresse de signalement et nomment l’hébergeur', () => {
     const html = pageLegale('mentions-legales');
-    expect(html).toContain('Hetzner');
-    expect(html).toContain('Bunny');
+    expect(html).toContain('OVH SAS');
+    expect(html).toContain('2 rue Kellermann, 59100 Roubaix, France');
+    expect(html).toContain('RCS Lille Métropole 424 761 419');
+    expect(html).toContain('Strasbourg (SBG), France');
+    expect(html).toContain('même serveur');
+    expect(html).toContain('mailto:contact@petit-cortege.fr');
+    expect(html).toContain('kevw94');
+    expect(html).toContain('href="https://github.com/Kevw94/petit-cortege"');
+    expect(html).toContain('licence MIT');
     expect(html).toMatch(/signalement/i);
   });
 
   it('la vie privée mentionne le Cloud Act, l’effacement au plus tard 1 h après la fin et l’absence de cookie', () => {
     const html = pageLegale('vie-privee');
     expect(html).toContain('Cloud Act');
+    expect(html).toContain('OVH');
+    expect(html).toContain('société française');
+    expect(html).toContain('même serveur');
+    expect(html).toContain('7 jours');
     expect(html).toContain('1 h après la fin');
     expect(html).toMatch(/cookie/i);
+    expect(html).toContain('n’enregistre aucune adresse IP');
   });
 
   it('la charte explique que la sélection des manifs ne dépend jamais de la cause', () => {
-    expect(pageLegale('charte')).toMatch(/comment on choisit les manifs/i);
+    const html = pageLegale('charte');
+    expect(html).toMatch(/comment on choisit les manifs/i);
+    expect(html).toContain('jamais sur leur cause');
+    expect(html).toContain(
+      'elle s’inscrit dans une grande journée nationale et que son parcours officiel a été rendu public par les organisateurs ou la préfecture',
+    );
+  });
+
+  it('aucune page légale ne cite Hetzner, Bunny, un CDN ou un marqueur à compléter', () => {
+    expect(MARQUEURS_A_COMPLETER).toEqual([]);
+    for (const html of pagesDuPiedDePage()) {
+      expect(html).not.toMatch(/Hetzner|Bunny|CDN/i);
+      expect(html).not.toContain('[À COMPLÉTER');
+      expect(html).toContain('15 novembre 2026');
+    }
   });
 
   it('les informations à compléter par le porteur viennent toutes du fichier centralisé', () => {

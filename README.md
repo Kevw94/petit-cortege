@@ -44,7 +44,9 @@ Variables utiles : `DATABASE_URL` (base de dev), `DATABASE_ADMIN_URL` (tests : u
 
 ## Mise en ligne
 
-Déploiement sur un VPS (Postgres + serveur Node + Caddy, sans Supabase : ADR 0005) : guide pas à pas dans [`docs/deploiement.md`](docs/deploiement.md), scripts et configuration dans [`deploiement/`](deploiement/).
+Le site en production, https://petit-cortege.fr, est un VPS OVH à Strasbourg (Ubuntu 24.04) : Postgres, serveur Node et Nginx. Les fichiers statiques et publiés partent de ce serveur, sans CDN (ADR 0005).
+
+Les scripts de [`deploiement/`](deploiement/) décrivent une autre installation, avec Caddy. Guide : [`docs/deploiement.md`](docs/deploiement.md).
 
 ## Tests
 

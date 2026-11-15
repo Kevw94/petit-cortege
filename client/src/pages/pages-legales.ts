@@ -35,6 +35,13 @@ function valeur(cle: keyof typeof A_COMPLETER): string {
   return texte.startsWith('[À COMPLÉTER') ? `<mark>${echapper(texte)}</mark>` : echapper(texte);
 }
 
+/** Comme `valeur`, avec chaque URL https rendue en lien. */
+function texteAvecLiens(cle: keyof typeof A_COMPLETER): string {
+  const texte: string = A_COMPLETER[cle];
+  if (texte.startsWith('[À COMPLÉTER')) return valeur(cle);
+  return echapper(texte).replace(/https:\/\/[^\s<)]+/g, (url) => `<a href="${url}">${url}</a>`);
+}
+
 function email(): string {
   const adresse: string = A_COMPLETER.emailSignalement;
   if (adresse.startsWith('[À COMPLÉTER')) return valeur('emailSignalement');
@@ -54,10 +61,10 @@ const CONTENUS: Record<IdPageLegale, () => string> = {
     <p>Contact : ${email()}</p>
 
     <h2>Hébergement</h2>
-    <p>Le serveur (base de données et réception des entrées dans les cortèges) est hébergé dans l’Union
-      européenne par Hetzner : ${valeur('coordonneesHetzner')}. Emplacement : ${valeur('centreDeDonnees')}.</p>
-    <p>Les fichiers du site et du cortège, identiques pour tout le monde, sont distribués depuis l’Union
-      européenne par le réseau de diffusion (CDN) Bunny : ${valeur('coordonneesBunny')}.</p>
+    <p>Le serveur (base de données et réception des entrées dans les cortèges) est hébergé en France
+      par OVH, une société française : ${valeur('coordonneesHebergeur')}. Centre de données :
+      ${valeur('centreDeDonnees')}.</p>
+    <p>Les fichiers du site et du cortège, identiques pour tout le monde, sont servis depuis ce même serveur.</p>
 
     <h2>Signaler un contenu</h2>
     <p>Pour signaler un contenu manifestement illicite (par exemple un intitulé de manif injurieux), une manif
@@ -70,7 +77,7 @@ const CONTENUS: Record<IdPageLegale, () => string> = {
     <p>Personnages et décor : packs Roguelike de Kenney (kenney.nl), dans le domaine public (CC0). Données
       cartographiques : © les contributeurs d’OpenStreetMap, sous licence ODbL ; les cartes dérivées
       d’OpenStreetMap utilisées par le jeu sont publiées sous la même licence.</p>
-    <p>Code : ${valeur('licenceCode')}.</p>`,
+    <p>Code : ${texteAvecLiens('licenceCode')}.</p>`,
 
   'vie-privee': () => `
     <p>Rejoindre un cortège peut révéler une opinion politique, une donnée que le RGPD protège
@@ -116,20 +123,21 @@ const CONTENUS: Record<IdPageLegale, () => string> = {
 
     <h2>Journaux techniques</h2>
     <ul>
-      <li>Le serveur web est configuré pour ne pas enregistrer d’adresse IP dans ses journaux.</li>
-      <li>Les journaux du CDN sont désactivés ou anonymisés.</li>
-      <li>L’identifiant d’une manif n’apparaît jamais dans une adresse demandée au serveur ou au CDN : il reste
-        après le <code>#</code> de l’adresse, que le navigateur n’envoie pas. Les fichiers du cortège sont les
-        mêmes pour tout le monde, quelle que soit la manif que tu regardes.</li>
+      <li>Le programme qui reçoit les entrées dans les cortèges n’enregistre aucune adresse IP dans ses
+        journaux.</li>
+      <li>L’identifiant d’une manif n’apparaît jamais dans une adresse demandée au serveur : il reste
+        après le <code>#</code> de l’adresse, que le navigateur n’envoie pas. Les fichiers du site et du
+        cortège sont servis depuis ce même serveur, et ils sont les mêmes pour tout le monde, quelle que
+        soit la manif que tu regardes.</li>
     </ul>
 
-    <h2>Hébergement dans l’Union européenne et Cloud Act</h2>
-    <p>Le serveur est hébergé par Hetzner et les fichiers sont distribués par Bunny, deux sociétés européennes,
-      dans l’Union européenne (voir ${lien('mentions-legales')}). Le Cloud Act américain permet aux autorités
-      des États-Unis d’exiger des données auprès des fournisseurs soumis à leur juridiction, même stockées en
-      Europe. À notre connaissance, nos fournisseurs n’y sont pas soumis, mais nous ne pouvons pas le garantir
-      absolument. C’est pourquoi la protection repose d’abord sur ce que nous ne stockons pas : même obtenues
-      par une autorité, nos données ne permettent pas de savoir qui a rejoint quelle manif.</p>
+    <h2>Hébergement en France et Cloud Act</h2>
+    <p>Le serveur est hébergé en France, à Strasbourg, par OVH, une société française (voir
+      ${lien('mentions-legales')}). Les fichiers du site et du cortège sont servis depuis ce même serveur.
+      Le Cloud Act américain permet aux autorités des États-Unis d’exiger des données auprès des fournisseurs
+      soumis à leur juridiction, même stockées en Europe. OVH est une société française ; nous n’affirmons pas
+      pour autant qu’elle échappe à cette loi. La protection repose d’abord sur ce que nous ne stockons pas :
+      même obtenues par une autorité, nos données ne permettent pas de savoir qui a rejoint quelle manif.</p>
 
     <h2>Base légale et responsable</h2>
     <p>Le responsable du traitement est l’éditeur du site, ${valeur('pseudo')}, joignable à ${email()}. Le
