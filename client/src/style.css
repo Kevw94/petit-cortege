@@ -263,15 +263,24 @@ a.retour:hover {
 
 .accueil-entete h1 {
   margin: 0;
-  font-size: 1.7rem;
-  line-height: 1.1;
+  font-size: 1.45rem;
+  line-height: 1.2;
+  text-wrap: balance;
 }
 
-.accroche {
-  margin: var(--espace-2) 0 0;
+.principe {
+  margin: var(--espace-3) 0 0;
   color: var(--encre-douce);
   font-size: 0.95rem;
   line-height: 1.45;
+}
+
+.principe p {
+  margin: 0;
+}
+
+.principe p + p {
+  margin-top: var(--espace-2);
 }
 
 .accueil .sous-titre {

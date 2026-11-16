@@ -26,6 +26,10 @@ function urlCanonique(source: string): string | undefined {
   return lien ? /\bhref="([^"]*)"/.exec(lien)?.[1] : undefined;
 }
 
+function titreDocument(source: string): string | undefined {
+  return /<title>([^<]*)<\/title>/.exec(source)?.[1];
+}
+
 /** Dimensions d'un PNG, lues dans son en-tête IHDR. */
 function dimensionsPng(octets: Buffer): { largeur: number; hauteur: number } {
   expect(octets.subarray(0, 8)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
@@ -45,9 +49,15 @@ describe('aperçu de lien', () => {
   it('déclare titre, description et image Open Graph et Twitter, génériques', () => {
     expect(meta.get('og:type')).toBe('website');
     expect(meta.get('og:site_name')).toBe('Petit Cortège');
-    expect(meta.get('og:title')).toBe('Petit Cortège');
-    expect(meta.get('og:description')).toBeTruthy();
+    expect(meta.get('og:title')).toBe('Petit Cortège : manifester en ligne, en pixel art');
+    expect(titreDocument(html)).toBe(meta.get('og:title'));
+    expect(meta.get('og:title')!.length).toBeLessThanOrEqual(60);
+    expect(meta.get('og:description')).toBe(
+      'Manifester en ligne, sans compte ni publicité : manif virtuelle en pixel art. Compose ta pancarte, regarde la foule se remplir et repars avec l’image finale.',
+    );
     expect(meta.get('description')).toBe(meta.get('og:description'));
+    expect(meta.get('description')!.length).toBeGreaterThanOrEqual(150);
+    expect(meta.get('description')!.length).toBeLessThanOrEqual(160);
     expect(meta.get('og:image:width')).toBe('1200');
     expect(meta.get('og:image:height')).toBe('630');
     expect(meta.get('og:image:type')).toBe('image/png');

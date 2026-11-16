@@ -36,6 +36,11 @@ const INTERVALLE_RAFRAICHISSEMENT_MS = 20_000;
 
 const publication = new Publication();
 const interfaceEl = document.querySelector<HTMLDivElement>('#interface')!;
+/**
+ * Texte d'accueil écrit dans index.html (visible avant le JavaScript). On le déplace
+ * tel quel : le réécrire ici le ferait diverger de ce que les robots lisent.
+ */
+const presentation = document.getElementById('presentation');
 /** Chaque navigation périme la vue précédente : ses chargements en cours n'écrivent plus rien. */
 const navigation = creerNavigation();
 /** Son synthétisé dans le navigateur (ADR 0008) : bouton visible sur toutes les vues. */
@@ -72,19 +77,27 @@ async function listeManifs() {
 
 const estTerminee = (manif: { fin: string }, maintenant = new Date()) => maintenant.getTime() >= Date.parse(manif.fin);
 
+/** Coque de l'accueil : le bandeau est ajouté au bloc statique, le texte n'est pas recopié. */
+function poserAccueil(): HTMLElement {
+  presentation?.remove();
+  interfaceEl.innerHTML = `<section class="accueil"></section>`;
+  const accueil = interfaceEl.querySelector<HTMLElement>('.accueil')!;
+  if (presentation) {
+    if (!presentation.querySelector('.banniere')) presentation.insertAdjacentHTML('afterbegin', banniereCortege());
+    accueil.append(presentation);
+  }
+  return accueil;
+}
+
 async function afficherListe(vue: Vue): Promise<void> {
-  const { manifs } = await vue.attendre(listeManifs());
-  const ouvertes = manifs.filter((m) => !estTerminee(m));
-  const terminees = manifs.filter((m) => estTerminee(m)).reverse(); // les plus récentes d'abord
-  const maintenant = new Date();
-  interfaceEl.innerHTML = `
-    <section class="accueil">
-      <header class="accueil-entete">
-        ${banniereCortege()}
-        <h1>Petit Cortège</h1>
-        <p class="accroche">Soutiens une manif à distance : ton avatar rejoint un cortège virtuel en pixel art
-          qui suit le parcours et l’horaire annoncés. Sans compte, sans publicité.</p>
-      </header>
+  const accueil = poserAccueil();
+  let suite = '';
+  try {
+    const { manifs } = await vue.attendre(listeManifs());
+    const ouvertes = manifs.filter((m) => !estTerminee(m));
+    const terminees = manifs.filter((m) => estTerminee(m)).reverse(); // les plus récentes d'abord
+    const maintenant = new Date();
+    suite = `
       <h2 class="sous-titre">Cortèges ouverts</h2>
       ${
         ouvertes.length > 0
@@ -96,8 +109,14 @@ async function afficherListe(vue: Vue): Promise<void> {
           ? ''
           : `<h2 class="sous-titre">Terminées : revoir l’image finale</h2>
       <ul class="liste-manifs">${terminees.map((m) => carteManif(m, maintenant)).join('')}</ul>`
-      }
-    </section>`;
+      }`;
+  } catch (erreur) {
+    if (erreur instanceof VuePerimee || !vue.courante) throw erreur;
+    suite = '<p class="vide">Impossible de charger le cortège. Réessaie dans un instant.</p>';
+    console.error(erreur);
+  }
+  if (!vue.courante) return;
+  accueil.insertAdjacentHTML('beforeend', suite);
   jouerScene(vue, 'accueil');
 }
 
@@ -452,6 +471,8 @@ function messageErreurRetrait(erreur: unknown): string {
 
 async function naviguer(): Promise<void> {
   const vue = navigation.nouvelleVue(); // arrête le jeu et les minuteries de la vue quittée
+  // Sorti avant le vidage : sinon innerHTML détruit le texte d'accueil servi dans index.html.
+  presentation?.remove();
   interfaceEl.innerHTML = '';
   const route = lireRoute(window.location.hash);
   try {
@@ -461,6 +482,7 @@ async function naviguer(): Promise<void> {
   } catch (erreur) {
     // Vue quittée pendant un chargement : la nouvelle vue s'affiche, rien à faire.
     if (erreur instanceof VuePerimee || !vue.courante) return;
+    presentation?.remove();
     interfaceEl.innerHTML = `<section class="carte"><p>Impossible de charger le cortège. Réessaie dans un instant.</p></section>`;
     console.error(erreur);
   }
