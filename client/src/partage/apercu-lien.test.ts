@@ -20,6 +20,12 @@ function balises(source: string): Map<string, string> {
   return trouvees;
 }
 
+/** URL canonique déclarée dans le `<head>`, s'il y en a une. */
+function urlCanonique(source: string): string | undefined {
+  const lien = /<link\b[^>]*\brel="canonical"[^>]*>/.exec(source)?.[0];
+  return lien ? /\bhref="([^"]*)"/.exec(lien)?.[1] : undefined;
+}
+
 /** Dimensions d'un PNG, lues dans son en-tête IHDR. */
 function dimensionsPng(octets: Buffer): { largeur: number; hauteur: number } {
   expect(octets.subarray(0, 8)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
@@ -46,6 +52,8 @@ describe('aperçu de lien', () => {
     expect(meta.get('og:image:height')).toBe('630');
     expect(meta.get('og:image:type')).toBe('image/png');
     expect(meta.get('og:image:alt')).toBeTruthy();
+    expect(meta.get('og:url')).toBe('https://petit-cortege.fr/');
+    expect(urlCanonique(html)).toBe('https://petit-cortege.fr/');
     expect(meta.get('twitter:card')).toBe('summary_large_image');
     expect(meta.get('twitter:title')).toBe(meta.get('og:title'));
     expect(meta.get('twitter:description')).toBe(meta.get('og:description'));
@@ -55,8 +63,10 @@ describe('aperçu de lien', () => {
 
   it("pointe une image unique de 1200 × 630, servie telle quelle par le site", () => {
     const image = meta.get('og:image')!;
-    expect(image).toMatch(/^\/[a-z0-9-]+\.png$/);
-    const { largeur, hauteur } = dimensionsPng(readFileSync(join(racineClient, 'public', image)));
+    expect(image).toBe('https://petit-cortege.fr/apercu.png');
+    const chemin = new URL(image).pathname;
+    expect(chemin).toMatch(/^\/[a-z0-9-]+\.png$/);
+    const { largeur, hauteur } = dimensionsPng(readFileSync(join(racineClient, 'public', chemin)));
     expect({ largeur, hauteur }).toEqual({ largeur: 1200, hauteur: 630 });
   });
 
@@ -65,7 +75,8 @@ describe('aperçu de lien', () => {
       if (!cle.startsWith('og:') && !cle.startsWith('twitter:')) continue;
       expect(valeur).not.toMatch(/manif\/|#/);
     }
-    expect(meta.has('og:url')).toBe(false);
+    expect(meta.get('og:url')).toBe('https://petit-cortege.fr/');
+    expect(urlCanonique(html)).toBe(meta.get('og:url'));
   });
 
   it("n'est jamais modifié par le code du client (identique pour toutes les pages du site)", () => {
