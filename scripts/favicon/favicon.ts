@@ -7,6 +7,9 @@
  *
  * Pur et déterministe : mêmes entrées → mêmes octets. Régénérer avec `npm run generer-favicon` ;
  * les sorties sont commitées dans `client/public/`.
+ *
+ * Le PNG 96 px (grille × 6, au plus proche voisin, sans lissage) est le carré multiple de 48
+ * que Google exige. Le `.ico` embarque les mêmes pixels en 16, 32 et 48.
  */
 import { COULEURS_PANCARTE, TEINTS } from '@petit-cortege/shared';
 import { ecrirePng, type ImageRGBA } from '../apparence/atlas';
@@ -15,6 +18,7 @@ import { ecrirePng, type ImageRGBA } from '../apparence/atlas';
 export const CHEMINS_FAVICON = {
   svg: 'client/public/favicon.svg',
   png32: 'client/public/favicon-32.png',
+  png96: 'client/public/favicon-96.png',
   ico: 'client/public/favicon.ico',
   apple: 'client/public/apple-touch-icon.png',
 } as const;
@@ -106,38 +110,70 @@ function rendre(taille: number, echelle: number, fond: number | null): ImageRGBA
   return { largeur: taille, hauteur: taille, donnees };
 }
 
-/** `.ico` à une image : en-tête ICONDIR + une entrée ICONDIRENTRY autour du PNG. */
-export function icoDepuisPng(png: Uint8Array, taille: number): Uint8Array {
-  const sortie = Buffer.alloc(22 + png.length);
+/** Tailles embarquées dans le `.ico`, de la plus petite à la plus grande. */
+const TAILLES_ICO = [16, 32, 48] as const;
+
+/** `.ico` multi-tailles : ICONDIR + une ICONDIRENTRY par PNG (16, 32, 48, …). */
+export function icoDepuisPng(images: readonly { png: Uint8Array; taille: number }[]): Uint8Array {
+  const entete = 6;
+  const entree = 16;
+  const debut = entete + entree * images.length;
+  const longueur = images.reduce((n, image) => n + image.png.length, debut);
+  const sortie = Buffer.alloc(longueur);
   sortie.writeUInt16LE(0, 0); // réservé
   sortie.writeUInt16LE(1, 2); // type : icône
-  sortie.writeUInt16LE(1, 4); // une image
-  sortie.writeUInt8(taille >= 256 ? 0 : taille, 6);
-  sortie.writeUInt8(taille >= 256 ? 0 : taille, 7);
-  sortie.writeUInt8(0, 8); // pas de palette
-  sortie.writeUInt8(0, 9);
-  sortie.writeUInt16LE(1, 10); // plans
-  sortie.writeUInt16LE(32, 12); // bits par pixel
-  sortie.writeUInt32LE(png.length, 14);
-  sortie.writeUInt32LE(22, 18); // décalage des données
-  sortie.set(png, 22);
+  sortie.writeUInt16LE(images.length, 4);
+  let decalage = debut;
+  for (let i = 0; i < images.length; i++) {
+    const image = images[i]!;
+    const o = entete + entree * i;
+    const octet = image.taille >= 256 ? 0 : image.taille;
+    sortie.writeUInt8(octet, o);
+    sortie.writeUInt8(octet, o + 1);
+    sortie.writeUInt8(0, o + 2); // pas de palette
+    sortie.writeUInt8(0, o + 3);
+    sortie.writeUInt16LE(1, o + 4); // plans
+    sortie.writeUInt16LE(32, o + 6); // bits par pixel
+    sortie.writeUInt32LE(image.png.length, o + 8);
+    sortie.writeUInt32LE(decalage, o + 12);
+    sortie.set(image.png, decalage);
+    decalage += image.png.length;
+  }
   return new Uint8Array(sortie);
 }
 
 export interface SortiesFavicon {
   svg: string;
   png32: Uint8Array;
+  png96: Uint8Array;
   ico: Uint8Array;
   apple: Uint8Array;
   /** Images décodables telles que publiées, pour les tests. */
   imagePng32: ImageRGBA;
+  imagePng96: ImageRGBA;
   imageApple: ImageRGBA;
 }
 
 export function genererFavicon(): SortiesFavicon {
   const imagePng32 = rendre(32, 2, null);
+  // 96 = 16 × 6 : chaque pixel source est un bloc 6×6, fond transparent. Multiple de 48.
+  const imagePng96 = rendre(96, 6, null);
   // Icône Apple : fond papier opaque, personnage × 8 (128 px) centré : marge de 26 px.
   const imageApple = rendre(TAILLE_APPLE, 8, COULEUR_PAPIER);
   const png32 = ecrirePng(imagePng32);
-  return { svg: svgFavicon(), png32, ico: icoDepuisPng(png32, 32), apple: ecrirePng(imageApple), imagePng32, imageApple };
+  const png96 = ecrirePng(imagePng96);
+  const imagesIco = TAILLES_ICO.map((taille) => ({
+    png: taille === 32 ? png32 : ecrirePng(rendre(taille, taille / TAILLE, null)),
+    taille,
+  }));
+  return {
+    svg: svgFavicon(),
+    png32,
+    png96,
+    ico: icoDepuisPng(imagesIco),
+    apple: ecrirePng(imageApple),
+    imagePng32,
+    imagePng96,
+    imageApple,
+  };
 }
