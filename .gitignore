@@ -3,3 +3,11 @@ node_modules/
 dist/
 /var/
 *.log
+
+# Variables lues au build du client (Vite). L'exemple est versionné.
+.env
+.env.*
+!.env.example
+client/.env
+client/.env.*
+!client/.env.example

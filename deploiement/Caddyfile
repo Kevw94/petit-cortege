@@ -48,20 +48,26 @@
 	#
 	# Content-Security-Policy, d'après ce que charge le client (lu dans client/src) :
 	#  - script-src 'self'  : un seul bundle, des modules du même domaine, aucun eval ;
+	#    plus https://stats.petit-cortege.fr : le script Umami (script.js), chargé seulement
+	#    en production si VITE_UMAMI_WEBSITE_ID est défini au build. Pas d'autre hôte ;
 	#  - worker-src 'self' blob: : workers de la preuve de travail ALTCHA (preuve-travail.ts,
 	#    fichier du build) ; blob: par prudence pour les workers créés par les bibliothèques ;
 	#  - style-src 'unsafe-inline' : l'interface est écrite en innerHTML avec des attributs
 	#    style (un style en ligne n'exécute pas de script) ;
 	#  - img-src data: blob: : textures Phaser/Three.js, image finale (canvas -> PNG, blob:) ;
-	#  - connect-src 'self' : /api, /publie, /decors, uniquement le même domaine ;
+	#  - connect-src 'self' : /api, /publie, /decors, le même domaine ;
+	#    plus https://stats.petit-cortege.fr : les envois de mesure (POST /api/send). Rien d'autre ;
 	#  - WebGL (vue 3D) et le Canvas ne dépendent pas de la CSP ;
-	#  - aucun son à ce jour : le client ne charge aucun fichier audio et n'appelle jamais
-	#    AudioContext (Phaser annonce « Web Audio » dans la console, sans en faire usage).
-	#    Un son produit par Web Audio, sans fichier, n'a besoin d'aucune directive CSP ; un
-	#    fichier audio serait couvert par default-src 'self' ;
-	#  - aucun service tiers : tout vient du même domaine (page vie privée).
+	#  - aucun fichier audio chargé : un son produit par Web Audio, sans fichier, n'a besoin
+	#    d'aucune directive CSP ; un fichier audio serait couvert par default-src 'self' ;
+	#  - Umami est auto-hébergé sur ce VPS (page vie privée), pas un service d'une autre
+	#    organisation. N'élargir aucune autre directive.
+	#
+	# Production (petit-cortege.fr) : le reverse proxy est Nginx, pas Caddy (ADR 0005).
+	# mettre-a-jour.sh recopie CE fichier vers /etc/caddy/Caddyfile. Il ne touche pas à
+	# Nginx. L'en-tête ci-dessous doit être recopié à la main dans le vhost Nginx du VPS.
 	header {
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		Content-Security-Policy "default-src 'self'; script-src 'self' https://stats.petit-cortege.fr; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://stats.petit-cortege.fr; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 		# HTTPS pour un an. Sans includeSubDomains ni preload : on ne s'engage pas pour d'autres sous-domaines.
 		Strict-Transport-Security "max-age=31536000"
 		X-Content-Type-Options "nosniff"

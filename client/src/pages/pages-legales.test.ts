@@ -51,7 +51,7 @@ describe('pages légales et de confiance', () => {
     expect(html).toMatch(/signalement/i);
   });
 
-  it('la vie privée mentionne le Cloud Act, l’effacement au plus tard 1 h après la fin et l’absence de cookie', () => {
+  it('la vie privée mentionne le Cloud Act, l’effacement au plus tard 1 h après la fin, et Umami sans cookie', () => {
     const html = pageLegale('vie-privee');
     expect(html).toContain('Cloud Act');
     expect(html).toContain('OVH');
@@ -61,6 +61,18 @@ describe('pages légales et de confiance', () => {
     expect(html).toContain('1 h après la fin');
     expect(html).toMatch(/cookie/i);
     expect(html).toContain('n’enregistre aucune adresse IP');
+    expect(html).toContain('Umami');
+    expect(html).toContain('stats.petit-cortege.fr');
+    expect(html).toContain('même serveur');
+    expect(html).toMatch(/ne dépose pas de cookie/);
+    expect(html).toMatch(/traceur publicitaire/);
+    expect(html).toMatch(/n’enregistre pas les adresses IP/);
+    expect(html).toMatch(/agrégés et anonymes/);
+    expect(html).toMatch(/exemptée de consentement/);
+    expect(html).toMatch(/recommandations de la CNIL pour la mesure d’audience/);
+    expect(html).toMatch(/Do Not Track/);
+    expect(html).not.toMatch(/ni mesure d’audience/);
+    expect(html).not.toMatch(/aucun suivi|sans traceur/i);
   });
 
   it('la charte explique que la sélection des manifs ne dépend jamais de la cause', () => {
@@ -77,7 +89,7 @@ describe('pages légales et de confiance', () => {
     for (const html of pagesDuPiedDePage()) {
       expect(html).not.toMatch(/Hetzner|Bunny|CDN/i);
       expect(html).not.toContain('[À COMPLÉTER');
-      expect(html).toContain('15 novembre 2026');
+      expect(html).toContain('16 novembre 2026');
     }
   });
 
