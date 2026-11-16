@@ -13,16 +13,19 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
     <!--
       Aperçu de lien : identique pour tout le site (ADR 0002). Les réseaux sociaux ne voient
-      pas le fragment (#/manif/…) : pas d'aperçu par manif, pas d'og:url, rien à modifier en
-      JavaScript. Image : npm run generer-apercu.
+      pas le fragment (#/manif/…) : pas d'aperçu par manif, rien à modifier en JavaScript.
+      L'URL canonique et og:url pointent uniquement la page d'accueil, sans identifiant de manif.
+      Image : npm run generer-apercu. Les réseaux attendent une URL absolue.
     -->
+    <link rel="canonical" href="https://petit-cortege.fr/" />
     <meta name="description" content="Rejoins un cortège virtuel en pixel art, sans compte et sans publicité, et repars avec l’image finale de la foule." />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://petit-cortege.fr/" />
     <meta property="og:site_name" content="Petit Cortège" />
     <meta property="og:title" content="Petit Cortège" />
     <meta property="og:description" content="Rejoins un cortège virtuel en pixel art, sans compte et sans publicité, et repars avec l’image finale de la foule." />
     <meta property="og:locale" content="fr_FR" />
-    <meta property="og:image" content="/apercu.png" />
+    <meta property="og:image" content="https://petit-cortege.fr/apercu.png" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -30,7 +33,7 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Petit Cortège" />
     <meta name="twitter:description" content="Rejoins un cortège virtuel en pixel art, sans compte et sans publicité, et repars avec l’image finale de la foule." />
-    <meta name="twitter:image" content="/apercu.png" />
+    <meta name="twitter:image" content="https://petit-cortege.fr/apercu.png" />
     <meta name="twitter:image:alt" content="Une rue en pixel art remplie d’une foule de petits personnages avec des pancartes colorées." />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
