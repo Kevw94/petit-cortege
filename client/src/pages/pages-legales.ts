@@ -87,10 +87,24 @@ const CONTENUS: Record<IdPageLegale, () => string> = {
     <h2>Ce que nous ne collectons pas</h2>
     <ul>
       <li>Ni compte, ni nom, ni adresse e-mail, ni numéro de téléphone, ni position géographique.</li>
-      <li>Ni cookie, ni traceur, ni mesure d’audience, ni publicité, ni script, police ou image chargés depuis
-        un service tiers.</li>
-      <li>Jamais ton adresse IP à côté d’une manif : ni en base de données, ni dans les journaux du serveur.</li>
+      <li>Ni cookie, ni traceur publicitaire, ni publicité, ni script, police ou image chargés depuis
+        un service d’une autre organisation.</li>
+      <li>Jamais ton adresse IP à côté d’une manif : ni en base de données, ni dans les journaux du serveur.
+        La mesure d’audience ci-dessous ne stocke pas non plus les adresses IP.</li>
     </ul>
+
+    <h2>Mesure d’audience</h2>
+    <p>Pour savoir combien de personnes ouvrent le site, et quelles pages, nous utilisons Umami, un outil de
+      mesure d’audience que nous hébergeons nous-mêmes sur le même serveur OVH, à Strasbourg
+      (stats.petit-cortege.fr). Il ne dépose pas de cookie, ne suit personne d’un site à l’autre et ne sert
+      aucune publicité. Il n’enregistre pas les adresses IP. Les chiffres sont agrégés et anonymes : ils ne
+      permettent pas de savoir qui a ouvert le site, ni qui a rejoint quelle manif.</p>
+    <p>La mesure voit quelle page est ouverte. Comme le site change de page dans le fragment de l’adresse
+      (<code>#/…</code>), ce fragment est inclus : par exemple une page légale, ou la page d’une manif. Il
+      n’est toujours pas envoyé dans les adresses demandées au serveur qui affiche le site. Seule la mesure,
+      chez nous, le reçoit, et sans l’adresse IP. Cette mesure sert uniquement à l’audience du site. Selon
+      les recommandations de la CNIL pour la mesure d’audience, elle est exemptée de consentement. Si ton
+      navigateur envoie le signal Do Not Track, elle ne s’applique pas à ta visite.</p>
 
     <h2>Ce qui est stocké sur notre serveur</h2>
     <ul>
@@ -219,7 +233,8 @@ const CONTENUS: Record<IdPageLegale, () => string> = {
       ne donne aucune information sur ce qui se passe sur le terrain.</p>
 
     <h2>Données personnelles</h2>
-    <p>Voir la page ${lien('vie-privee')}.</p>
+    <p>Voir la page ${lien('vie-privee')}. Elle décrit aussi la mesure d’audience, faite sans cookie sur notre
+      propre serveur.</p>
 
     <h2>Modification et droit applicable</h2>
     <p>Ces conditions peuvent évoluer ; la version en ligne fait foi. Elles sont soumises au droit français.</p>`,

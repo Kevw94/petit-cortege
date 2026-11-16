@@ -18,6 +18,7 @@ import { NOM_FICHIER_RAPPEL, rappelIcs } from './partage/rappel';
 import { Publication } from './publication';
 import { hacherJetonRetrait, nouveauJetonRetrait, RetraitRefuse, retirerMesAvatars } from './retrait';
 import { pageLegale, piedDePage } from './pages/pages-legales';
+import { brancherMesureAudience } from './mesure-audience';
 import { creerNavigation, VuePerimee, type Vue } from './navigation';
 import { lienManif, lireRoute } from './routage';
 import { SceneCortege, type DonneesScene } from './scene-cortege';
@@ -82,7 +83,7 @@ async function afficherListe(vue: Vue): Promise<void> {
         ${banniereCortege()}
         <h1>Petit Cortège</h1>
         <p class="accroche">Soutiens une manif à distance : ton avatar rejoint un cortège virtuel en pixel art
-          qui suit le parcours et l’horaire annoncés. Sans compte, sans traceur.</p>
+          qui suit le parcours et l’horaire annoncés. Sans compte, sans publicité.</p>
       </header>
       <h2 class="sous-titre">Cortèges ouverts</h2>
       ${
@@ -465,6 +466,11 @@ async function naviguer(): Promise<void> {
   }
 }
 
+const identifiantMesure = import.meta.env.VITE_UMAMI_WEBSITE_ID;
+brancherMesureAudience(document, window, {
+  production: import.meta.env.PROD,
+  identifiant: typeof identifiantMesure === 'string' ? identifiantMesure : undefined,
+});
 document.body.insertAdjacentHTML('beforeend', piedDePage());
 window.addEventListener('hashchange', () => void naviguer());
 void naviguer();

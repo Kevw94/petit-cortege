@@ -4,6 +4,8 @@ Supabase et un CDN journalisent les IP avec les URL demandées : une URL `/manif
 
 En production (15 novembre 2026), il n'y a pas de CDN : https://petit-cortege.fr est servi par le VPS OVH de Strasbourg. L'identifiant reste hors de toute URL, y compris pour les journaux de ce serveur.
 
+La mesure d'audience (Umami, auto-hébergée sur le même VPS ; page vie privée) reçoit le fragment dans le corps de sa requête de mesure, pas dans une URL demandée au serveur du site, et elle n'enregistre pas l'adresse IP. Cela ne change pas la règle : ne pas remettre l'identifiant de manif dans le chemin ni dans les paramètres de requête.
+
 Hébergement en région UE, rétention des journaux la plus courte possible, et mention honnête du Cloud Act dans la page vie privée. Un hébergement maison sans journaux reste possible plus tard.
 
 Ne pas « corriger » vers un routage par chemin ou des paramètres de requête.

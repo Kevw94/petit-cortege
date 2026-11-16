@@ -40,13 +40,13 @@ npm run build      # build du client
 
 Puis ouvrir http://localhost:5173/#/manif/demo-republique-nation (départ 2 min après le lancement).
 
-Variables utiles : `DATABASE_URL` (base de dev), `DATABASE_ADMIN_URL` (tests : une base jetable par fichier de test y est créée), `PORT_SERVEUR`, `PORT_CLIENT`, `DOSSIER_PUBLICATION`.
+Variables utiles : `DATABASE_URL` (base de dev), `DATABASE_ADMIN_URL` (tests : une base jetable par fichier de test y est créée), `PORT_SERVEUR`, `PORT_CLIENT`, `DOSSIER_PUBLICATION`. `VITE_UMAMI_WEBSITE_ID` (UUID Umami, lu au build du client seulement) active la mesure d'audience ; absente, aucun script n'est chargé. Voir `client/.env.example`.
 
 ## Mise en ligne
 
-Le site en production, https://petit-cortege.fr, est un VPS OVH à Strasbourg (Ubuntu 24.04) : Postgres, serveur Node et Nginx. Les fichiers statiques et publiés partent de ce serveur, sans CDN (ADR 0005).
+Le site en production, https://petit-cortege.fr, est un VPS OVH à Strasbourg (Ubuntu 24.04) : Postgres, serveur Node et Nginx. Les fichiers statiques et publiés partent de ce serveur, sans CDN (ADR 0005). La mesure d'audience est Umami, sur le même serveur (`stats.petit-cortege.fr`) : elle se branche au build via `VITE_UMAMI_WEBSITE_ID`.
 
-Les scripts de [`deploiement/`](deploiement/) décrivent une autre installation, avec Caddy. Guide : [`docs/deploiement.md`](docs/deploiement.md).
+Les scripts de [`deploiement/`](deploiement/) décrivent une autre installation, avec Caddy. Guide : [`docs/deploiement.md`](docs/deploiement.md). La configuration Nginx en production, dont l'en-tête Content-Security-Policy, n'est pas dans ce dépôt : un changement de CSP se recopie à la main sur le VPS. Le `Caddyfile` du dépôt, lui, est installé par les scripts.
 
 ## Tests
 

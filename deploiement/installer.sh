@@ -241,6 +241,13 @@ fi
 
 info "Installation des dépendances (npm ci) et construction du client (npm run build)"
 npm ci --ignore-scripts   # pas de scripts d'installation des dépendances exécutés en root (build et serveur fonctionnent sans, vérifié)
+# VITE_UMAMI_WEBSITE_ID est lue par Vite au build, pas par le serveur. Si elle est dans
+# /etc/petit-cortege.env, on la transmet. Sinon Vite la prend dans client/.env.production.
+# Vide ou absente : le client ne charge pas le script de mesure.
+if [ -z "${VITE_UMAMI_WEBSITE_ID:-}" ] && [ -f "$FICHIER_ENV" ]; then
+  lu="$(grep -E '^VITE_UMAMI_WEBSITE_ID=' "$FICHIER_ENV" | head -n 1 | cut -d= -f2- || true)"
+  if [ -n "${lu}" ]; then export VITE_UMAMI_WEBSITE_ID="$lu"; fi
+fi
 npm run build
 [ -f client/dist/index.html ] || echec "client/dist/index.html absent après la construction."
 

@@ -240,7 +240,7 @@ Le fichier commité décrit https://petit-cortege.fr (OVH, Strasbourg, sans CDN)
 | `critereAmpleur` | Une phrase qui complète « nous ajoutons une manif quand… », sur l'**ampleur** et jamais sur la cause (ADR 0003). |
 | `dureeSauvegardes` | Mets **`7 jours`** : c'est `DUREE_JOURS=7` dans `deploiement/sauvegarde.sh` (voir l'étape 8). Si tu changes l'un, change l'autre. Pense que les sauvegardes peuvent contenir des hachages de jetons de retrait (ADR 0001). |
 | `licenceCode` | La licence du code et le lien vers le dépôt, ou « code non publié ». En production : licence MIT et https://github.com/Kevw94/petit-cortege. |
-| `dateMiseAJour` | Date du jour, ex. « 15 novembre 2026 ». |
+| `dateMiseAJour` | Date du jour, ex. « 16 novembre 2026 ». |
 
 ### Si l'hébergeur ou le lieu change
 
@@ -248,8 +248,9 @@ Le fichier commité décrit https://petit-cortege.fr (OVH, Strasbourg, sans CDN)
 
 1. **Mentions légales, « Hébergement »** : le nom OVH et « société française » sont dans la phrase, les coordonnées et le centre de données viennent de `a-completer.ts`.
 2. **Vie privée, « Journaux techniques »** : pas de CDN. Le programme qui reçoit les entrées n'enregistre pas d'adresse IP ; la page ne décrit pas les journaux d'accès de Nginx, absents de ce dépôt.
-3. **Vie privée, « Hébergement en France et Cloud Act »** : OVH, société française, fichiers sur le même serveur. Ne pas affirmer que l'hébergeur échappe au Cloud Act sans source vérifiable.
-4. **Test** : `client/src/pages/pages-legales.test.ts` vérifie OVH, Strasbourg, l'absence de « Hetzner », « Bunny » et « CDN ». Adapte-le, sinon `npm test` échouera. Lance ensuite :
+3. **Vie privée, « Mesure d’audience »** : Umami auto-hébergé sur le même serveur (`stats.petit-cortege.fr`), sans cookie et sans IP stockée. Si tu n'actives pas la mesure, réécris ce paragraphe : il décrit le site en production.
+4. **Vie privée, « Hébergement en France et Cloud Act »** : OVH, société française, fichiers sur le même serveur. Ne pas affirmer que l'hébergeur échappe au Cloud Act sans source vérifiable.
+5. **Test** : `client/src/pages/pages-legales.test.ts` vérifie OVH, Strasbourg, Umami, l'absence de « Hetzner », « Bunny » et « CDN ». Adapte-le, sinon `npm test` échouera. Lance ensuite :
 
 ```sh
 npm test -- client/src/pages
@@ -266,6 +267,23 @@ sudo DOMAINE=<ton-domaine> bash /opt/petit-cortege/deploiement/installer.sh
 ## 5. Construire, lancer, vérifier
 
 Si tu as relancé `installer.sh` à la fin de l'étape 4, tout est fait : il a lancé `npm ci --ignore-scripts` puis `npm run build` (résultat dans `/opt/petit-cortege/client/dist/` : `index.html`, `assets/` avec des noms à empreinte, `decors/`, `apercu.png`), puis démarré les services.
+
+### Mesure d'audience (Umami)
+
+Le client charge `https://stats.petit-cortege.fr/script.js` seulement pour un build de production, et seulement si la variable **`VITE_UMAMI_WEBSITE_ID`** contient l'UUID du site (réglages Umami). Elle est documentée dans [`client/.env.example`](../client/.env.example). Aucun identifiant n'est écrit dans le code. Si la variable est absente, vide, ou n'est pas un UUID, aucun script n'est inséré. Le script respecte le signal Do Not Track du navigateur.
+
+Vite lit la variable **au build**, pas au lancement du serveur. Deux endroits, le premier gagne s'il est rempli :
+
+1. Une ligne `VITE_UMAMI_WEBSITE_ID=<uuid>` dans `/etc/petit-cortege.env` (voir [`petit-cortege.env.exemple`](../deploiement/petit-cortege.env.exemple)). `installer.sh` et `mettre-a-jour.sh` la transmettent à `npm run build`. Le serveur Node l'ignore.
+2. Sinon, le fichier `/opt/petit-cortege/client/.env.production` (non versionné ; le `.gitignore` l'ignore). Vite le lit tout seul.
+
+Changer l'UUID, ou l'ajouter, demande une reconstruction (`mettre-a-jour.sh`), pas seulement `systemctl restart`. Le routage est un fragment (`#/…`) : le script Umami en place n'écoute que `history.pushState`, donc le client compte lui-même chaque `hashchange`. Le premier affichage est compté par le script, avec le fragment.
+
+**Content-Security-Policy.** Le `Caddyfile` autorise `https://stats.petit-cortege.fr` en `script-src` et en `connect-src`, et rien d'autre. `mettre-a-jour.sh` recopie ce fichier vers `/etc/caddy/Caddyfile` quand Caddy est le reverse proxy. **La production utilise Nginx** (ADR 0005) : cette configuration n'est pas dans le dépôt, et les scripts ne la modifient pas. Il faut recopier l'en-tête à la main dans le vhost Nginx, puis recharger Nginx (`sudo nginx -t` puis `sudo systemctl reload nginx`). Sans ça, le navigateur bloque le script. L'en-tête à poser :
+
+```
+Content-Security-Policy: default-src 'self'; script-src 'self' https://stats.petit-cortege.fr; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://stats.petit-cortege.fr; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+```
 
 Vérifie le service :
 
@@ -469,7 +487,7 @@ Une fois les modifications poussées sur le dépôt :
 sudo bash /opt/petit-cortege/deploiement/mettre-a-jour.sh
 ```
 
-Il refuse de continuer s'il y a des modifications locales non commitées, fait `git fetch` puis une fusion en avance rapide, vérifie qu'il ne reste pas de `[À COMPLÉTER`, lance `npm ci --ignore-scripts` et `npm run build`, met à jour le `Caddyfile` et les unités systemd si elles ont changé, puis redémarre le serveur. Il affiche l'ancienne version : **note-la**. La construction vide `client/dist` quelques secondes (le site répond 404 pendant ce temps) : évite de le lancer au plus fort d'une manif. Les migrations de la base s'appliquent toutes seules au démarrage du serveur, dans l'ordre, une fois chacune.
+Il refuse de continuer s'il y a des modifications locales non commitées, fait `git fetch` puis une fusion en avance rapide, vérifie qu'il ne reste pas de `[À COMPLÉTER`, lance `npm ci --ignore-scripts` et `npm run build` (en transmettant `VITE_UMAMI_WEBSITE_ID` si elle est dans `/etc/petit-cortege.env`), met à jour le `Caddyfile` et les unités systemd si elles ont changé, puis redémarre le serveur. Il n'édite pas la configuration Nginx de la production : si la CSP a changé, recopie l'en-tête à la main (étape 5). Il affiche l'ancienne version : **note-la**. La construction vide `client/dist` quelques secondes (le site répond 404 pendant ce temps) : évite de le lancer au plus fort d'une manif. Les migrations de la base s'appliquent toutes seules au démarrage du serveur, dans l'ordre, une fois chacune.
 
 ### Retour arrière
 
@@ -507,6 +525,8 @@ Changements pour l'option (a) :
 - [ ] Connexion SSH par clé seulement, pas de connexion directe en `root`, `ufw` actif (22, 80, 443), `ufw logging off`.
 - [ ] `sudo ss -tlnp` : Postgres et le serveur Node n'écoutent que sur `127.0.0.1`.
 - [ ] `a-completer.ts` sans `[À COMPLÉTER` sur les 4 pages légales (relues dans le navigateur) ; `pages-legales.ts` adapté si l'hébergeur n'est pas OVH à Strasbourg ou si un CDN est ajouté.
+- [ ] `VITE_UMAMI_WEBSITE_ID` défini avant le build si la mesure d'audience doit être active (sinon le script n'est pas chargé, alors que la page Vie privée la décrit).
+- [ ] En-tête CSP de Nginx (production) : `https://stats.petit-cortege.fr` en `script-src` et `connect-src`. Le `Caddyfile` du dépôt est mis à jour par les scripts ; la configuration Nginx du VPS se recopie à la main.
 - [ ] `dureeSauvegardes` du site = `DUREE_JOURS` de la sauvegarde (7 jours).
 - [ ] `systemctl status petit-cortege` : actif ; `curl https://<ton-domaine>/api/defi` répond ; `curl -si …/publie/manifs.json` : 200 et `cache-control: public, max-age=30`.
 - [ ] Le test de limite par IP avec `X-Forwarded-For` forgé (étape 5) donne des `429`.
@@ -526,4 +546,4 @@ Changements pour l'option (a) :
 | `Variable d'environnement … obligatoire` dans le journal | Une des quatre variables obligatoires manque dans `/etc/petit-cortege.env`. |
 | `authentification par mot de passe échouée` (Postgres) | Le mot de passe de `DATABASE_URL` ne correspond plus à celui du rôle : voir l'étape 3. |
 | Tous les soutiens reçoivent `429` | `PROXYS_DE_CONFIANCE` ne contient pas `127.0.0.1,::1`. |
-| La page est blanche, la console du navigateur parle de `Content-Security-Policy` | Un changement du client demande une directive de plus dans le `Caddyfile` (lis le commentaire au-dessus de l'en-tête). |
+| La page est blanche, la console du navigateur parle de `Content-Security-Policy` | Un changement du client demande une directive de plus dans le `Caddyfile` (lis le commentaire au-dessus de l'en-tête). En production le reverse proxy est Nginx : recopier le même en-tête dans son vhost, les scripts ne le font pas. |
