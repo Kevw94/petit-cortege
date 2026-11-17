@@ -333,6 +333,45 @@ for i in $(seq 1 130); do curl -s -o /dev/null -w "%{http_code} " -H "X-Forwarde
 
 Si le certificat n'est pas émis : `sudo journalctl -u caddy -n 50 --no-pager` (cherche `obtaining certificate`), et vérifie le DNS (étape 1) et le pare-feu (ports 80 et 443).
 
+### Pages de manif et sitemap (Nginx, à la main)
+
+La production utilise Nginx, pas le `Caddyfile`. Les pages `/manif/<id>` et `/sitemap.xml` sont générées par Node (port 8787) à partir de la base : une manif créée avec `pc-moderation creer-manif` doit être en ligne sans reconstruire le client. Le `Caddyfile` du dépôt relaie déjà ces chemins. **Nginx ne le fait pas tout seul.** Tant que le bloc ci-dessous n'est pas dans le vhost, `/manif/…` répond 404 (ou le fichier statique) et `/sitemap.xml` reste celui du build, qui ne liste que l'accueil.
+
+À ajouter dans le vhost de petit-cortege.fr, **avant** le `location /` qui sert `client/dist` (un `location` exact et un préfixe sont prioritaires sur le fichier `sitemap.xml` copié au build). Puis `sudo nginx -t` et `sudo systemctl reload nginx`.
+
+`access_log off` est obligatoire sur ces deux blocs : l'adresse contient l'identifiant public de la manif (ville et date). Un journal d'accès l'associerait à l'IP du visiteur, ce que la page Vie privée exclut. Le programme Node n'écrit pas ces demandes.
+
+```nginx
+# Pages de manif et sitemap, générés par Node (ADR 0010). Pas de journal d'accès.
+location = /sitemap.xml {
+    access_log off;
+    proxy_pass http://127.0.0.1:8787;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+
+location /manif/ {
+    access_log off;
+    proxy_pass http://127.0.0.1:8787;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+Vérifier, une fois une manif créée :
+
+```sh
+curl -sI https://petit-cortege.fr/sitemap.xml
+```
+
+```sh
+curl -s https://petit-cortege.fr/manif/<id> | head -n 20
+```
+
+La première réponse est `200` et `content-type: application/xml`. La seconde contient un `<title>` au nom de la manif, sans JavaScript. Une manif retirée répond `410`.
+
 ## 6. Ajouter les manifs du jour
 
 Chaque manif est saisie à la main (ADR 0003 : sélection sur l'ampleur, jamais sur la cause). Deux chemins pour le parcours :
@@ -527,6 +566,7 @@ Changements pour l'option (a) :
 - [ ] `a-completer.ts` sans `[À COMPLÉTER` sur les 4 pages légales (relues dans le navigateur) ; `pages-legales.ts` adapté si l'hébergeur n'est pas OVH à Strasbourg ou si un CDN est ajouté.
 - [ ] `VITE_UMAMI_WEBSITE_ID` défini avant le build si la mesure d'audience doit être active (sinon le script n'est pas chargé, alors que la page Vie privée la décrit).
 - [ ] En-tête CSP de Nginx (production) : `https://stats.petit-cortege.fr` en `script-src` et `connect-src`. Le `Caddyfile` du dépôt est mis à jour par les scripts ; la configuration Nginx du VPS se recopie à la main.
+- [ ] Nginx relaie `/manif/` et `/sitemap.xml` vers Node, avec `access_log off` (étape 5, « Pages de manif et sitemap »). `curl -sI https://<ton-domaine>/sitemap.xml` répond 200 en XML ; une manif créée ensuite a sa page sans reconstruction.
 - [ ] `dureeSauvegardes` du site = `DUREE_JOURS` de la sauvegarde (7 jours).
 - [ ] `systemctl status petit-cortege` : actif ; `curl https://<ton-domaine>/api/defi` répond ; `curl -si …/publie/manifs.json` : 200 et `cache-control: public, max-age=30`.
 - [ ] Le test de limite par IP avec `X-Forwarded-For` forgé (étape 5) donne des `429`.

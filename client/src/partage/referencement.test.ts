@@ -1,7 +1,7 @@
 /**
- * Référencement de la page d'accueil : une seule URL réellement indexable
- * (le routage est un fragment, invisible des moteurs). Les fichiers sont dans
- * `public/` pour être copiés tels quels à la racine du build.
+ * Référencement statique de la page d'accueil. `robots.txt` et le sitemap de
+ * repli sont dans `public/` (copiés à la racine du build). Le sitemap servi en
+ * production est celui de Node, qui y ajoute les manifs (`/sitemap.xml` relayé).
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';

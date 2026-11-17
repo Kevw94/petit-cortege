@@ -39,7 +39,7 @@ function echapper(texte: string): string {
   return texte.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-/** Carte d'une manif dans la liste (lien vers sa vue, par fragment : ADR 0002). */
+/** Carte d'une manif dans la liste (lien vers sa page publique `/manif/<id>`). */
 export function carteManif(m: ManifPubliee, maintenant: Date): string {
   const { etat, texte } = etiquetteDepart(Date.parse(m.depart), Date.parse(m.fin), maintenant.getTime());
   const { jour, heure } = jourEtHeure(etat === 'terminee' ? m.fin : m.depart);

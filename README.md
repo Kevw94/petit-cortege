@@ -10,7 +10,7 @@ Un seul dépôt TypeScript, workspaces npm :
 |-----------|------|
 | `shared/` | Format v1 des fichiers publiés, horaire (2 km/h, fin), géométrie du parcours. Importé par tous. |
 | `server/` | Node + Hono + Postgres : tâche de publication (liste des manifs, entrées par minute), horloge injectable. |
-| `client/` | Phaser + Vite. Routage par fragment `#/manif/<id>` (ADR 0002). Le **Cortège** (`client/src/cortege/`) est une fonction pure. |
+| `client/` | Phaser + Vite. Page publique `/manif/<id>` (ADR 0010) ; les anciens liens `#/manif/<id>` marchent encore. Le **Cortège** (`client/src/cortege/`) est une fonction pure. |
 | `scripts/`| Outils de dev et de production (seed, lancement local ; plus tard OSM, palettes). |
 | `fixtures/publication/` | Fichiers publiés par les tests du serveur, relus par les tests du Cortège. Versionnés. |
 
@@ -38,7 +38,7 @@ npm run typecheck  # tsc strict dans chaque workspace
 npm run build      # build du client
 ```
 
-Puis ouvrir http://localhost:5173/#/manif/demo-republique-nation (départ 2 min après le lancement).
+Puis ouvrir http://localhost:5173/manif/demo-republique-nation (départ 2 min après le lancement).
 
 Variables utiles : `DATABASE_URL` (base de dev), `DATABASE_ADMIN_URL` (tests : une base jetable par fichier de test y est créée), `PORT_SERVEUR`, `PORT_CLIENT`, `DOSSIER_PUBLICATION`. `VITE_UMAMI_WEBSITE_ID` (UUID Umami, lu au build du client seulement) active la mesure d'audience ; absente, aucun script n'est chargé. Voir `client/.env.example`.
 
@@ -46,7 +46,7 @@ Variables utiles : `DATABASE_URL` (base de dev), `DATABASE_ADMIN_URL` (tests : u
 
 Le site en production, https://petit-cortege.fr, est un VPS OVH à Strasbourg (Ubuntu 24.04) : Postgres, serveur Node et Nginx. Les fichiers statiques et publiés partent de ce serveur, sans CDN (ADR 0005). La mesure d'audience est Umami, sur le même serveur (`stats.petit-cortege.fr`) : elle se branche au build via `VITE_UMAMI_WEBSITE_ID`.
 
-Les scripts de [`deploiement/`](deploiement/) décrivent une autre installation, avec Caddy. Guide : [`docs/deploiement.md`](docs/deploiement.md). La configuration Nginx en production, dont l'en-tête Content-Security-Policy, n'est pas dans ce dépôt : un changement de CSP se recopie à la main sur le VPS. Le `Caddyfile` du dépôt, lui, est installé par les scripts.
+Les scripts de [`deploiement/`](deploiement/) décrivent une autre installation, avec Caddy. Guide : [`docs/deploiement.md`](docs/deploiement.md). La configuration Nginx en production, dont l'en-tête Content-Security-Policy et le relais de `/manif/` et `/sitemap.xml` vers Node, n'est pas dans ce dépôt : elle se recopie à la main sur le VPS. Le `Caddyfile` du dépôt, lui, est installé par les scripts.
 
 ## Tests
 

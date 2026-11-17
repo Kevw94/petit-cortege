@@ -10,13 +10,16 @@ export interface ManifACreer {
   depart: Date;
   parcours: Parcours;
   sources: Source[];
+  /** Noms annoncés des étapes, du départ à l'arrivée. Vide si le tracé n'en porte pas. */
+  etapes?: string[];
 }
 
 export async function creerManif(sql: Sql, manif: ManifACreer): Promise<void> {
   await sql`
-    insert into manif (id, intitule, ville, ouverture, depart, parcours, sources)
+    insert into manif (id, intitule, ville, ouverture, depart, parcours, sources, etapes)
     values (${manif.id}, ${manif.intitule}, ${manif.ville}, ${manif.ouverture}, ${manif.depart},
-            ${sql.json(manif.parcours as never)}, ${sql.json(manif.sources as never)})`;
+            ${sql.json(manif.parcours as never)}, ${sql.json(manif.sources as never)},
+            ${sql.json((manif.etapes ?? []) as never)})`;
 }
 
 export interface AvatarPreRempli {

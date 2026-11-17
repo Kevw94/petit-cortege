@@ -99,12 +99,11 @@ const CONTENUS: Record<IdPageLegale, () => string> = {
       (stats.petit-cortege.fr). Il ne dépose pas de cookie, ne suit personne d’un site à l’autre et ne sert
       aucune publicité. Il n’enregistre pas les adresses IP. Les chiffres sont agrégés et anonymes : ils ne
       permettent pas de savoir qui a ouvert le site, ni qui a rejoint quelle manif.</p>
-    <p>La mesure voit quelle page est ouverte. Comme le site change de page dans le fragment de l’adresse
-      (<code>#/…</code>), ce fragment est inclus : par exemple une page légale, ou la page d’une manif. Il
-      n’est toujours pas envoyé dans les adresses demandées au serveur qui affiche le site. Seule la mesure,
-      chez nous, le reçoit, et sans l’adresse IP. Cette mesure sert uniquement à l’audience du site. Selon
-      les recommandations de la CNIL pour la mesure d’audience, elle est exemptée de consentement. Si ton
-      navigateur envoie le signal Do Not Track, elle ne s’applique pas à ta visite.</p>
+    <p>La mesure voit quelle page est ouverte. Une page légale est dans le fragment de l’adresse
+      (<code>#/…</code>). La page d’une manif est une adresse <code>/manif/…</code> (la ville et la date,
+      déjà publiques) : la demander indique quelle page publique est ouverte. La mesure reçoit cette adresse,
+      sans l’adresse IP. Cette mesure sert uniquement à l’audience du site. Selon les recommandations de la CNIL pour la mesure d’audience, elle est exemptée de consentement. Si ton navigateur envoie le signal
+      Do Not Track, elle ne s’applique pas à ta visite.</p>
 
     <h2>Ce qui est stocké sur notre serveur</h2>
     <ul>
@@ -138,11 +137,12 @@ const CONTENUS: Record<IdPageLegale, () => string> = {
     <h2>Journaux techniques</h2>
     <ul>
       <li>Le programme qui reçoit les entrées dans les cortèges n’enregistre aucune adresse IP dans ses
-        journaux.</li>
-      <li>L’identifiant d’une manif n’apparaît jamais dans une adresse demandée au serveur : il reste
-        après le <code>#</code> de l’adresse, que le navigateur n’envoie pas. Les fichiers du site et du
-        cortège sont servis depuis ce même serveur, et ils sont les mêmes pour tout le monde, quelle que
-        soit la manif que tu regardes.</li>
+        journaux. Il n’écrit pas non plus les adresses demandées.</li>
+      <li>La page publique d’une manif est <code>/manif/…</code> (la ville et la date). Le reverse proxy ne
+        conserve pas de journal d’accès sur ces adresses : sinon une adresse IP serait associée à une manif.
+        Rejoindre un cortège envoie l’identifiant dans le corps de la requête, pas dans une autre adresse.
+        Les fichiers du cortège (entrées, retraits) restent les mêmes pour tout le monde, sans identifiant
+        de manif dans leur chemin.</li>
     </ul>
 
     <h2>Hébergement en France et Cloud Act</h2>
@@ -244,7 +244,7 @@ const CONTENUS: Record<IdPageLegale, () => string> = {
 export function pageLegale(id: IdPageLegale): string {
   return `
     <article class="carte page-legale">
-      <a class="retour" href="#/">${icone('retour', 'icone icone-petite')}Toutes les manifs</a>
+      <a class="retour" href="/">${icone('retour', 'icone icone-petite')}Toutes les manifs</a>
       <h1>${TITRES[id]}</h1>
       ${CONTENUS[id]()}
       <p class="mise-a-jour">Dernière mise à jour : ${valeur('dateMiseAJour')}</p>

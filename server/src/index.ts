@@ -19,7 +19,7 @@ export {
   type NouveauDepart,
   type SaisieManif,
 } from './moderation';
-export { lireParcoursGeoJson } from './umap';
+export { lireEtapesAnnoncees, lireParcoursGeoJson } from './umap';
 export {
   configDepuisEnv,
   lancer,

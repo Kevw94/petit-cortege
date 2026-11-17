@@ -27,7 +27,7 @@ const minuterie = setInterval(() => {
   serveur.publier().catch((e: unknown) => console.error('Publication en échec :', e));
 }, INTERVALLE_PUBLICATION_MS);
 console.log(`Serveur : ${serveur.url} (fichiers publiés dans ${DOSSIER_PUBLICATION_DEV})`);
-console.log(`Manif de démo : http://localhost:${PORT_CLIENT}/#/manif/${ID_MANIF_DEMO}`);
+console.log(`Manif de démo : http://localhost:${PORT_CLIENT}/manif/${ID_MANIF_DEMO}`);
 
 const client = spawn('npm', ['run', 'dev', '--workspace=@petit-cortege/client'], { cwd: RACINE, stdio: 'inherit' });
 

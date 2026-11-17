@@ -22,6 +22,7 @@ import type { Limiteur } from './limite-debit';
 import { migrer, type Sql } from './base';
 import { entrer } from './entree';
 import type { Horloge } from './horloge';
+import { reponsePageManif, reponseSitemap } from './page-manif';
 import { publier } from './publication';
 import { retirerParLeSoutien } from './retrait';
 
@@ -97,6 +98,10 @@ export function creerApp(
     if (resultat.ok) antiTriche.compterEntreeAcceptee();
     return resultat.ok ? c.json(resultat.reponse, 201) : erreur(resultat.erreur);
   });
+
+  // Page publique et sitemap : lus dans la base, pas dans le build (ADR 0010).
+  app.get('/sitemap.xml', () => reponseSitemap(options.sql));
+  app.get('/manif/:id', (c) => reponsePageManif(options.sql, options.horloge, c.req.param('id')));
 
   // Retrait de son avatar : identifiant de l'avatar et jeton en clair dans le corps.
   app.post(CHEMIN_API_RETRAIT, async (c) => {
