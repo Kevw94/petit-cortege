@@ -11,11 +11,13 @@ const racineClient = join(import.meta.dirname, '..', '..');
 const html = readFileSync(join(racineClient, 'index.html'), 'utf8');
 const main = readFileSync(join(racineClient, 'src', 'main.ts'), 'utf8');
 
-const TITRE = 'Petit Cortège : manifester en ligne, en pixel art';
+const TITRE = 'Petit Cortège : manif virtuelle en pixel art';
+const DESCRIPTION =
+  'Soutenir une manif à distance : rejoins un cortège virtuel en pixel art qui suit le parcours réel, sans compte ni publicité, et repars avec l’image finale.';
 const PARAGRAPHES = [
-  'Quand tu ne peux pas être dans la rue, rejoins un cortège virtuel en pixel art. Il suit le parcours et l’horaire annoncés de la manif.',
-  'Compose ta pancarte : un slogan du catalogue, une couleur, une forme. La foule se remplit au fil des soutiens.',
-  'À la fin, repars avec l’image finale de la foule, à partager. Sans compte, sans publicité.',
+  'Tu rejoins une manif en pixel art : un cortège virtuel qui suit le parcours réel d’une manifestation, à l’horaire annoncé.',
+  'Sans compte ni publicité, tu composes ta pancarte pour soutenir une manif à distance. La foule se remplit, puis tu repars avec l’image finale.',
+  'Quand tu ne peux pas être sur place, ça permet de manifester sans se déplacer, et même de manifester de chez soi.',
 ];
 
 describe("texte visible de l'accueil", () => {
@@ -54,10 +56,9 @@ describe('données structurées', () => {
     expect(types).toEqual(['WebSite', 'WebApplication']);
     for (const entree of donnees['@graph']) {
       expect(entree.name).toBe('Petit Cortège');
+      expect(entree.alternateName).toBe('Manif virtuelle');
       expect(entree.url).toBe('https://petit-cortege.fr/');
-      expect(entree.description).toBe(
-        'Manifester en ligne, sans compte ni publicité : manif virtuelle en pixel art. Compose ta pancarte, regarde la foule se remplir et repars avec l’image finale.',
-      );
+      expect(entree.description).toBe(DESCRIPTION);
       expect(JSON.stringify(entree)).not.toMatch(/#\/|manif\//);
     }
     const application = donnees['@graph'][1]!;

@@ -49,11 +49,11 @@ describe('aperçu de lien', () => {
   it('déclare titre, description et image Open Graph et Twitter, génériques', () => {
     expect(meta.get('og:type')).toBe('website');
     expect(meta.get('og:site_name')).toBe('Petit Cortège');
-    expect(meta.get('og:title')).toBe('Petit Cortège : manifester en ligne, en pixel art');
+    expect(meta.get('og:title')).toBe('Petit Cortège : manif virtuelle en pixel art');
     expect(titreDocument(html)).toBe(meta.get('og:title'));
     expect(meta.get('og:title')!.length).toBeLessThanOrEqual(60);
     expect(meta.get('og:description')).toBe(
-      'Manifester en ligne, sans compte ni publicité : manif virtuelle en pixel art. Compose ta pancarte, regarde la foule se remplir et repars avec l’image finale.',
+      'Soutenir une manif à distance : rejoins un cortège virtuel en pixel art qui suit le parcours réel, sans compte ni publicité, et repars avec l’image finale.',
     );
     expect(meta.get('description')).toBe(meta.get('og:description'));
     expect(meta.get('description')!.length).toBeGreaterThanOrEqual(150);
