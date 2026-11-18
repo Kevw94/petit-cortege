@@ -3,8 +3,8 @@
  * l'heure de fin de la manif pour revenir voir l'image finale.
  *
  * Neutre par construction : titre fixe, description sans intitulé ni cause, ni lieu ni
- * catégorie, UID aléatoire. Le seul lien vers la manif est l'URL du site avec son fragment
- * (`#/manif/<id>`), que le navigateur n'envoie jamais au serveur (ADR 0002).
+ * catégorie, UID aléatoire. Le lien est la page publique de la manif (`/manif/<id>`,
+ * ADR 0010). Le fichier est fabriqué sur l'appareil.
  */
 
 export const TITRE_RAPPEL = 'Petit Cortège – voir la photo finale';
@@ -14,7 +14,7 @@ export const NOM_FICHIER_RAPPEL = 'petit-cortege.ics';
 export interface DemandeRappel {
   /** Heure de fin de la manif (l'image finale est prête). */
   fin: Date;
-  /** URL du site avec le fragment de la manif. */
+  /** URL de la page publique de la manif. */
   url: string;
   maintenant: Date;
 }

@@ -20,6 +20,7 @@ import { hacherJetonRetrait, nouveauJetonRetrait, RetraitRefuse, retirerMesAvata
 import { pageLegale, piedDePage } from './pages/pages-legales';
 import { brancherMesureAudience } from './mesure-audience';
 import { creerNavigation, VuePerimee, type Vue } from './navigation';
+import { lireManifIntegree } from './manif-integree';
 import { lienManif, lireRoute } from './routage';
 import { SceneCortege, type DonneesScene } from './scene-cortege';
 import type { VueCortege } from './vue-cortege';
@@ -53,7 +54,7 @@ function jouerScene(vue: Vue, scene: SceneSon): void {
   vue.surQuitter(() => son.scene('silence'));
 }
 
-const lienRetour = `<a class="retour" href="#/">${icone('retour', 'icone icone-petite')}Toutes les manifs</a>`;
+const lienRetour = `<a class="retour" href="/">${icone('retour', 'icone icone-petite')}Toutes les manifs</a>`;
 
 const heure = (iso: string) =>
   new Date(iso).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
@@ -120,8 +121,28 @@ async function afficherListe(vue: Vue): Promise<void> {
   jouerScene(vue, 'accueil');
 }
 
+/**
+ * La liste publiée fait foi tant que la manif y est (même départ pour tous).
+ * Sinon, la page embarque la manif : c'est le cas d'une manif passée, sortie
+ * de la liste après le délai de consultation.
+ */
+async function manifDeLaRoute(id: string, vue: Vue) {
+  let erreurListe: unknown;
+  try {
+    const publiee = (await vue.attendre(listeManifs())).manifs.find((m) => m.id === id);
+    if (publiee) return publiee;
+  } catch (erreur) {
+    if (erreur instanceof VuePerimee) throw erreur;
+    erreurListe = erreur;
+  }
+  const integree = lireManifIntegree(document.getElementById('donnees-manif')?.textContent, id);
+  if (integree) return integree;
+  // Pas de copie dans la page : une liste injoignable reste une erreur, pas un « introuvable ».
+  if (erreurListe) throw erreurListe;
+}
+
 async function afficherManif(id: string, vue: Vue): Promise<void> {
-  const manif = (await vue.attendre(listeManifs())).manifs.find((m) => m.id === id);
+  const manif = await manifDeLaRoute(id, vue);
   if (!manif) {
     interfaceEl.innerHTML = `<section class="carte"><p>Cette manif n'existe pas ou n'est plus publiée.</p>
       ${lienRetour}</section>`;
@@ -177,12 +198,12 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
   const modeEl = interfaceEl.querySelector<HTMLButtonElement>('[data-mode]')!;
   const chantEl = interfaceEl.querySelector<HTMLButtonElement>('[data-chant]')!;
 
-  // Rappel d'agenda (.ics) généré ici, au titre neutre, à l'heure de fin (ADR 0002 : seul
-  // le fragment désigne la manif, jamais envoyé au serveur).
+  // Rappel d'agenda (.ics) généré ici, au titre neutre, à l'heure de fin.
+  // L'URL est la page publique de la manif (`/manif/<id>`, ADR 0010).
   rappelEl.addEventListener('click', () => {
     const ics = rappelIcs({
       fin: new Date(donnees.manif.fin),
-      url: `${window.location.origin}${window.location.pathname}${lienManif(id)}`,
+      url: `${window.location.origin}${lienManif(id)}`,
       maintenant: new Date(),
     });
     telechargerDansLeNavigateur(new Blob([ics], { type: 'text/calendar;charset=utf-8' }), NOM_FICHIER_RAPPEL);
@@ -474,7 +495,7 @@ async function naviguer(): Promise<void> {
   // Sorti avant le vidage : sinon innerHTML détruit le texte d'accueil servi dans index.html.
   presentation?.remove();
   interfaceEl.innerHTML = '';
-  const route = lireRoute(window.location.hash);
+  const route = lireRoute(`${window.location.pathname}${window.location.hash}`);
   try {
     if (route.page === 'manif') await afficherManif(route.id, vue);
     else if (route.page === 'legale') interfaceEl.innerHTML = pageLegale(route.id); // en silence

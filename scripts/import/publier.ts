@@ -4,7 +4,15 @@
  * idempotente. Refuse une manif dont la vérification humaine (ADR 0003) n'est
  * pas remplie, ou dont le tracé ne correspond plus aux étapes du fichier.
  */
-import { ajouterManif, ErreurModeration, lireParcoursGeoJson, publier, type Horloge, type Sql } from '@petit-cortege/server';
+import {
+  ajouterManif,
+  ErreurModeration,
+  lireEtapesAnnoncees,
+  lireParcoursGeoJson,
+  publier,
+  type Horloge,
+  type Sql,
+} from '@petit-cortege/server';
 import { lireHeure } from '../moderation';
 import { empreinteTrace, type JourneeDeclaree, type ManifDeclaree } from './fichier';
 
@@ -72,6 +80,7 @@ export async function publierJournee(journee: JourneeDeclaree, deps: Dependances
         depart: lireHeure(manif.depart, 'départ'),
         ...(manif.ouverture ? { ouverture: lireHeure(manif.ouverture, 'ouverture') } : {}),
         parcours: lireParcoursGeoJson(trace),
+        etapes: lireEtapesAnnoncees(trace),
         sources: manif.sources,
       });
     } catch (e) {

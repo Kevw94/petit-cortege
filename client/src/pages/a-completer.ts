@@ -32,7 +32,7 @@ export const A_COMPLETER = {
   /** Licence du code source et lien vers le dépôt public. */
   licenceCode: 'licence MIT (https://github.com/Kevw94/petit-cortege)',
   /** Date de dernière mise à jour des pages. */
-  dateMiseAJour: '16 novembre 2026',
+  dateMiseAJour: '17 novembre 2026',
 } as const;
 
 /** Valeurs encore à remplir : chaque marqueur visible sur le site doit en faire partie. */

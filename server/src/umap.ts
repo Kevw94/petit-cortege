@@ -59,3 +59,35 @@ export function lireParcoursGeoJson(geojson: unknown): Parcours {
   }
   return { type: 'LineString', coordinates: coordonnees.map(lirePosition) };
 }
+
+/**
+ * Noms des étapes annoncées, s'ils sont dans les propriétés du GeoJSON
+ * (tracé calculé, ADR 0009). Un export uMap n'en a pas : liste vide.
+ * `demande` est le lieu tel qu'annoncé ; `libelle` est le repli (réponse du géocodeur).
+ */
+export function lireEtapesAnnoncees(geojson: unknown): string[] {
+  const proprietes = proprietesEtapes(geojson);
+  if (!proprietes || !Array.isArray(proprietes.etapes)) return [];
+  const noms: string[] = [];
+  for (const etape of proprietes.etapes) {
+    if (!estObjet(etape)) continue;
+    const demande = typeof etape.demande === 'string' ? etape.demande.trim() : '';
+    const libelle = typeof etape.libelle === 'string' ? etape.libelle.trim() : '';
+    const nom = demande || libelle;
+    if (nom) noms.push(nom);
+  }
+  return noms;
+}
+
+function proprietesEtapes(geojson: unknown): Objet | undefined {
+  if (!estObjet(geojson)) return;
+  if (geojson.type === 'Feature' && estObjet(geojson.properties)) return geojson.properties;
+  if (geojson.type === 'FeatureCollection' && Array.isArray(geojson.features)) {
+    for (const feature of geojson.features) {
+      if (estObjet(feature) && estObjet(feature.properties) && Array.isArray(feature.properties.etapes)) {
+        return feature.properties;
+      }
+    }
+  }
+  return;
+}

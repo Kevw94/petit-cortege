@@ -12,6 +12,7 @@ import {
   decalerDepart,
   ErreurModeration,
   horlogeSysteme,
+  lireEtapesAnnoncees,
   lireParcoursGeoJson,
   listerManifs,
   migrer,
@@ -270,7 +271,8 @@ async function creerManif(valeurs: Valeurs, deps: DependancesModeration): Promis
   const ouverture = typeof valeurs.ouverture === 'string' ? lireHeure(valeurs.ouverture, 'ouverture') : undefined;
   const sources = ((valeurs.source as string[] | undefined) ?? []).map(lireSource);
   if (sources.length === 0) throw new ErreurModeration('option --source obligatoire (au moins une source publique).');
-  const parcours = lireParcoursGeoJson(await lireJson(fichier));
+  const geojson = await lireJson(fichier);
+  const parcours = lireParcoursGeoJson(geojson);
   const id = typeof valeurs.id === 'string' ? valeurs.id : `${enIdentifiant(ville)}-${jourAParis(depart)}`;
 
   await ajouterManif(deps.sql, deps.horloge, {
@@ -281,6 +283,7 @@ async function creerManif(valeurs: Valeurs, deps: DependancesModeration): Promis
     ...(ouverture ? { ouverture } : {}),
     parcours,
     sources,
+    etapes: lireEtapesAnnoncees(geojson),
   });
   await publier(deps);
   deps.ecrire(`Manif « ${id} » créée et publiée.`);

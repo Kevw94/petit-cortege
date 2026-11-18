@@ -13,6 +13,9 @@ export default defineConfig({
       // Fichiers publiés : servis par le serveur en dev comme en production.
       '/publie': `http://127.0.0.1:${PORT_SERVEUR}`,
       '/api': `http://127.0.0.1:${PORT_SERVEUR}`,
+      // Page de manif et sitemap : HTML généré par Node, pas par Vite (ADR 0010).
+      '/manif': `http://127.0.0.1:${PORT_SERVEUR}`,
+      '/sitemap.xml': `http://127.0.0.1:${PORT_SERVEUR}`,
     },
   },
 });

@@ -59,7 +59,7 @@ export async function afficherImageFinale(conteneur: HTMLElement, depart: Donnee
   conteneur.innerHTML = `
     <div class="vue-image-finale">
       <section class="carte">
-        <a class="retour" href="#/">${icone('retour', 'icone icone-petite')}Toutes les manifs</a>
+        <a class="retour" href="/">${icone('retour', 'icone icone-petite')}Toutes les manifs</a>
         <h1>${echapper(donnees.manif.intitule)}</h1>
         <p data-etat></p>
         <p data-toi hidden>Ton avatar est mis en valeur, sur cet appareil seulement (et dans l’image si tu la

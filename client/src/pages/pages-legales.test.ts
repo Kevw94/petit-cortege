@@ -3,8 +3,8 @@ import { lireRoute } from '../routage';
 import { MARQUEURS_A_COMPLETER } from './a-completer';
 import { pageLegale, piedDePage } from './pages-legales';
 
-/** Liens `href="#/…"` d'un fragment HTML. */
-const liens = (html: string) => [...html.matchAll(/href="(#\/[^"]*)"/g)].map((m) => m[1]!);
+/** Liens `href="#/…"` ou `href="/#/…"` d'une page du site. */
+const liens = (html: string) => [...html.matchAll(/href="(\/?#\/[^"]*)"/g)].map((m) => m[1]!);
 
 /** Les pages atteintes depuis le pied de page, rendues en HTML. */
 function pagesDuPiedDePage(): string[] {
@@ -89,7 +89,7 @@ describe('pages légales et de confiance', () => {
     for (const html of pagesDuPiedDePage()) {
       expect(html).not.toMatch(/Hetzner|Bunny|CDN/i);
       expect(html).not.toContain('[À COMPLÉTER');
-      expect(html).toContain('16 novembre 2026');
+      expect(html).toContain('17 novembre 2026');
     }
   });
 

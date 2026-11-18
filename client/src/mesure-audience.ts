@@ -3,10 +3,10 @@
  *
  * Le script n'est chargé qu'en production, et seulement si l'identifiant de site
  * a été fourni au build (`VITE_UMAMI_WEBSITE_ID`). Aucun identifiant n'est écrit
- * dans le code. Le routage du site est un fragment (`#/manif/…`, ADR 0002) :
- * le script Umami déployé n'écoute que `history.pushState` et `replaceState`,
- * pas `hashchange`. Le premier affichage est compté par le script (l'adresse
- * inclut le fragment) ; chaque changement de fragment l'est ici.
+ * dans le code. Une page de manif est un chemin (`/manif/…`, ADR 0010) : le
+ * premier affichage est compté par le script. Les pages légales et les anciens
+ * liens restent des fragments (`#/…`) : le script Umami déployé n'écoute pas
+ * `hashchange`, donc chaque changement de fragment est compté ici.
  */
 
 const ID_SITE_UMAMI = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

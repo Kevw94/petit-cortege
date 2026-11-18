@@ -120,6 +120,18 @@
 		file_server
 	}
 
+	# --- Pages de manif et sitemap (générés par Node, ADR 0010) --------------------------
+	# Une manif est créée après le build : il n'y a pas de fichier statique à jour.
+	# Node lit la base et renvoie le HTML. Le script de l'application reste servi
+	# ci-dessous, depuis client/dist. Pas de journal d'accès en plus : le bloc `log`
+	# global exclut déjà http.log.access, et l'adresse contient l'identifiant public.
+	handle /sitemap.xml {
+		reverse_proxy 127.0.0.1:8787
+	}
+	handle /manif/* {
+		reverse_proxy 127.0.0.1:8787
+	}
+
 	# --- Client compilé (npm run build -> client/dist) ----------------------------------
 	handle {
 		root * /opt/petit-cortege/client/dist

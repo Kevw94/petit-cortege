@@ -21,6 +21,8 @@ export interface SaisieManif {
   ouverture?: Date;
   parcours: Parcours;
   sources: Source[];
+  /** Noms annoncés des étapes, du départ à l'arrivée. */
+  etapes?: string[];
 }
 
 const estUrlWeb = (url: string) => {
@@ -61,6 +63,7 @@ export async function ajouterManif(sql: Sql, horloge: Horloge, saisie: SaisieMan
       depart: saisie.depart,
       parcours: saisie.parcours,
       sources: saisie.sources.map((s) => ({ libelle: s.libelle.trim(), url: s.url })),
+      etapes: (saisie.etapes ?? []).map((etape) => etape.trim()).filter((etape) => etape !== ''),
     });
   } catch (e) {
     if ((e as { code?: string }).code === '23505') {
@@ -99,7 +102,7 @@ export async function decalerDepart(
       throw new ErreurModeration(`le départ ne peut pas précéder l'ouverture des entrées (${manif.ouverture.toISOString()}).`);
     }
     if (fin <= maintenant) throw new ErreurModeration('avec ce départ, la manif serait déjà terminée.');
-    await tx`update manif set depart = ${depart} where id = ${id}`;
+    await tx`update manif set depart = ${depart}, modifiee = ${maintenant} where id = ${id}`;
     return { depart, fin };
   });
 }

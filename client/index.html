@@ -13,9 +13,8 @@
     <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
     <!--
-      Aperçu de lien : identique pour tout le site (ADR 0002). Les réseaux sociaux ne voient
-      pas le fragment (#/manif/…) : pas d'aperçu par manif, rien à modifier en JavaScript.
-      L'URL canonique et og:url pointent uniquement la page d'accueil, sans identifiant de manif.
+      Aperçu de la page d'accueil. Les pages /manif/… sont produites par le serveur
+      (ADR 0010) : ne pas réécrire ces balises en JavaScript.
       Image : npm run generer-apercu. Les réseaux attendent une URL absolue.
     -->
     <link rel="canonical" href="https://petit-cortege.fr/" />
