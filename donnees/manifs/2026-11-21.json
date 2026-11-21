@@ -1,0 +1,32 @@
+{
+ "manifs": [
+  {
+   "id": "paris-2026-11-21",
+   "intitule": "Vie chère : République → Nation",
+   "ville": "Paris",
+   "depart": "2026-11-21T14:00",
+   "parcoursAnnonce": "Départ à 14 h place de la République, boulevard Voltaire tout droit, arrivée place de la Nation. Parcours unique validé par la préfecture de police pour l'intersyndicale Île-de-France, les organisations de jeunesse et le DAL ; les Gilets jaunes (acte VI) défilent sur le même parcours.",
+   "etapes": [
+    {
+     "adresse": "Place de la République, Paris"
+    },
+    {
+     "adresse": "Place Léon Blum, Paris"
+    },
+    {
+     "adresse": "Place de la Nation, Paris"
+    }
+   ],
+   "sources": [
+    {
+     "libelle": "Le Parisien – Manifestation du 21 novembre à Paris : un parcours République-Nation",
+     "url": "https://www.leparisien.fr/paris-75/manifestation-du-21-novembre-a-paris-un-parcours-republique-nation-pour-lacte-6-contre-la-vie-chere-20-11-2026-P7C5G4Q7K5DORGLGPKCRPI4IFE.php"
+    }
+   ],
+   "verifie": {
+    "declaree": "Parcours validé par la préfecture de police selon Le Parisien (20 novembre 2026, 12 h 48) : République, boulevard Voltaire, Nation.",
+    "sansInterdiction": "Aucune interdiction identifiée au 20 novembre 2026 ; à revérifier dans le recueil de la préfecture avant le départ."
+   }
+  }
+ ]
+}

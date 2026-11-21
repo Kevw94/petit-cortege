@@ -1,0 +1,43 @@
+{
+ "manifs": [
+  {
+   "id": "paris-2026-11-19",
+   "intitule": "Retraités : Montparnasse → Invalides",
+   "ville": "Paris",
+   "ouverture": "2026-11-19T11:00",
+   "depart": "2026-11-19T13:00",
+   "parcoursAnnonce": "Parcours : Montparnasse, Duroc, St François Xavier, Varennes, place Vauban (aux Invalides où les bus pourront stationner à proximité).",
+   "etapes": [
+    {
+     "adresse": "Place du 18 Juin 1940, Paris"
+    },
+    {
+     "rue": "Rue Duroc"
+    },
+    {
+     "adresse": "Saint-François-Xavier, Paris"
+    },
+    {
+     "rue": "Rue de Varenne"
+    },
+    {
+     "adresse": "Place Vauban, Paris"
+    }
+   ],
+   "sources": [
+    {
+     "libelle": "Sortir à Paris – Manifestation des retraités le 19 novembre",
+     "url": "https://www.sortiraparis.com/actualites/a-paris/articles/357558-manifestation-des-retraites-le-19-novembre-a-paris-le-parcours-prevu"
+    },
+    {
+     "libelle": "FSU – Manifestation nationale des retraité·es le 19 novembre",
+     "url": "https://www.fsu-emploi.fr/actus-secteur-retraite-es/i/98671691/manifestation-nationale-des-retraite-es-le-19-novembre-2026-11-h-paris"
+    }
+   ],
+   "verifie": {
+    "declaree": "Parcours annoncé par la FSU (organisation de la journée) et Sortir à Paris (6 novembre 2026) : Montparnasse, Duroc, Saint-François-Xavier, Varenne, place Vauban.",
+    "sansInterdiction": "Aucune interdiction identifiée au 18 novembre 2026 ; à revérifier dans le recueil de la préfecture avant le départ."
+   }
+  }
+ ]
+}

@@ -1,0 +1,26 @@
+{
+ "manifs": [
+  {
+   "id": "paris-2026-11-17",
+   "intitule": "Fonction publique et vie chère : Nation → Italie",
+   "ville": "Paris",
+   "depart": "2026-11-17T16:34",
+   "parcoursAnnonce": "Le cortège quittera la place de la Nation par le boulevard Diderot, avant de traverser le pont d’Austerlitz et de rejoindre la place d’Italie par le boulevard de l’Hôpital.",
+   "etapes": [
+    { "adresse": "Place de la Nation, Paris" },
+    { "rue": "Boulevard Diderot" },
+    { "adresse": "Pont d'Austerlitz, Paris" },
+    { "rue": "Boulevard de l'Hôpital" },
+    { "adresse": "Place d'Italie, Paris" }
+   ],
+   "sources": [
+    { "libelle": "Le Parisien", "url": "https://www.leparisien.fr/paris-75/manifestation-du-17-octobre-retrouvez-le-parcours-a-paris-au-depart-de-la-place-de-la-nation-16-11-2026-54YJRCNX7FG45LW35J4PUXY5TQ.php" },
+    { "libelle": "France 3 Paris Île-de-France", "url": "https://france3-regions.franceinfo.fr/paris-ile-de-france/paris/manifestation-du-17-novembre-a-paris-le-cortege-defile-dans-le-calme-vers-la-place-d-italie-3451284.html" }
+   ],
+   "verifie": {
+    "declaree": "Parcours validé par la préfecture de police (Le Parisien, France 3, 16-17 novembre 2026).",
+    "sansInterdiction": "Cortège en cours dans le calme selon la préfecture (France 3, 17 novembre 2026, 15 h)."
+   }
+  }
+ ]
+}

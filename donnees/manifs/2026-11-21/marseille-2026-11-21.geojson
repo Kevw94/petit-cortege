@@ -1,0 +1,387 @@
+{
+ "type": "Feature",
+ "properties": {
+  "manif": "marseille-2026-11-21",
+  "ville": "Marseille",
+  "parcoursAnnonce": "Le défilé, qui doit partir des Réformés vers 14h30, empruntera ensuite la Canebière, le cours Lieutaud et le boulevard Baille pour arriver jusqu'à la place Castellane.",
+  "empreinte": "d9d60ec6baffe244",
+  "etapes": [
+   {
+    "rang": 1,
+    "demande": "Les Réformés (haut de la Canebière, devant l'église Saint-Vincent-de-Paul) [5.3853, 43.299]",
+    "genre": "position",
+    "libelle": "Les Réformés (haut de la Canebière, devant l'église Saint-Vincent-de-Paul)",
+    "position": [
+     5.3853,
+     43.299
+    ]
+   },
+   {
+    "rang": 2,
+    "demande": "La Canebière, au carrefour du boulevard Garibaldi (accès au cours Lieutaud) [5.3811, 43.2976]",
+    "genre": "position",
+    "libelle": "La Canebière, au carrefour du boulevard Garibaldi (accès au cours Lieutaud)",
+    "position": [
+     5.3811,
+     43.2976
+    ]
+   },
+   {
+    "rang": 3,
+    "demande": "Cours Lieutaud",
+    "genre": "rue",
+    "libelle": "Cours lieutaud 13006 Marseille",
+    "position": [
+     5.383688,
+     43.290243
+    ],
+    "score": 0.975,
+    "service": "Géoplateforme IGN (géocodage)",
+    "entree": [
+     5.3814819,
+     43.2961053
+    ],
+    "sortie": [
+     5.3854837,
+     43.2864406
+    ]
+   },
+   {
+    "rang": 4,
+    "demande": "Boulevard Baille",
+    "genre": "rue",
+    "libelle": "Boulevard baille 13005 Marseille",
+    "position": [
+     5.394582,
+     43.288785
+    ],
+    "score": 0.975,
+    "service": "Géoplateforme IGN (géocodage)",
+    "entree": [
+     5.3854837,
+     43.2864406
+    ],
+    "sortie": [
+     5.3843334,
+     43.2860868
+    ]
+   },
+   {
+    "rang": 5,
+    "demande": "Place Castellane, Marseille",
+    "genre": "adresse",
+    "libelle": "Place castellane 13006 Marseille",
+    "position": [
+     5.383658,
+     43.285993
+    ],
+    "score": 0.967,
+    "service": "Géoplateforme IGN (géocodage)"
+   }
+  ],
+  "pointsDePassage": [
+   [
+    5.3853,
+    43.299
+   ],
+   [
+    5.3811,
+    43.2976
+   ],
+   [
+    5.3814819,
+    43.2961053
+   ],
+   [
+    5.3854837,
+    43.2864406
+   ],
+   [
+    5.3843334,
+    43.2860868
+   ],
+   [
+    5.383658,
+    43.285993
+   ]
+  ],
+  "zonesEvitees": [],
+  "itineraire": {
+   "service": "Géoplateforme IGN (itinéraire piéton, bdtopo-osrm)",
+   "versionDonnees": "2026-11-20",
+   "distanceAnnonceeM": 1819
+  },
+  "longueurM": 1819,
+  "rues": [
+   {
+    "nom": "R ADOLPHE THIERS",
+    "m": 8
+   },
+   {
+    "nom": "LA CANEBIERE",
+    "m": 381
+   },
+   {
+    "nom": "BD GARIBALDI",
+    "m": 171
+   },
+   {
+    "nom": "CRS LIEUTAUD",
+    "m": 1126
+   },
+   {
+    "nom": "BD BAILLE",
+    "m": 134
+   }
+  ],
+  "avertissements": [],
+  "calculeLe": "2026-11-21T09:29:37.854Z",
+  "attribution": [
+   "Adresses : Base Adresse Nationale, via la Géoplateforme IGN (Licence Ouverte 2.0)",
+   "Géométrie des rues annoncées : © les contributeurs d’OpenStreetMap (ODbL), via Overpass",
+   "Itinéraire : IGN – Géoplateforme, BD TOPO® (Licence Ouverte 2.0)"
+  ],
+  "licence": "Tracé calculé, dérivé de données sous Licence Ouverte 2.0 (IGN, BAN) et, le cas échéant, ODbL (OpenStreetMap)"
+ },
+ "geometry": {
+  "type": "LineString",
+  "coordinates": [
+   [
+    5.385303,
+    43.299
+   ],
+   [
+    5.385304,
+    43.299076
+   ],
+   [
+    5.385203,
+    43.299031
+   ],
+   [
+    5.385114,
+    43.298996
+   ],
+   [
+    5.384845,
+    43.298904
+   ],
+   [
+    5.384589,
+    43.298816
+   ],
+   [
+    5.384024,
+    43.298618
+   ],
+   [
+    5.38322,
+    43.298331
+   ],
+   [
+    5.382039,
+    43.297931
+   ],
+   [
+    5.381266,
+    43.29767
+   ],
+   [
+    5.381092,
+    43.297613
+   ],
+   [
+    5.381069,
+    43.297606
+   ],
+   [
+    5.381131,
+    43.297149
+   ],
+   [
+    5.381162,
+    43.297011
+   ],
+   [
+    5.381183,
+    43.296924
+   ],
+   [
+    5.381301,
+    43.296609
+   ],
+   [
+    5.381453,
+    43.296184
+   ],
+   [
+    5.38147,
+    43.296138
+   ],
+   [
+    5.38148,
+    43.296105
+   ],
+   [
+    5.381508,
+    43.296012
+   ],
+   [
+    5.3816,
+    43.295725
+   ],
+   [
+    5.381771,
+    43.295181
+   ],
+   [
+    5.381808,
+    43.295066
+   ],
+   [
+    5.381952,
+    43.294614
+   ],
+   [
+    5.382316,
+    43.293479
+   ],
+   [
+    5.382336,
+    43.293415
+   ],
+   [
+    5.382337,
+    43.29341
+   ],
+   [
+    5.382447,
+    43.293075
+   ],
+   [
+    5.38246,
+    43.293037
+   ],
+   [
+    5.382631,
+    43.292505
+   ],
+   [
+    5.382881,
+    43.291721
+   ],
+   [
+    5.383021,
+    43.291331
+   ],
+   [
+    5.383037,
+    43.291213
+   ],
+   [
+    5.383066,
+    43.291107
+   ],
+   [
+    5.383081,
+    43.291066
+   ],
+   [
+    5.383127,
+    43.290975
+   ],
+   [
+    5.38337,
+    43.290515
+   ],
+   [
+    5.383681,
+    43.289912
+   ],
+   [
+    5.383866,
+    43.289555
+   ],
+   [
+    5.384115,
+    43.289088
+   ],
+   [
+    5.384522,
+    43.288272
+   ],
+   [
+    5.384942,
+    43.287451
+   ],
+   [
+    5.385175,
+    43.287017
+   ],
+   [
+    5.385202,
+    43.286951
+   ],
+   [
+    5.385237,
+    43.28688
+   ],
+   [
+    5.385435,
+    43.286511
+   ],
+   [
+    5.385478,
+    43.286439
+   ],
+   [
+    5.385484,
+    43.28643
+   ],
+   [
+    5.38543,
+    43.286397
+   ],
+   [
+    5.385376,
+    43.286371
+   ],
+   [
+    5.384874,
+    43.286234
+   ],
+   [
+    5.384763,
+    43.286187
+   ],
+   [
+    5.384583,
+    43.286137
+   ],
+   [
+    5.384338,
+    43.286077
+   ],
+   [
+    5.384314,
+    43.286071
+   ],
+   [
+    5.384204,
+    43.286028
+   ],
+   [
+    5.384141,
+    43.285987
+   ],
+   [
+    5.3841,
+    43.285948
+   ],
+   [
+    5.384064,
+    43.285884
+   ]
+  ]
+ }
+}

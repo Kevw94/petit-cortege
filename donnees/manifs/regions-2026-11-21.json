@@ -1,0 +1,106 @@
+{
+ "$commentaire": "Manifs hors Paris du samedi 21 novembre 2026 (relevé du matin, sources publiques). Fichier séparé de 2026-11-21.json (Paris) pour ne pas toucher à la manif de Paris. Mode d'emploi : docs/import-manifs.md.",
+ "manifs": [
+  {
+   "id": "bordeaux-2026-11-21",
+   "intitule": "Vie chère : boucle Bourse → Gambetta → Bourse",
+   "ville": "Bordeaux",
+   "depart": "2026-11-21T13:30",
+   "parcoursAnnonce": "départ dès 13 h 30 de la place de la Bourse, puis les quais, le cours Victor-Hugo, la rue de Cursol, la place de la République, le cours d'Albret, la rue Nancel-Pénard, la place Gambetta, le cours Clemenceau, les allées de Tourny et la rue Esprit-des-Lois, avant le retour par les quais place de la Bourse.",
+   "etapes": [
+    {
+     "adresse": "Place de la Bourse, Bordeaux"
+    },
+    {
+     "rue": "Quai Richelieu"
+    },
+    {
+     "rue": "Cours Victor Hugo"
+    },
+    {
+     "rue": "Rue de Cursol"
+    },
+    {
+     "adresse": "Place de la République, Bordeaux"
+    },
+    {
+     "rue": "Cours d'Albret"
+    },
+    {
+     "rue": "Rue Docteur Charles Nancel Pénard"
+    },
+    {
+     "adresse": "Place Gambetta, Bordeaux"
+    },
+    {
+     "rue": "Cours Georges Clemenceau"
+    },
+    {
+     "rue": "Allées de Tourny"
+    },
+    {
+     "rue": "Rue Esprit des Lois"
+    },
+    {
+     "adresse": "Place de la Bourse, Bordeaux"
+    }
+   ],
+   "sources": [
+    {
+     "libelle": "Rue Sainte-Catherine – Manifestations à Bordeaux : parcours publié par TBM pour le 21 novembre",
+     "url": "https://ruesaintecatherine.fr/journal/manifestations-bordeaux-situation-rue-sainte-catherine/"
+    },
+    {
+     "libelle": "Bouger à Bordeaux – Manifestation du 21 novembre à Bordeaux : le parcours et les perturbations prévues sur le réseau TBM",
+     "url": "https://www.bougerabordeaux.com/actu/news/manifestation-21-novembre-2026-bordeaux-parcours-perturbations-tbm/"
+    }
+   ],
+   "verifie": {
+    "declaree": "Parcours publié par TBM le 20 novembre 2026 (même parcours que la manifestation intersyndicale déclarée du 17 novembre) ; pas de confirmation de la préfecture de la Gironde au 21 novembre au matin.",
+    "sansInterdiction": "Aucun arrêté ni communiqué de la préfecture de la Gironde pour le 21 novembre identifié au 21 novembre 2026 au matin ; à revérifier avant le départ."
+   }
+  },
+  {
+   "id": "marseille-2026-11-21",
+   "intitule": "Vie chère : Réformés → Castellane",
+   "ville": "Marseille",
+   "depart": "2026-11-21T14:30",
+   "parcoursAnnonce": "Le défilé, qui doit partir des Réformés vers 14h30, empruntera ensuite la Canebière, le cours Lieutaud et le boulevard Baille pour arriver jusqu'à la place Castellane.",
+   "etapes": [
+    {
+     "position": [
+      5.3853,
+      43.299
+     ],
+     "libelle": "Les Réformés (haut de la Canebière, devant l'église Saint-Vincent-de-Paul)"
+    },
+    {
+     "position": [
+      5.3811,
+      43.2976
+     ],
+     "libelle": "La Canebière, au carrefour du boulevard Garibaldi (accès au cours Lieutaud)"
+    },
+    {
+     "rue": "Cours Lieutaud"
+    },
+    {
+     "rue": "Boulevard Baille"
+    },
+    {
+     "adresse": "Place Castellane, Marseille"
+    }
+   ],
+   "sources": [
+    {
+     "libelle": "actu Marseille – Une nouvelle manifestation à Marseille contre « la vie chère » ce samedi 21 novembre : quel est son parcours ?",
+     "url": "https://actu.fr/provence-alpes-cote-d-azur/marseille_13055/une-nouvelle-manifestation-a-marseille-contre-la-vie-chere-ce-samedi-21-novembre-quel-est-son-parcours_65083085.html"
+    }
+   ],
+   "verifie": {
+    "declaree": "Manifestation intersyndicale déclarée, parcours communiqué par la préfecture de police des Bouches-du-Rhône (actu Marseille, 20 novembre 2026, 17 h 16).",
+    "sansInterdiction": "L'arrêté préfectoral du 20 novembre n'interdit que les manifestations non déclarées (et le port d'équipements de protection) ; le cortège intersyndical déclaré n'est pas concerné (actu Marseille, 20 novembre 2026) ; à revérifier avant le départ."
+   }
+  }
+ ]
+}

@@ -38,6 +38,11 @@ réponse d'Overpass réduite aux tags du décor (bande de 150 m autour du parcou
 14 novembre 2026) et rejouée sans réseau tant qu'elle existe. Les parcours sont dans `donnees/manifs/2026-11-14/`
 (docs/import-manifs.md).
 
+Manifs du 19 et du 21 novembre 2026 (`paris-2026-11-19/`, `paris-2026-11-21/`, `bordeaux-2026-11-21/`,
+`marseille-2026-11-21/`) : même procédure (`donnees/manifs/2026-11-19.json`, `2026-11-21.json` et
+`regions-2026-11-21.json`), extraits réduits par `npm run decor -- reduire` ; décors régénérés sans réseau identiques
+octet pour octet aux décors publiés. Le plan de Paris du 21 novembre (6 Mo) n'est pas versionné (`.gitignore`).
+
 ### Plan de la ville
 
 Le plan simplifié autour de la bande couvre un carré de plusieurs kilomètres (≈ 8 à 9 km de côté pour un défilé
