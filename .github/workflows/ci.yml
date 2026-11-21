@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verifier:
+    name: Typecheck, tests et build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    # Même Postgres que docker-compose.yml : les tests serveur et scripts créent une base jetable par fichier.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+
+    env:
+      DATABASE_ADMIN_URL: postgres://postgres:postgres@localhost:5432/postgres
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Un test serveur lance pg_dump : le client doit être au moins en version 16.
+      - name: Client Postgres
+        run: pg_dump --version
+
+      - run: npm run lint
+
+      - run: npm run typecheck
+
+      - run: npm test
+
+      - run: npm run build
+
+      # Les tests serveur réécrivent fixtures/publication/ : un changement non commité doit faire échouer la PR.
+      - name: Fixtures à jour
+        run: git diff --exit-code

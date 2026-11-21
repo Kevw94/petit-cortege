@@ -29,7 +29,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { coucheTuiles, RAYON_MIN_TUILES } from './carte';
-import { classer, COURS_D_EAU, EAUX, RUES, Terrain, VERTS, type Classement } from './classement';
+import { classer, COURS_D_EAU, EAUX, RUES, TAGS_DU_CLASSEMENT, Terrain, VERTS, type Classement } from './classement';
 import { simplifierLigne } from './geometrie';
 import { lireExtrait, type ElementOverpass, type ExtraitOverpass, type ObjetOsm } from './osm';
 import { Grille } from './raster';
@@ -248,28 +248,6 @@ function classerAuxAlentours(objet: ObjetOsm): Classement | null {
   return TYPES_RUES.includes(type) || objet.tags.place === 'square' ? classe : null;
 }
 
-/** Tags lus par le classement (le reste, noms compris, n'est pas gardé). */
-const TAGS_UTILES = [
-  'highway',
-  'area',
-  'place',
-  'width',
-  'lanes',
-  'sidewalk',
-  'footway',
-  'tunnel',
-  'covered',
-  'location',
-  'indoor',
-  'layer',
-  'waterway',
-  'natural',
-  'landuse',
-  'leisure',
-  'area:highway',
-  'type',
-];
-
 const arrondir = (v: number) => Math.round(v * DECIMALES) / DECIMALES;
 const geometrie = (points: Position[]) =>
   simplifierLigne(points, TOLERANCE_GEOMETRIE_M).map(([lon, lat]) => ({ lat: arrondir(lat), lon: arrondir(lon) }));
@@ -285,7 +263,9 @@ export function simplifierExtraitAlentours(extrait: ExtraitOverpass): ExtraitOve
     if (e.type === 'node') continue;
     const [objet] = lireExtrait({ elements: [e] });
     if (!objet || !classerAuxAlentours(objet)) continue;
-    const tags = Object.fromEntries(Object.entries(e.tags ?? {}).filter(([cle]) => TAGS_UTILES.includes(cle)));
+    const tags = Object.fromEntries(
+      Object.entries(e.tags ?? {}).filter(([cle]) => (TAGS_DU_CLASSEMENT as readonly string[]).includes(cle)),
+    ); // sans les noms
     if (e.type === 'way') {
       elements.push({ type: 'way', id: e.id, tags, geometry: geometrie(objet.ligne) });
     } else {

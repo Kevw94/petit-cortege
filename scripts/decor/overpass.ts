@@ -10,8 +10,10 @@ import type { Parcours } from '@petit-cortege/shared';
 export const RAYON_EXTRACTION_M = 150;
 
 /**
- * Requête Overpass QL : tout ce dont le décor a besoin, et aussi ce dont #13
- * aura besoin (bâtiments, ponts, places et leurs noms), pour rejouer sans réseau.
+ * Requête Overpass QL : tout ce dont le décor a besoin (bâtiments, places et leurs noms…),
+ * pour rejouer sans réseau. La réponse est réduite aux tags que le décor lit avant d'être
+ * enregistrée (`reduction.ts`) : des chemins `man_made` et `bridge`, seuls restent ceux qui
+ * portent un tag du décor ou un nom de surface.
  */
 export function requeteBande(parcours: Parcours, rayonM: number): string {
   const autour = `(around:${rayonM},${parcours.coordinates.map(([lon, lat]) => `${lat},${lon}`).join(',')})`;

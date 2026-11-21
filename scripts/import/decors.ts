@@ -17,6 +17,7 @@ import { inscrireDansIndex } from '../decor';
 import { DEMI_LARGEUR_PAR_DEFAUT_M, genererDecor } from '../decor/carte';
 import { lireExtrait, type ExtraitOverpass } from '../decor/osm';
 import { RAYON_EXTRACTION_M, requeteBande } from '../decor/overpass';
+import { reduireExtrait, texteExtrait } from '../decor/reduction';
 import { cacheDePaves, telechargerPlan, texteExtraitAlentours } from '../decor/alentours';
 import { echantillonner, nomDeVoie } from './controles';
 import type { ManifDeclaree } from './fichier';
@@ -69,9 +70,12 @@ export async function genererDecorManif(
       requeteBande(parcours, RAYON_EXTRACTION_M),
       deps.journal,
     );
-    texte = reponse.texte;
+    const reduit = reduireExtrait(reponse.extrait);
+    texte = texteExtrait(reduit);
     await deps.ecrireFichier(cheminExtrait, texte);
-    deps.journal(`  extrait de ${new URL(reponse.url).host} : ${reponse.extrait.elements.length} éléments OSM.`);
+    deps.journal(
+      `  extrait de ${new URL(reponse.url).host} : ${reponse.extrait.elements.length} éléments OSM, ${reduit.elements.length} gardés.`,
+    );
   } else {
     deps.journal(`  extrait OSM déjà enregistré (${relative(deps.racine, cheminExtrait)}), rejoué sans réseau.`);
   }
