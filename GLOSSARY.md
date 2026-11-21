@@ -24,11 +24,20 @@ L'arrière du cortège, où se range un soutien qui le rejoint en cours de route
 **Étape** :
 Moment clé d'une manif : départ, arrivée, prise de parole.
 
+**Place d'arrivée** :
+Le lieu au bout du parcours où le cortège se rassemble : chaque avatar y entre à son tour et rejoint sa place.
+
+**Fermeture des entrées** :
+Moment où la tête arrive au bout du parcours : on ne peut plus rejoindre le cortège.
+
+**Danse finale** :
+Les 10 dernières minutes d'une manif : tout le cortège est sur la place d'arrivée et danse, avant l'image finale.
+
 **Fin** :
-Moment où tout le cortège est considéré arrivé : les entrées se ferment et l'image finale devient disponible.
+Moment où l'image finale devient disponible : la queue est arrivée sur la place (au plus 1 h après la tête), puis 10 min de danse.
 
 **Ouverte** / **Terminée** :
-Une manif est ouverte jusqu'à sa fin, puis terminée.
+Une manif est ouverte jusqu'à sa fin, puis terminée. On ne peut la rejoindre que jusqu'à la fermeture des entrées.
 
 **Organisateur** :
 Personne ou collectif qui propose une manif et ses slogans. Distinct d'un soutien.

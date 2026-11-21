@@ -15,11 +15,10 @@ import { cibleDeSuivi } from '../camera';
 import { calculerCortege, COLONNES_FOULE, PAS_FOULE_M } from '../cortege/cortege';
 import { composerFoule } from '../cortege/foule';
 import {
-  allureDeMarche,
+  allureDuCortege,
   allureImmobile,
   marquerTronconsEnMarche,
   METRES_PAR_PX_ATLAS,
-  phaseDeMarche,
   phaseDeTampon,
   requeteMouvementReduit,
   sautDeMasse,
@@ -454,8 +453,8 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
     for (const a of foule.dessines) {
       const pied = versScene(a.sol);
       if (a.propre && propres.length >= PROPRES_MAX) continue;
-      // Pas de marche : sautillement continu et inclinaison ; la pancarte suit, un peu en retard.
-      allureDeMarche(allure, tempsS, phaseDeMarche(a.id), animer && a.enMarche);
+      // Pas de marche (ou danse finale) : sautillement et inclinaison ; la pancarte suit, un peu en retard.
+      allureDuCortege(allure, tempsS, a.id, { animer, danse: cortege.danse, enMarche: a.enMarche });
       const { sautM, inclinaisonRad, inclinaisonPancarteRad } = allure;
       const leverPancarte = HAUTEUR_TETE_M + sautM;
       if (a.propre) {

@@ -8,7 +8,7 @@
  * - l'avatar lui-même au plus tard 1 h après la fin (mise en valeur dans l'image finale).
  * Rien de tout cela n'est envoyé au serveur, sauf le jeton au moment du retrait.
  */
-import { MARGE_FIN_MS, type EntreePubliee } from '@petit-cortege/shared';
+import { HEURE_MS, type EntreePubliee } from '@petit-cortege/shared';
 
 const CLE = 'petit-cortege.avatars';
 
@@ -20,7 +20,7 @@ interface Enregistrement extends EntreePubliee {
 }
 
 /** Délai d'effacement après la fin (ADR 0001 : au plus tard 1 h). */
-const CONSERVATION_APRES_FIN_MS = MARGE_FIN_MS;
+const CONSERVATION_APRES_FIN_MS = HEURE_MS;
 
 function lire(): Enregistrement[] {
   try {

@@ -1,6 +1,6 @@
 import { randomBytes, randomInt } from 'node:crypto';
 import {
-  calculerFin,
+  arriveeDeLaTete,
   debutDeMinute,
   longueurParcours,
   MINUTE_MS,
@@ -37,13 +37,15 @@ export async function entrer(sql: Sql, horloge: Horloge, requete: RequeteEntree)
       select ouverture, depart, parcours from manif where id = ${requete.manif} and retiree is null`;
     // Une manif retirée par la modération est traitée comme inconnue.
     if (!manif || manif.ouverture > maintenant) return { ok: false, erreur: 'manif-inconnue' } as const;
-    const fin = calculerFin(manif.depart, longueurParcours(manif.parcours));
-    if (maintenant >= fin) return { ok: false, erreur: 'manif-terminee' } as const;
+    // Les entrées ferment à l'arrivée de la tête : la longueur du cortège, donc sa fin, est
+    // alors fixée (ADR 0004).
+    const fermeture = arriveeDeLaTete(manif.depart, longueurParcours(manif.parcours));
+    if (maintenant >= fermeture) return { ok: false, erreur: 'entrees-fermees' } as const;
 
     const [etat] = await tx<{ avant: Date }[]>`select avant from publication_etat`;
     const minute = Math.max(debutDeMinute(maintenant).getTime(), etat?.avant.getTime() ?? 0);
-    // Minute repoussée au-delà de la fin : elle ne serait jamais publiée.
-    if (minute >= fin.getTime()) return { ok: false, erreur: 'manif-terminee' } as const;
+    // Minute repoussée au-delà de la fermeture : l'entrée arriverait après la tête.
+    if (minute >= fermeture.getTime()) return { ok: false, erreur: 'entrees-fermees' } as const;
 
     const id = nouvelIdentifiant();
     const entree = new Date(minute + randomInt(MINUTE_MS / 1000) * 1000);

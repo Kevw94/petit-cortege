@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { LONGUEUR_TRONCON_M } from './foule';
 import {
+  allureDeDanse,
   allureDeMarche,
+  allureDuCortege,
   allureImmobile,
   CADENCE_PAS_PAR_S,
   DECALAGE_MAX_PX_ATLAS,
@@ -10,8 +12,10 @@ import {
   METRES_PAR_PX_ATLAS,
   phaseDeMarche,
   phaseDeTampon,
+  SAUT_DANSE_PX_ATLAS,
   SAUT_PX_ATLAS,
   sautDeMasse,
+  TEMPO_DANSE_PAR_S,
   tronconEnMarche,
 } from './marche';
 
@@ -138,5 +142,29 @@ describe('Marche : tronçons de foule en marche', () => {
     expect([...sortie].sort()).toEqual([-1, 0]);
     expect(tronconEnMarche(sortie, 110, repereM)).toBe(true);
     expect(tronconEnMarche(sortie, 70, repereM)).toBe(false);
+  });
+});
+
+describe('Danse finale', () => {
+  it('saute bien plus haut que la marche, en rythme', () => {
+    const sauts = Array.from({ length: 40 }, (_, i) => allureDeDanse(allureImmobile(), i * 0.05, 0).sautPxAtlas);
+    expect(Math.max(...sauts)).toBe(SAUT_DANSE_PX_ATLAS);
+    expect(Math.min(...sauts)).toBe(0);
+  });
+
+  it('la foule danse presque ensemble : au plus un quart de temps d’écart', () => {
+    // Deux danseurs aux phases opposées : même saut au même instant, à un quart de temps près.
+    const a = allureDeDanse(allureImmobile(), 1.0, 0);
+    const b = allureDeDanse(allureImmobile(), 1.0 - 0.25 / TEMPO_DANSE_PAR_S, 0.999_999);
+    expect(b.sautM).toBeCloseTo(a.sautM, 3);
+  });
+
+  it('danse pendant la danse finale, sauf si le mouvement réduit est demandé', () => {
+    const tempsS = 0.25 / TEMPO_DANSE_PAR_S; // au milieu d'un saut
+    const danse = allureDuCortege(allureImmobile(), tempsS, 'av-1', { animer: true, danse: true, enMarche: false });
+    const reduit = allureDuCortege(allureImmobile(), tempsS, 'av-1', { animer: false, danse: true, enMarche: false });
+
+    expect(danse.sautPxAtlas).toBeGreaterThan(0);
+    expect(reduit).toEqual(allureImmobile());
   });
 });

@@ -2,16 +2,53 @@
 export const VITESSE_KMH = 2;
 export const VITESSE_M_PAR_MS = (VITESSE_KMH * 1000) / 3_600_000;
 
-/** Marge ajoutée après l'arrivée théorique de la tête avant la fin (ADR 0004). */
-export const MARGE_FIN_MS = 60 * 60 * 1000;
+/** Écart entre deux avatars voisins du cortège : une tuile de 16 px ≈ 2 m (ADR 0006). */
+export const PAS_FOULE_M = 2;
+/** Nombre d'avatars de front sur la largeur de la rue. */
+export const COLONNES_FOULE = 5;
+
+/**
+ * Retard maximal de la queue sur la tête (ADR 0004) : au-delà, tout le cortège est
+ * considéré arrivé sur la place, même s'il est très long.
+ */
+export const RETARD_MAX_QUEUE_MS = 60 * 60 * 1000;
+/** Danse finale : tout le cortège danse sur la place avant la photo (image finale). */
+export const DUREE_DANSE_MS = 10 * 60 * 1000;
+
+/**
+ * Arrivée de la tête au bout du parcours (départ + longueur ÷ 2 km/h). C'est aussi la
+ * fermeture des entrées : ensuite, la longueur du cortège, donc sa fin, est connue.
+ */
+export function arriveeDeLaTete(depart: Date, longueurM: number): Date {
+  return new Date(depart.getTime() + longueurM / VITESSE_M_PAR_MS);
+}
+
+/**
+ * Retard de la queue sur la tête pour `soutiens` avatars : sa dernière rangée est à
+ * `rangées × 2 m` derrière la tête (5 de front), plafonné à `RETARD_MAX_QUEUE_MS`.
+ */
+export function retardDeLaQueueMs(soutiens: number): number {
+  const derniereRangee = Math.max(0, Math.ceil(soutiens / COLONNES_FOULE) - 1);
+  return Math.min(RETARD_MAX_QUEUE_MS, (derniereRangee * PAS_FOULE_M) / VITESSE_M_PAR_MS);
+}
+
+/**
+ * Fin = arrivée de la queue sur la place (plafonnée à 1 h après la tête) + danse finale.
+ * `soutiens` compte tous les avatars entrés, retirés compris : la fin ne recule pas sur un
+ * retrait. Les entrées fermant à l'arrivée de la tête, la fin est fixée dès ce moment ;
+ * avant, elle ne peut que reculer à mesure que des soutiens entrent.
+ */
+export function calculerFin(depart: Date, longueurM: number, soutiens: number): Date {
+  return new Date(arriveeDeLaTete(depart, longueurM).getTime() + retardDeLaQueueMs(soutiens) + DUREE_DANSE_MS);
+}
+
+/** Début de la danse finale : 10 min avant la fin, tout le cortège est sur la place. */
+export function debutDeLaDanse(fin: Date): Date {
+  return new Date(fin.getTime() - DUREE_DANSE_MS);
+}
 
 export const MINUTE_MS = 60_000;
 export const HEURE_MS = 60 * MINUTE_MS;
-
-/** Fin = départ + longueur ÷ 2 km/h + marge. */
-export function calculerFin(depart: Date, longueurM: number): Date {
-  return new Date(depart.getTime() + longueurM / VITESSE_M_PAR_MS + MARGE_FIN_MS);
-}
 
 /** Début de la minute UTC qui contient `instant`. */
 export function debutDeMinute(instant: Date): Date {

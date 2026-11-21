@@ -4,16 +4,17 @@ import { describe, expect, it } from 'vitest';
 import { lireListeManifs, type EntreePubliee, type EntreesMinute } from '@petit-cortege/shared';
 import { composerImageFinale, type AvatarImageFinale, type ImageFinale } from './image-finale';
 
-// Fichiers publiés par les tests du serveur (server/test/publication.test.ts) : manif-a, fin ≈ 15:30:01.
+// Fichiers publiés par les tests du serveur (server/test/publication.test.ts) : manif-a, tête
+// arrivée (entrées fermées) ≈ 14:30:01.
 const FIXTURES = join(import.meta.dirname, '../../../fixtures/publication/manif-pre-remplie');
 const manif = lireListeManifs(JSON.parse(readFileSync(join(FIXTURES, 'manifs.json'), 'utf8'))).manifs.find(
   (m) => m.id === 'manif-a',
 )!;
 
-/** `n` avatars de manif-a, entrés à partir de 14:05, au plus un par seconde pendant une heure (avant la fin). */
+/** `n` avatars de manif-a, entrés à partir de 14:05, au plus un par seconde pendant 20 min (entrées ouvertes). */
 function avatars(prefixe: string, n: number): EntreePubliee[] {
   const debut = Date.parse('2026-05-01T14:05:00Z') / 1000;
-  return Array.from({ length: n }, (_, i) => ({ a: `${prefixe}-${i}`, m: 'manif-a', t: debut + (i % 3600), ap: 0, pa: 0 }));
+  return Array.from({ length: n }, (_, i) => ({ a: `${prefixe}-${i}`, m: 'manif-a', t: debut + (i % 1200), ap: 0, pa: 0 }));
 }
 const fichier = (entrees: EntreePubliee[]): EntreesMinute => ({ v: 1, minute: '2026-05-01T14:05:00.000Z', entrees });
 

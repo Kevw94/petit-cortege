@@ -5,36 +5,47 @@
  *
  * Le cortège est un bloc qui avance derrière sa tête (horaire annoncé, 2 km/h) : les
  * avatars y sont rangés dans l'ordre d'entrée, et qui rejoint en cours de route se place
- * à la queue.
+ * à la queue. Au bout du parcours, chacun entre sur la place d'arrivée et va à sa place
+ * dans le rassemblement ; quand la queue est arrivée, tout le monde danse 10 min, puis
+ * vient la fin (image finale).
  */
-import { VITESSE_M_PAR_MS, type EntreePubliee, type FichierEntrees, type ManifPubliee } from '@petit-cortege/shared';
+import {
+  COLONNES_FOULE,
+  arriveeDeLaTete,
+  debutDeLaDanse,
+  PAS_FOULE_M,
+  VITESSE_M_PAR_MS,
+  type EntreePubliee,
+  type FichierEntrees,
+  type ManifPubliee,
+} from '@petit-cortege/shared';
 import { hacherIdentifiant } from './hachage';
 
 export type EtatManif = 'ouverte' | 'terminee';
 
-/** Écart entre deux avatars voisins : une tuile de 16 px ≈ 2 m (ADR 0006). */
-export const PAS_FOULE_M = 2;
-/** Nombre d'avatars de front sur la largeur de la rue. */
-export const COLONNES_FOULE = 5;
+export { COLONNES_FOULE, PAS_FOULE_M };
 
 export interface AvatarDuCortege {
   id: string;
   /**
    * Abscisse le long du parcours, en mètres depuis le départ. Négative pour les
-   * rangées qui sont encore derrière la ligne de départ.
+   * rangées qui sont encore derrière la ligne de départ ; au-delà de la longueur sur la
+   * place d'arrivée (dans le prolongement du dernier tronçon).
    */
   distanceM: number;
   /** Décalage latéral en mètres, perpendiculaire au parcours (positif à gauche du sens de marche). */
   decalageM: number;
+  /** Entré sur la place d'arrivée : hors de la rue, il ne compte pas dans la densité de la rue. */
+  surPlace: boolean;
   apparence: number;
   pancarte: number;
   /** Avatar du soutien sur cet appareil : mis en valeur, sur son écran seulement. */
   propre: boolean;
   /**
-   * L'avatar avance en ce moment : le cortège est parti (départ passé), sa tête n'est pas
-   * encore arrivée au bout du parcours, manif ouverte ; tout le cortège marche ou s'arrête
-   * d'un bloc. Sert seulement au rendu (animation de marche, `marche.ts`) ; n'entre pas
-   * dans le calcul des positions.
+   * L'avatar avance en ce moment : dans la rue après le départ, ou sur la place tant qu'il
+   * n'a pas rejoint sa place dans le rassemblement ; jamais pendant la danse ni une fois la
+   * manif terminée. Sert seulement au rendu (animation de marche, `marche.ts`) ; n'entre
+   * pas dans le calcul des positions.
    */
   enMarche: boolean;
 }
@@ -44,10 +55,15 @@ export interface Cortege {
   avatars: AvatarDuCortege[];
   /**
    * Position de la tête du cortège selon l'horaire annoncé : distance parcourue depuis le
-   * départ à 2 km/h, plafonnée à la longueur. Origine d'un repère qui avance avec le
-   * cortège, où la foule garde sa forme (sert à mesurer la densité, `composerFoule`).
+   * départ à 2 km/h (au-delà de la longueur une fois la tête sur la place). Origine d'un
+   * repère qui avance avec le cortège, où la foule de la rue garde sa forme (sert à
+   * mesurer la densité, `composerFoule`).
    */
   avanceeM: number;
+  /** On peut encore rejoindre : la tête n'est pas arrivée au bout du parcours. */
+  entreesOuvertes: boolean;
+  /** Danse finale : la queue est arrivée, tout le cortège danse sur la place jusqu'à la fin. */
+  danse: boolean;
 }
 
 export interface EntreesDuCortege {
@@ -97,11 +113,13 @@ export function calculerCortege({ manif, entrees, propres = [], retraits = [], m
   for (const e of propres) ajouter(e);
 
   // Tout le cortège avance d'un bloc derrière sa tête, qui suit l'horaire annoncé (ADR 0004) :
-  // partie au départ, à 2 km/h, arrêtée au bout du parcours. À la fin, tout le cortège est
-  // considéré arrivé : la tête y est déjà (fin = arrivée de la tête + marge).
+  // partie au départ, à 2 km/h. Au bout du parcours, chacun entre sur la place. La danse
+  // commence 10 min avant la fin (la queue est alors arrivée) : tout le monde est à sa place.
   const terminee = t >= Date.parse(manif.fin);
-  const avanceeM = Math.min(manif.longueurM, Math.max(0, t - depart) * VITESSE_M_PAR_MS);
-  const enMarche = !terminee && t > depart && avanceeM < manif.longueurM;
+  const danse = !terminee && t >= debutDeLaDanse(new Date(manif.fin)).getTime();
+  const entreesOuvertes = t < arriveeDeLaTete(new Date(depart), manif.longueurM).getTime();
+  const avanceeM = Math.max(0, t - depart) * VITESSE_M_PAR_MS;
+  const rassembles = terminee || danse;
 
   // Places dans l'ordre d'entrée : qui rejoint le cortège en cours de route se range juste
   // derrière la queue, pas au point de départ. Une place ne dépend que des entrées
@@ -111,19 +129,73 @@ export function calculerCortege({ manif, entrees, propres = [], retraits = [], m
   for (const entreeMs of [...groupes.keys()].sort((a, b) => a - b)) {
     const groupe = groupes.get(entreeMs)!.sort((a, b) => a.hachage - b.hachage || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     for (const marcheur of groupe) {
-      const { rang, colonne } = places.prendre(marcheur.hachage);
+      const { rang, colonne, case_ } = places.prendre(marcheur.hachage);
+      const decalageRueM = (colonne - (COLONNES_FOULE - 1) / 2) * PAS_FOULE_M;
+      const position = positionDansLaFoule(
+        rassembles ? Infinity : avanceeM - rang * PAS_FOULE_M,
+        decalageRueM,
+        placeSurLaPlace(case_),
+        manif.longueurM,
+      );
       avatars.push({
         id: marcheur.id,
-        distanceM: avanceeM - rang * PAS_FOULE_M,
-        decalageM: (colonne - (COLONNES_FOULE - 1) / 2) * PAS_FOULE_M,
+        ...position,
+        enMarche: position.enMarche && !rassembles && t > depart,
         apparence: marcheur.apparence,
         pancarte: marcheur.pancarte,
         propre: idsPropres.has(marcheur.id),
-        enMarche,
       });
     }
   }
-  return { etat: terminee ? 'terminee' : 'ouverte', avatars, avanceeM };
+  return { etat: terminee ? 'terminee' : 'ouverte', avatars, avanceeM, entreesOuvertes, danse };
+}
+
+/** Aire d'une place dans le rassemblement : un avatar par tuile de 2 m × 2 m. */
+export const AIRE_PLACE_RASSEMBLEMENT_M2 = PAS_FOULE_M * PAS_FOULE_M;
+/**
+ * Rayon maximal du rassemblement sur la place, en mètres. Au-delà de sa contenance, les
+ * avatars se serrent (plusieurs par tuile), sans déborder sur les rues alentour.
+ */
+export const RAYON_MAX_RASSEMBLEMENT_M = 60;
+const ANGLE_D_OR = Math.PI * (3 - Math.sqrt(5));
+const CONTENANCE_RASSEMBLEMENT = Math.floor(
+  (Math.PI * RAYON_MAX_RASSEMBLEMENT_M ** 2) / 2 / AIRE_PLACE_RASSEMBLEMENT_M2,
+);
+
+/**
+ * Place d'un avatar dans le rassemblement, par rapport au point d'arrivée : un demi-disque
+ * devant lui, dans le prolongement du parcours, rempli du centre vers le bord dans l'ordre
+ * d'arrivée (spirale de Vogel : chaque place couvre la même aire, sans rangées visibles).
+ * `avantM` le long du parcours (≥ 0), `cote` en décalage latéral.
+ */
+export function placeSurLaPlace(numero: number): { avantM: number; coteM: number } {
+  // Au-delà de la contenance, une nouvelle couche, décalée d'une demi-place.
+  const indice = (numero % CONTENANCE_RASSEMBLEMENT) + 0.5 * Math.floor(numero / CONTENANCE_RASSEMBLEMENT);
+  const rayon = Math.sqrt(((indice + 0.5) * 2 * AIRE_PLACE_RASSEMBLEMENT_M2) / Math.PI);
+  const angle = (((indice * ANGLE_D_OR) % (2 * Math.PI)) / 2) - Math.PI / 2;
+  return { avantM: rayon * Math.cos(angle), coteM: rayon * Math.sin(angle) };
+}
+
+/**
+ * Position d'un avatar à `rueM` mètres le long du parcours (sa position s'il était resté
+ * dans la rue) : dans la rue avant le point d'arrivée ; au-delà, il a parcouru `rueM −
+ * longueur` mètres sur la place, en ligne droite du point d'arrivée vers sa place.
+ */
+function positionDansLaFoule(
+  rueM: number,
+  decalageRueM: number,
+  place: { avantM: number; coteM: number },
+  longueurM: number,
+): { distanceM: number; decalageM: number; surPlace: boolean; enMarche: boolean } {
+  if (rueM < longueurM) return { distanceM: rueM, decalageM: decalageRueM, surPlace: false, enMarche: true };
+  const trajetM = Math.hypot(place.avantM, place.coteM - decalageRueM);
+  const fait = trajetM === 0 ? 1 : Math.min(1, (rueM - longueurM) / trajetM);
+  return {
+    distanceM: longueurM + place.avantM * fait,
+    decalageM: decalageRueM + (place.coteM - decalageRueM) * fait,
+    surPlace: true,
+    enMarche: fait < 1,
+  };
 }
 
 /**
@@ -137,11 +209,11 @@ class PlacesDuCortege {
   /** Première case libre : toutes celles d'avant sont prises. */
   #libre = 0;
 
-  prendre(hachage: number): { rang: number; colonne: number } {
+  prendre(hachage: number): { rang: number; colonne: number; case_: number } {
     let case_ = this.#libre - (this.#libre % COLONNES_FOULE) + (hachage % COLONNES_FOULE);
     while (this.#occupees.has(case_)) case_++;
     this.#occupees.add(case_);
     while (this.#occupees.has(this.#libre)) this.#libre++;
-    return { rang: Math.floor(case_ / COLONNES_FOULE), colonne: case_ % COLONNES_FOULE };
+    return { rang: Math.floor(case_ / COLONNES_FOULE), colonne: case_ % COLONNES_FOULE, case_ };
   }
 }

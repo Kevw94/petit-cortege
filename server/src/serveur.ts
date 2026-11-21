@@ -56,6 +56,7 @@ const STATUT_ERREUR = {
   'retrait-refuse': 403,
   'manif-inconnue': 404,
   'manif-terminee': 409,
+  'entrees-fermees': 409,
   'trop-de-requetes': 429,
 } as const;
 

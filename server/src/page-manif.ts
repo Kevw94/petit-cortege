@@ -379,6 +379,8 @@ interface LignePage {
   etapes: unknown;
   retiree: Date | null;
   compteur: number;
+  /** Avatars entrés, retirés compris : fixent la fin (ADR 0004). */
+  entres: number;
 }
 
 function textesSources(valeur: unknown): Source[] {
@@ -410,7 +412,8 @@ export async function reponsePageManif(sql: Sql, horloge: Horloge, id: string): 
   const [ligne] = await sql<LignePage[]>`
     select m.id, m.intitule, m.ville, m.ouverture, m.depart, m.parcours, m.sources, m.etapes, m.retiree,
       (select count(*)::int from avatar a
-       where a.manif_id = m.id and not exists (select 1 from retrait r where r.avatar_id = a.id)) as compteur
+       where a.manif_id = m.id and not exists (select 1 from retrait r where r.avatar_id = a.id)) as compteur,
+      (select count(*)::int from avatar a where a.manif_id = m.id) as entres
     from manif m where m.id = ${id}`;
   if (!ligne || ligne.retiree) {
     const statut = ligne?.retiree ? 410 : 404;
@@ -420,7 +423,7 @@ export async function reponsePageManif(sql: Sql, horloge: Horloge, id: string): 
     });
   }
   const longueurM = longueurParcours(ligne.parcours);
-  const fin = calculerFin(ligne.depart, longueurM);
+  const fin = calculerFin(ligne.depart, longueurM, Number(ligne.entres));
   const sources = textesSources(ligne.sources);
   const manif: ManifPubliee = {
     id: ligne.id,

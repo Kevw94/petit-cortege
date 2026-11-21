@@ -58,6 +58,16 @@ const lienRetour = `<a class="retour" href="/">${icone('retour', 'icone icone-pe
 
 const heure = (iso: string) =>
   new Date(iso).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+const heureSeule = (iso: string) => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+/** Flash de la photo finale, à la fin de la danse (sans animation si le mouvement réduit est demandé). */
+function flashPhoto(): void {
+  const flash = document.createElement('div');
+  flash.className = 'flash-photo';
+  flash.setAttribute('aria-hidden', 'true');
+  document.body.append(flash);
+  setTimeout(() => flash.remove(), 1_200);
+}
 
 function echapper(texte: string): string {
   const div = document.createElement('div');
@@ -228,16 +238,31 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
     // Compteur : avatars du cortège à l'heure locale (publiés et entrés, plus les siens) ;
     // c'est ce qui est dessiné. Le `compteur` de la liste des manifs sert à la liste.
     if (cortege.etat === 'terminee') {
-      // Fin de la manif pendant qu'on regarde : place à l'image finale (une seule fois).
-      // Le jeton de retrait est effacé par la lecture de la liste, à l'affichage de la vue.
-      if (!finAnnoncee) void naviguer();
+      // Fin de la manif pendant qu'on regarde : la photo est prise (flash), place à l'image
+      // finale (une seule fois). Le jeton de retrait est effacé par la lecture de la liste.
+      if (!finAnnoncee) {
+        flashPhoto();
+        void naviguer();
+      }
       finAnnoncee = true;
       return;
     }
     const n = cortege.avatars.length;
-    const texte = `${cortege.etat === 'ouverte' ? 'Ouverte' : 'Terminée'} · ${n} ${n > 1 ? 'soutiens' : 'soutien'}`;
+    const photo = heureSeule(donnees.manif.fin);
+    const moment = cortege.danse
+      ? `Danse finale sur la place · photo à ${photo}`
+      : cortege.entreesOuvertes
+        ? 'Ouverte'
+        : `Arrivée sur la place · entrées fermées · photo à ${photo}`;
+    const texte = `${moment} · ${n} ${n > 1 ? 'soutiens' : 'soutien'}`;
     if (texte !== dernierTexte) etatEl.textContent = dernierTexte = texte;
-    const peutRejoindre = cortege.etat === 'ouverte' && propres.length === 0 && !envoiEnCours && !composition;
+    const peutRejoindre =
+      cortege.etat === 'ouverte' && cortege.entreesOuvertes && propres.length === 0 && !envoiEnCours && !composition;
+    // Entrées fermées pendant la composition : le panneau se ferme, le message l'explique.
+    if (composition && !cortege.entreesOuvertes && !envoiEnCours) {
+      fermerComposition();
+      messageEl.textContent = 'Le cortège est arrivé : les entrées sont fermées.';
+    }
     if (boutonEl.hidden === peutRejoindre) boutonEl.hidden = !peutRejoindre;
     // Le jeton est effacé à la fin de la manif : le retrait n'est possible que tant qu'elle est ouverte.
     const peutRetirer = cortege.etat === 'ouverte' && propresRetirables.length > 0 && !envoiEnCours;
@@ -474,6 +499,8 @@ function messageErreurEntree(erreur: unknown): string {
   switch (code) {
     case 'manif-terminee':
       return 'Cette manif est terminée : on ne peut plus la rejoindre.';
+    case 'entrees-fermees':
+      return 'Le cortège est arrivé sur la place : les entrées sont fermées.';
     case 'manif-inconnue':
       return "Cette manif n'est pas ouverte.";
     case 'trop-de-requetes':

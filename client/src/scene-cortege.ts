@@ -29,10 +29,9 @@ import { cadrerEnTroisiemePersonne, cibleDeSuivi, ECHELLE_SUIVI_PX_PAR_M, LISSAG
 import { calculerCortege, type Cortege } from './cortege/cortege';
 import { composerFoule } from './cortege/foule';
 import {
-  allureDeMarche,
+  allureDuCortege,
   allureImmobile,
   marquerTronconsEnMarche,
-  phaseDeMarche,
   phaseDeTampon,
   requeteMouvementReduit,
   sautDeMasse,
@@ -268,7 +267,7 @@ export class SceneCortege extends Phaser.Scene {
     const hauteurTete = HAUTEUR_TETE_PX * echelleSprite;
     const allure = this.#allure;
     const porteurs = dessines.map((a) => {
-      allureDeMarche(allure, tempsS, phaseDeMarche(a.id), animer && a.enMarche);
+      allureDuCortege(allure, tempsS, a.id, { animer, danse: cortege.danse, enMarche: a.enMarche });
       const saut = allure.sautPxAtlas * echelleSprite;
       return {
         ...a,

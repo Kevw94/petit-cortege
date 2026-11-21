@@ -936,6 +936,28 @@ canvas.image-finale {
   box-shadow: var(--ombre-franche);
 }
 
+/* ------------------------------------------------------ Photo finale (flash) */
+
+/* Flash blanc au moment de la photo, à la fin de la danse ; invisible sans animation. */
+.flash-photo {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+  background: #fff;
+  opacity: 0;
+  animation: flash-photo 1s ease-out;
+}
+
+@keyframes flash-photo {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 /* ------------------------------------------------------- Mouvement réduit */
 
 @media (prefers-reduced-motion: reduce) {

@@ -56,6 +56,8 @@ export type CodeErreurEntree =
   | 'requete-invalide'
   | 'manif-inconnue'
   | 'manif-terminee'
+  /** La tête du cortège est arrivée : les entrées sont fermées, la fin approche. */
+  | 'entrees-fermees'
   /** Preuve de travail absente, fausse, expirée ou déjà utilisée : redemander un défi. */
   | 'preuve-invalide'
   /** Limite de débit atteinte (429) : réessayer plus tard. */

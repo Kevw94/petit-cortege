@@ -41,6 +41,7 @@ import {
   CHEMIN_API_ENTREE,
   CHEMIN_API_RETRAIT,
   apparenceAuHasard,
+  arriveeDeLaTete,
   calculerFin,
   COULEURS_PANCARTE,
   encoderApparence,
@@ -146,7 +147,9 @@ const jour = new Date();
 const depart = Date.UTC(jour.getUTCFullYear(), jour.getUTCMonth(), jour.getUTCDate(), 13);
 const ouverture = depart - O.ouvertureAvantMin * MINUTE;
 const parcours = parcoursDeTest(O.parcoursKm, O.pointsParcours);
-const fin = calculerFin(new Date(depart), longueurParcours(parcours)).getTime();
+// Entrées jusqu'à l'arrivée de la tête (fermeture) ; fin = arrivée de la queue + danse.
+const fermeture = arriveeDeLaTete(new Date(depart), longueurParcours(parcours)).getTime();
+const fin = calculerFin(new Date(depart), longueurParcours(parcours), O.soutiens).getTime();
 const ID_MANIF = 'charge-paris';
 await creerManif(sql, {
   id: ID_MANIF,
@@ -170,7 +173,7 @@ for (let i = 0; i < O.autresManifs; i++) {
   });
 }
 
-const profil = profilParDefaut(O.ouvertureAvantMin, (fin - depart) / MINUTE);
+const profil = profilParDefaut(O.ouvertureAvantMin, (fermeture - depart) / MINUTE);
 const instantsEntree = tirerInstants(O.soutiens, profil, alea).map((t) => depart + t);
 const tirerSession = (arrivee: number) => ({
   arrivee,
