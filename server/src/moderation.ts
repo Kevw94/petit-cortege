@@ -1,4 +1,4 @@
-import { calculerFin, longueurParcours, type Parcours, type Source } from '@petit-cortege/shared';
+import { arriveeDeLaTete, calculerFin, longueurParcours, type Parcours, type Source } from '@petit-cortege/shared';
 import type { Sql } from './base';
 import type { Horloge } from './horloge';
 import { creerManif } from './manifs';
@@ -50,8 +50,8 @@ export async function ajouterManif(sql: Sql, horloge: Horloge, saisie: SaisieMan
     }
   }
   if (ouverture > saisie.depart) throw new ErreurModeration("l'ouverture des entrées doit précéder le départ.");
-  if (calculerFin(saisie.depart, longueurParcours(saisie.parcours)) <= maintenant) {
-    throw new ErreurModeration('cette manif serait déjà terminée (départ + parcours + marge dans le passé).');
+  if (arriveeDeLaTete(saisie.depart, longueurParcours(saisie.parcours)) <= maintenant) {
+    throw new ErreurModeration('les entrées de cette manif seraient déjà fermées (départ + parcours dans le passé).');
   }
 
   try {
@@ -88,16 +88,17 @@ export async function decalerDepart(
 ): Promise<{ depart: Date; fin: Date }> {
   return sql.begin(async (tx) => {
     const maintenant = horloge.maintenant();
-    const [manif] = await tx<{ ouverture: Date; depart: Date; parcours: Parcours; retiree: Date | null }[]>`
-      select ouverture, depart, parcours, retiree from manif where id = ${id} for update`;
+    const [manif] = await tx<{ ouverture: Date; depart: Date; parcours: Parcours; retiree: Date | null; entres: number }[]>`
+      select ouverture, depart, parcours, retiree, (select count(*)::int from avatar a where a.manif_id = m.id) as entres
+      from manif m where id = ${id} for update`;
     if (!manif) throw new ErreurModeration(`manif « ${id} » inconnue.`);
     if (manif.retiree) throw new ErreurModeration(`la manif « ${id} » a été retirée.`);
     const longueurM = longueurParcours(manif.parcours);
-    if (calculerFin(manif.depart, longueurM) <= maintenant) {
+    if (calculerFin(manif.depart, longueurM, manif.entres) <= maintenant) {
       throw new ErreurModeration(`la manif « ${id} » est terminée : son départ ne peut plus être corrigé.`);
     }
     const depart = 'a' in nouveau ? nouveau.a : new Date(manif.depart.getTime() + nouveau.deMinutes * 60_000);
-    const fin = calculerFin(depart, longueurM);
+    const fin = calculerFin(depart, longueurM, manif.entres);
     if (depart < manif.ouverture) {
       throw new ErreurModeration(`le départ ne peut pas précéder l'ouverture des entrées (${manif.ouverture.toISOString()}).`);
     }
@@ -150,14 +151,15 @@ export interface ManifModeree {
 export async function listerManifs(sql: Sql, horloge: Horloge): Promise<ManifModeree[]> {
   const maintenant = horloge.maintenant();
   const lignes = await sql<
-    { id: string; intitule: string; ville: string; ouverture: Date; depart: Date; parcours: Parcours; retiree: Date | null; soutiens: number }[]
+    { id: string; intitule: string; ville: string; ouverture: Date; depart: Date; parcours: Parcours; retiree: Date | null; soutiens: number; entres: number }[]
   >`
     select m.id, m.intitule, m.ville, m.ouverture, m.depart, m.parcours, m.retiree,
       (select count(*)::int from avatar a
-       where a.manif_id = m.id and not exists (select 1 from retrait r where r.avatar_id = a.id)) as soutiens
+       where a.manif_id = m.id and not exists (select 1 from retrait r where r.avatar_id = a.id)) as soutiens,
+      (select count(*)::int from avatar a where a.manif_id = m.id) as entres
     from manif m order by m.depart desc, m.id`;
   return lignes.map((l) => {
-    const fin = calculerFin(l.depart, longueurParcours(l.parcours));
+    const fin = calculerFin(l.depart, longueurParcours(l.parcours), l.entres);
     const etat: EtatModeration = l.retiree
       ? 'retirée'
       : fin <= maintenant

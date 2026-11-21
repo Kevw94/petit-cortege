@@ -107,6 +107,51 @@ export function allureDeMarche(sortie: Allure, tempsS: number, phase: number, en
   return sortie;
 }
 
+/** Tempo de la danse finale, en temps par seconde (≈ 120 battements par minute). */
+export const TEMPO_DANSE_PAR_S = 2;
+/** Saut de la danse : trois pixels de l'atlas, bien plus haut que le pas de marche. */
+export const SAUT_DANSE_PX_ATLAS = 3;
+/** Inclinaison maximale du corps en dansant (vue 3D). */
+export const INCLINAISON_DANSE_RAD = (9 * Math.PI) / 180;
+/** Déhanché latéral maximal en dansant (vue 2D) : un pixel et demi de l'atlas. */
+export const DECALAGE_DANSE_PX_ATLAS = 1.5;
+/** Part de la phase propre gardée en dansant : la foule danse presque ensemble, en légère vague. */
+const VARIETE_DANSE = 0.25;
+
+/**
+ * Écrit dans `sortie` l'allure d'un avatar qui danse (danse finale sur la place) : un saut
+ * par temps, un déhanché d'un côté puis de l'autre tous les deux temps, la pancarte agitée
+ * à contretemps. Presque à l'unisson (un quart de temps d'écart au plus), pour que la foule
+ * danse ensemble.
+ */
+export function allureDeDanse(sortie: Allure, tempsS: number, phase: number): Allure {
+  const temps = tempsS * TEMPO_DANSE_PAR_S + phase * VARIETE_DANSE;
+  const haut = sautillement(temps);
+  const cote = Math.sin((Math.PI * temps) / 2);
+  const pancarte = Math.sin((Math.PI * temps) / 2 - Math.PI / 2);
+  sortie.sautM = haut * SAUT_DANSE_PX_ATLAS * METRES_PAR_PX_ATLAS;
+  sortie.sautPxAtlas = Math.round(haut * SAUT_DANSE_PX_ATLAS);
+  sortie.inclinaisonRad = cote * INCLINAISON_DANSE_RAD;
+  sortie.decalagePxAtlas = auDemiPixel(cote * DECALAGE_DANSE_PX_ATLAS);
+  sortie.inclinaisonPancarteRad = pancarte * INCLINAISON_DANSE_RAD * 1.5;
+  sortie.decalagePancartePxAtlas = auDemiPixel(pancarte * DECALAGE_DANSE_PX_ATLAS * 1.5);
+  return sortie;
+}
+
+/**
+ * Allure d'un avatar du cortège à l'instant `tempsS` : danse pendant la danse finale, pas de
+ * marche s'il avance, immobile sinon ou si le mouvement réduit est demandé (`animer` faux).
+ */
+export function allureDuCortege(
+  sortie: Allure,
+  tempsS: number,
+  id: string,
+  { animer, danse, enMarche }: { animer: boolean; danse: boolean; enMarche: boolean },
+): Allure {
+  if (animer && danse) return allureDeDanse(sortie, tempsS, phaseDeMarche(id));
+  return allureDeMarche(sortie, tempsS, phaseDeMarche(id), animer && enMarche);
+}
+
 /**
  * Sautillement de la masse de foule (pixels de l'atlas, entier) : chaque paquet ondule
  * à sa phase, seulement là où la foule avance.

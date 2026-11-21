@@ -38,6 +38,12 @@ export interface AvatarAComposer {
   id: string;
   distanceM: number;
   propre: boolean;
+  /**
+   * Sur la place d'arrivée (`Cortege`) : hors de la bande de la rue, il ne compte pas dans
+   * la densité des tronçons ; le rassemblement est à un avatar par tuile, il n'est en masse
+   * que par le budget.
+   */
+  surPlace?: boolean;
 }
 
 export interface TronconDeFoule {
@@ -84,6 +90,7 @@ export function composerFoule<A extends AvatarAComposer>(
   const numeroDe = (avatar: A) => Math.floor((avatar.distanceM - repereM) / LONGUEUR_TRONCON_M);
   const parTroncon = new Map<number, TronconDeFoule>();
   for (const avatar of avatars) {
+    if (avatar.surPlace) continue;
     const numero = numeroDe(avatar);
     const troncon = parTroncon.get(numero);
     if (troncon) {
@@ -109,8 +116,8 @@ export function composerFoule<A extends AvatarAComposer>(
       continue;
     }
     const tirage = tirageIdentifiant(avatar.id);
-    const troncon = parTroncon.get(numeroDe(avatar))!;
-    if (!troncon.enMasse || tirage < fractionPremierPlan(troncon.densite) * 2 ** 32) candidats.push({ avatar, tirage });
+    const troncon = avatar.surPlace ? undefined : parTroncon.get(numeroDe(avatar))!;
+    if (!troncon || !troncon.enMasse || tirage < fractionPremierPlan(troncon.densite) * 2 ** 32) candidats.push({ avatar, tirage });
   }
 
   // Budget : seuil de tirage divisé par 2 jusqu'à tenir. Par paliers, pour que le tirage reste

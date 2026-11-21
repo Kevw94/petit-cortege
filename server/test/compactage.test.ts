@@ -5,12 +5,20 @@ import type { EntreesHeure, EntreesMinute, ReponseEntree } from '@petit-cortege/
 import { creerManif, preRemplirAvatars } from '../src/index';
 import { demarrerBanc, enregistrerFixtures, type Banc } from './support';
 
-// Parcours plein nord ≈ 1000,75 m : fin = départ + ≈ 30 min + 1 h de marge.
+// Parcours plein nord ≈ 1000,75 m : la tête arrive à départ + ≈ 30 min.
 const PARCOURS = {
   type: 'LineString' as const,
   coordinates: [
     [2.35, 48.85],
     [2.35, 48.859],
+  ] as [number, number][],
+};
+// Parcours plein nord ≈ 4003 m : la tête arrive à départ + ≈ 2 h, entrées ouvertes sur trois heures.
+const PARCOURS_LONG = {
+  type: 'LineString' as const,
+  coordinates: [
+    [2.35, 48.85],
+    [2.35, 48.886],
   ] as [number, number][],
 };
 
@@ -102,7 +110,7 @@ describe('compactage par heure : scénario sur plusieurs heures', () => {
       ville: 'Paris',
       ouverture: new Date('2026-05-01T13:58:00Z'),
       depart: new Date('2026-05-01T14:00:00Z'),
-      parcours: PARCOURS,
+      parcours: PARCOURS_LONG,
       sources: [],
     });
     await creerManif(banc.sql, {

@@ -24,7 +24,8 @@ export function longueurParcours(parcours: Parcours): number {
  * Position d'un avatar du cortège : point du parcours à `distance` mètres du
  * départ, décalé de `decalage` mètres perpendiculairement au tronçon (positif à
  * gauche du sens de marche). Une distance négative prolonge le premier tronçon
- * vers l'arrière (rangées qui attendent derrière la ligne de départ).
+ * vers l'arrière (rangées qui attendent derrière la ligne de départ) ; une distance
+ * au-delà de la longueur prolonge le dernier tronçon (rassemblement sur la place d'arrivée).
  */
 export function positionDansLeCortege(parcours: Parcours, distance: number, decalage: number): Position {
   const points = parcours.coordinates;
@@ -46,7 +47,8 @@ export function positionDansLeCortege(parcours: Parcours, distance: number, deca
   const longueur = Math.hypot(ex, ey);
   const troncon = distanceM(a, b);
   if (longueur === 0 || troncon === 0) return a;
-  const f = Math.min(restant, troncon) / troncon;
+  // Au-delà du point d'arrivée, dans le prolongement du dernier tronçon (la place d'arrivée).
+  const f = (i === points.length - 1 ? restant : Math.min(restant, troncon)) / troncon;
   const [ux, uy] = [ex / longueur, ey / longueur];
   return [a[0] + (b[0] - a[0]) * f + (-uy * decalage) / kx, a[1] + (b[1] - a[1]) * f + (ux * decalage) / ky];
 }

@@ -48,7 +48,7 @@ export function scenarioPerf(n: number): ScenarioPerf {
     ville: 'Paris',
     ouverture: new Date(DEPART - 3600_000).toISOString(),
     depart: depart.toISOString(),
-    fin: calculerFin(depart, longueurM).toISOString(),
+    fin: calculerFin(depart, longueurM, n).toISOString(),
     parcours,
     longueurM,
     sources: [],

@@ -90,8 +90,8 @@ describe('modération en ligne de commande', () => {
       ],
       compteur: 0,
     });
-    // 1000,754 m à 2 km/h = 30 min 1,357 s, plus 1 h de marge.
-    expect(manif?.fin).toBe('2026-06-01T11:30:01.357Z');
+    // 1000,754 m à 2 km/h = 30 min 1,357 s ; aucun soutien, la queue arrive avec la tête ; plus 10 min de danse.
+    expect(manif?.fin).toBe('2026-06-01T10:40:01.357Z');
   });
 
   describe('le GeoJSON uMap est validé', () => {
@@ -218,11 +218,11 @@ describe('modération en ligne de commande', () => {
       expect((await manifsPubliees()).find((m) => m.id === 'heure-paris')?.depart).toBe('2026-06-01T12:00:00.000Z');
     });
 
-    it('manif déjà terminée : refusée', async () => {
+    it('manif aux entrées déjà fermées (tête déjà arrivée) : refusée', async () => {
       banc.horloge.regler('2026-06-01T12:00:00Z');
       try {
         expect(await moderer('creer-manif', ...options({ id: 'trop-tard', depart: '2026-06-01T09:00:00Z' }))).toBe(1);
-        expect(sorties.join('\n')).toMatch(/terminée/);
+        expect(sorties.join('\n')).toMatch(/fermées/);
       } finally {
         banc.horloge.regler('2026-06-01T08:00:00Z');
       }
@@ -273,7 +273,7 @@ describe('modération en ligne de commande', () => {
 
       const manif = (await manifsPubliees()).find((m) => m.id === id);
       expect(manif?.depart).toBe('2026-06-01T10:45:00.000Z');
-      expect(manif?.fin).toBe('2026-06-01T12:15:01.357Z');
+      expect(manif?.fin).toBe('2026-06-01T11:25:01.357Z');
     });
 
     it("d'un nombre de minutes (retard ou avance), pendant la manif", async () => {
@@ -422,7 +422,8 @@ describe('modération en ligne de commande', () => {
   });
 
   it('lister : les manifs avec leur état, départ, fin et soutiens', async () => {
-    const ouverte = await nouvelleManif('liste-ouverte');
+    // Départ à 12:00 : entrées ouvertes jusqu'à 12:30, même après les publications des tests précédents.
+    const ouverte = await nouvelleManif('liste-ouverte', '2026-06-01T12:00:00Z');
     const retiree = await nouvelleManif('liste-retiree');
     expect(await moderer('retirer-manif', '--manif', retiree, '--motif', 'Arrêté')).toBe(0);
     expect((await banc.entrer({ manif: ouverte, apparence: 0, pancarte: 0 })).statut).toBe(201);
@@ -430,10 +431,10 @@ describe('modération en ligne de commande', () => {
     expect(await moderer('lister')).toBe(0);
 
     const ligne = (id: string) => sorties.find((l) => l.includes(id)) ?? '';
-    // 10:00 UTC = 12:00 à Paris en juin ; fin 11:30 UTC = 13:30.
+    // 12:00 UTC = 14:00 à Paris en juin ; fin 12:40 UTC (tête à 12:30, 10 min de danse) = 14:40.
     expect(ligne(ouverte)).toMatch(/ouverte/);
-    expect(ligne(ouverte)).toMatch(/2026-06-01 12:00/);
-    expect(ligne(ouverte)).toMatch(/13:30/);
+    expect(ligne(ouverte)).toMatch(/2026-06-01 14:00/);
+    expect(ligne(ouverte)).toMatch(/14:40/);
     expect(ligne(ouverte)).toMatch(/\b1 soutien/);
     expect(ligne(retiree)).toMatch(/retirée/);
   });

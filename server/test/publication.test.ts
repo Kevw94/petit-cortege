@@ -70,9 +70,9 @@ describe('tâche de publication', () => {
       sources: [{ libelle: 'Organisateurs', url: 'https://exemple.org/appel' }],
     });
     expect(manif.longueurM).toBeCloseTo(1000.75, 0);
-    // Fin = départ + 1000,75 m ÷ 2 km/h (1801 s) + marge d'1 h.
+    // Fin = départ + 1000,75 m ÷ 2 km/h (1801 s) + queue (une seule rangée : 0) + 10 min de danse.
     const dureeS = (Date.parse(manif.fin) - Date.parse(manif.depart)) / 1000;
-    expect(dureeS).toBeCloseTo(3600 + 1801.35, 0);
+    expect(dureeS).toBeCloseTo(1801.35 + 600, 0);
   });
 
   it('publie les entrées de chaque minute écoulée, toutes manifs confondues', async () => {

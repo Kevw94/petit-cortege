@@ -74,7 +74,8 @@ export function creerPlaceur(parcours: Parcours, projeter: (p: Position) => Poin
       const longueur = cumul[i]! - cumul[i - 1]!;
       const u = direction(i);
       if (!u || longueur === 0) return { ...a };
-      const f = Math.min(restant, longueur) / longueur;
+      // Au-delà du point d'arrivée, dans le prolongement du dernier tronçon (la place d'arrivée).
+      const f = (i === n - 1 ? restant : Math.min(restant, longueur)) / longueur;
       // À gauche du sens de marche (y vers le sud) : (u.y, -u.x).
       return { x: a.x + (b.x - a.x) * f + u.y * decalage, y: a.y + (b.y - a.y) * f - u.x * decalage };
     },

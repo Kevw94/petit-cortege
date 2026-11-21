@@ -4,7 +4,8 @@ import type { ListeManifs, ReponseEntree, Retraits } from '@petit-cortege/shared
 import { creerManif, retirerManif } from '../src/index';
 import { demarrerBanc, type Banc } from './support';
 
-// Parcours plein nord ≈ 1000,75 m : fin = départ + ≈ 30 min 1 s + 1 h de marge.
+// Parcours plein nord ≈ 1000,75 m : tête arrivée à départ + ≈ 30 min 1 s ; avec une seule
+// rangée de soutiens, la queue arrive en même temps : fin = arrivée + 10 min de danse.
 const PARCOURS = {
   type: 'LineString' as const,
   coordinates: [
@@ -21,7 +22,7 @@ describe('fin de la manif : effacement des hachages de jetons de retrait', () =>
 
   beforeAll(async () => {
     banc = await demarrerBanc('2026-06-01T09:00:00Z');
-    // manif-tot : départ 10:00, fin ≈ 11:30:01. manif-tard : départ 12:00, fin ≈ 13:30:01.
+    // manif-tot : départ 10:00, fin ≈ 10:40:01. manif-tard : départ 12:00, fin ≈ 12:40:01.
     for (const [id, depart] of [
       ['manif-tot', '2026-06-01T10:00:00Z'],
       ['manif-tard', '2026-06-01T12:00:00Z'],
@@ -65,12 +66,12 @@ describe('fin de la manif : effacement des hachages de jetons de retrait', () =>
     const apresFin = await entrer('manif-tot');
 
     // Une minute avant la fin, la tâche de publication tourne : rien n'est effacé.
-    banc.horloge.regler('2026-06-01T11:29:00Z');
+    banc.horloge.regler('2026-06-01T10:39:00Z');
     await banc.serveur.publier();
     expect((await banc.poster('/api/retrait', avantFin)).statut).toBe(200);
 
     // La tâche tourne après la fin (toutes les minutes) : moins d'une heure plus tard, plus rien.
-    banc.horloge.regler('2026-06-01T11:31:00Z');
+    banc.horloge.regler('2026-06-01T10:41:00Z');
     await banc.serveur.publier();
 
     expect(await banc.poster('/api/retrait', apresFin)).toEqual({ statut: 403, corps: { erreur: 'retrait-refuse' } });

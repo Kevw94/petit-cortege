@@ -112,13 +112,15 @@ async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublic
 
   await etape('effacement des hachages', () => effacerHachagesDesManifsTerminees(sql, maintenant));
 
+  // Fin de chaque manif : elle dépend du nombre de soutiens entrés, retirés compris (ADR 0004).
   const lignes = (
-    await sql<LigneManif[]>`
-      select id, intitule, ville, ouverture, depart, parcours, sources
+    await sql<(LigneManif & { entres: number })[]>`
+      select id, intitule, ville, ouverture, depart, parcours, sources,
+        (select count(*)::int from avatar a where a.manif_id = manif.id) as entres
       from manif where ouverture <= ${maintenant} and retiree is null order by depart, id`
-  ).filter(
-    (l) => calculerFin(l.depart, longueurParcours(l.parcours)).getTime() + CONSULTATION_APRES_FIN_MS > maintenant.getTime(),
-  );
+  )
+    .map((l) => ({ ...l, fin: calculerFin(l.depart, longueurParcours(l.parcours), l.entres) }))
+    .filter((l) => l.fin.getTime() + CONSULTATION_APRES_FIN_MS > maintenant.getTime());
   // Compteurs des seules manifs listées (index avatar_manif), pas de toute la table.
   const ids = lignes.map((l) => l.id);
   const compteurs = await sql<{ manif_id: string; n: number }[]>`
@@ -136,7 +138,7 @@ async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublic
       ville: l.ville,
       ouverture: l.ouverture.toISOString(),
       depart: l.depart.toISOString(),
-      fin: calculerFin(l.depart, longueurM).toISOString(),
+      fin: l.fin.toISOString(),
       parcours: l.parcours,
       longueurM,
       sources: l.sources,
@@ -177,11 +179,11 @@ async function publierRetraits(sql: Requeteur, dossier: string, manifs: ManifPub
  * reste. Le client, lui, efface son jeton à la fin.
  */
 async function effacerHachagesDesManifsTerminees(sql: Requeteur, maintenant: Date): Promise<void> {
-  const avecHachages = await sql<{ id: string; depart: Date; parcours: Parcours }[]>`
-    select id, depart, parcours from manif m
+  const avecHachages = await sql<{ id: string; depart: Date; parcours: Parcours; entres: number }[]>`
+    select id, depart, parcours, (select count(*)::int from avatar a where a.manif_id = m.id) as entres from manif m
     where exists (select 1 from avatar a where a.manif_id = m.id and a.hachage_retrait is not null)`;
   const terminees = avecHachages
-    .filter((m) => calculerFin(m.depart, longueurParcours(m.parcours)) <= maintenant)
+    .filter((m) => calculerFin(m.depart, longueurParcours(m.parcours), m.entres) <= maintenant)
     .map((m) => m.id);
   if (terminees.length === 0) return;
   await sql`

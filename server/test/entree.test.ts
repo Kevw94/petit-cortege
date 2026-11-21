@@ -120,13 +120,21 @@ describe('rejoindre le cortège', () => {
     expect(reponse).toEqual({ statut: 404, corps: { erreur: 'manif-inconnue' } });
   });
 
-  it('entrée refusée une fois la manif terminée', async () => {
-    // Fin ≈ 10:00 + 30 min 1 s + 1 h = 11:30:01.
-    banc.horloge.regler('2026-06-01T11:30:02Z');
+  it("entrées fermées dès l'arrivée de la tête au bout du parcours", async () => {
+    // Arrivée de la tête ≈ 10:00 + 1000,75 m ÷ 2 km/h = 10:30:01 ; la fin vient après (queue + danse).
+    banc.horloge.regler('2026-06-01T10:30:02Z');
 
     const reponse = await banc.entrer({ manif: 'manif-paris', apparence: 0, pancarte: 0 });
 
-    expect(reponse).toEqual({ statut: 409, corps: { erreur: 'manif-terminee' } });
+    expect(reponse).toEqual({ statut: 409, corps: { erreur: 'entrees-fermees' } });
+  });
+
+  it("entrée encore acceptée juste avant l'arrivée de la tête", async () => {
+    banc.horloge.regler('2026-06-01T10:29:59Z');
+
+    const reponse = await banc.entrer({ manif: 'manif-paris', apparence: 0, pancarte: 0 });
+
+    expect(reponse.statut).toBe(201);
   });
 
   it.each([
