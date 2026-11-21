@@ -40,6 +40,8 @@ npm run format     # Biome : formate le code
 npm run build      # build du client
 ```
 
+Le lint signale les imports et variables inutilisés et les promesses non attendues (`noFloatingPromises`, règle encore expérimentale de Biome : elle voit les fonctions `async` du dépôt, `fetch` ou `.then()`, mais pas toujours celles des bibliothèques importées, comme `readFile` de `node:fs/promises`).
+
 Puis ouvrir http://localhost:5173/manif/demo-republique-nation (départ 2 min après le lancement).
 
 Variables utiles : `DATABASE_URL` (base de dev), `DATABASE_ADMIN_URL` (tests : une base jetable par fichier de test y est créée), `PORT_SERVEUR`, `PORT_CLIENT`, `DOSSIER_PUBLICATION`. `VITE_UMAMI_WEBSITE_ID` (UUID Umami, lu au build du client seulement) active la mesure d'audience ; absente, aucun script n'est chargé. Voir `client/.env.example`.
