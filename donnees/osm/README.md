@@ -23,7 +23,7 @@ Ils sont publiés ici sous la même licence (ODbL), indépendamment de la licenc
 
   (rejouable sans réseau avec `--osm donnees/osm/republique-nation/extrait-overpass.json` au lieu de `--overpass …`).
 
-- `extrait-overpass.json` : réponse brute de l'API Overpass (miroir maps.mail.ru, extrait du 7 novembre 2026) pour
+- `extrait-overpass.json` : réponse de l'API Overpass (miroir maps.mail.ru, extrait du 7 novembre 2026), réduite aux tags du décor (voir « Tags gardés »), pour
   une bande de 150 m autour du parcours (rues, espaces verts, eau, bâtiments, places) :
 
   ```sh
@@ -33,7 +33,7 @@ Ils sont publiés ici sous la même licence (ODbL), indépendamment de la licenc
   ```
 
 Manifs du 14 novembre 2026 (`paris-2026-11-14/`, `nancy-2026-11-14/`, `caen-2026-11-14/`) : `extrait-overpass.json`,
-réponse brute d'Overpass (bande de 150 m autour du parcours calculé), écrite par
+réponse d'Overpass réduite aux tags du décor (bande de 150 m autour du parcours calculé), écrite par
 `npm run import-manifs -- decors --fichier donnees/manifs/2026-11-14.json` (miroirs overpass.kumi.systems et maps.mail.ru,
 14 novembre 2026) et rejouée sans réseau tant qu'elle existe. Les parcours sont dans `donnees/manifs/2026-11-14/`
 (docs/import-manifs.md).
@@ -60,5 +60,15 @@ NODE_USE_ENV_PROXY=1 npm run decor -- extraire-alentours --parcours donnees/osm/
 
 (manifs du 14 novembre : `--parcours donnees/manifs/2026-11-14/<id>.geojson`, ou `npm run import-manifs -- decors`,
 qui télécharge le plan absent). L'ancien `alentours-overpass.json` (700 m autour du parcours, format 2) n'est plus lu.
+
+### Tags gardés
+
+Les extraits de bande ne gardent que les tags que le décor lit (`scripts/decor/reduction.ts`) : ceux du
+classement (`highway`, `area`, `area:highway`, `place`, `width`, `lanes`, `sidewalk`, `footway`, `tunnel`, `covered`,
+`location`, `indoor`, `layer`, `waterway`, `natural`, `landuse`, `leisure`, `type`), `building`, et `name` sauf sur les
+bâtiments (noms de commerces). Les éléments sans aucun de ces tags sont retirés, ainsi que les `bounds` et les nœuds
+des chemins qui ne sont pas des rues ; la géométrie est gardée telle quelle, le décor généré est identique. Plus de
+`email`, `phone`, `website`, `contact:*` ni `opening_hours` : publics dans OSM, ce sont des coordonnées de tiers inutiles
+ici. Un extrait enregistré avant ce filtre se réduit sans réseau : `npm run decor -- reduire --osm <extrait.json>`.
 
 La tilemap dérivée (base de données dérivée, ODbL elle aussi) est dans `client/public/decors/`.

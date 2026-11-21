@@ -11,6 +11,7 @@ import { inscrireDansIndex } from '../decor';
 import { DEMI_LARGEUR_PAR_DEFAUT_M, genererDecor } from '../decor/carte';
 import { lireExtrait, type ExtraitOverpass } from '../decor/osm';
 import { RAYON_EXTRACTION_M, requeteBande } from '../decor/overpass';
+import { texteExtraitReduit } from '../decor/reduction';
 import { cacheDePaves, telechargerPlan, texteExtraitAlentours } from '../decor/alentours';
 import { echantillonner, nomDeVoie } from './controles';
 import type { ManifDeclaree } from './fichier';
@@ -54,7 +55,7 @@ export async function genererDecorManif(manif: ManifDeclaree, parcours: Parcours
   if (texte === null) {
     deps.journal(`  extrait OSM de la bande de ${RAYON_EXTRACTION_M} m autour du parcours…`);
     const reponse = await interrogerOverpass(deps.reseau, deps.urlsOverpass, requeteBande(parcours, RAYON_EXTRACTION_M), deps.journal);
-    texte = reponse.texte;
+    texte = texteExtraitReduit(reponse.extrait);
     await deps.ecrireFichier(cheminExtrait, texte);
     deps.journal(`  extrait de ${new URL(reponse.url).host} : ${reponse.extrait.elements.length} éléments OSM.`);
   } else {
