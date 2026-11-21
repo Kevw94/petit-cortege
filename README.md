@@ -35,6 +35,8 @@ npm run dev        # base de dev + manif pré-remplie + serveur (8787) + client 
 npm run seed       # resème seulement la manif de démo
 npm test           # Vitest : serveur (vrai Postgres) + Cortège
 npm run typecheck  # tsc strict dans chaque workspace
+npm run lint       # Biome : lint et vérification du formatage (biome.json)
+npm run format     # Biome : formate le code
 npm run build      # build du client
 ```
 
