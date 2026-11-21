@@ -12,7 +12,7 @@ import { decoderPancarte, MARGE_RAYON_VUE_DE_HAUT_M, METRES_PAR_TUILE, versTuile
 import { BUDGET_AVATARS_DESSINES } from '../apparence/affichage';
 import type { PointM } from '../cadrage';
 import { cibleDeSuivi } from '../camera';
-import { calculerCortege, COLONNES_FOULE, PAS_FOULE_M } from '../cortege/cortege';
+import { CortegeMemorise, COLONNES_FOULE, PAS_FOULE_M } from '../cortege/cortege';
 import { composerFoule } from '../cortege/foule';
 import {
   allureDuCortege,
@@ -358,6 +358,8 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
 
   // Animation de marche : allure réutilisée d'un avatar à l'autre, tronçons où la foule avance.
   const allure = allureImmobile();
+  // Placement gardé d'une image à l'autre : seules les positions sont recalculées.
+  const memorise = new CortegeMemorise();
   const tronconsEnMarche = new Set<number>();
   const mouvementReduit = requeteMouvementReduit();
 
@@ -370,7 +372,7 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
       parcoursConnu = donnees.manif.parcours;
       placeur = creerPlaceur(parcoursConnu, projeter);
     }
-    const cortege = calculerCortege({
+    const cortege = memorise.calculer({
       manif: donnees.manif,
       entrees: donnees.entrees(),
       propres: donnees.propres(),

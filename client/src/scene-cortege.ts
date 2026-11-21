@@ -26,7 +26,7 @@ import { CELLULE_APPARENCE, HAUTEUR_TETE_PX } from './apparence/dessin';
 import { chargerCouchesApparence, CLE_APPARENCES, TextureApparences } from './apparence/texture';
 import { cadrerSur, deplacer, versEcran, zoomerAutour, type Cadrage, type PointM, type PointPx } from './cadrage';
 import { cadrerEnTroisiemePersonne, cibleDeSuivi, ECHELLE_SUIVI_PX_PAR_M, LISSAGE_SUIVI, suivre } from './camera';
-import { calculerCortege, type Cortege } from './cortege/cortege';
+import { CortegeMemorise, type Cortege } from './cortege/cortege';
 import { composerFoule } from './cortege/foule';
 import {
   allureDuCortege,
@@ -93,6 +93,8 @@ function projeteur(georef: Georeference) {
 
 export class SceneCortege extends Phaser.Scene {
   #donnees!: DonneesScene;
+  /** Placement gardé d'une image à l'autre : seules les positions sont recalculées. */
+  readonly #cortege = new CortegeMemorise();
   #decor: DecorAffiche | null = null;
   /** Partie nette du plan de la ville (hors fondu) : le dézoom maximal n'en sort pas. */
   #planNet: RectangleM | null = null;
@@ -201,7 +203,7 @@ export class SceneCortege extends Phaser.Scene {
 
   override update(): void {
     this.#suivrePincement();
-    const cortege = calculerCortege({
+    const cortege = this.#cortege.calculer({
       manif: this.#donnees.manif,
       entrees: this.#donnees.entrees(),
       propres: this.#donnees.propres(),

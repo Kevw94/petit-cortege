@@ -13,7 +13,7 @@
  */
 import * as Phaser from 'phaser';
 import feuillePersonnages from '../../../assets/kenney/chars/Spritesheet/roguelikeChar_transparent.png?url';
-import { calculerCortege, COLONNES_FOULE, PAS_FOULE_M } from '../cortege/cortege';
+import { CortegeMemorise, COLONNES_FOULE, PAS_FOULE_M } from '../cortege/cortege';
 import type { ParametresPerf } from './parametres';
 import { creerPlacement, PX_PAR_M, type Placer } from './placement';
 import type { ScenarioPerf } from './scenario';
@@ -40,6 +40,7 @@ export interface DonneesScenePerf {
 
 export class ScenePerf extends Phaser.Scene {
   #donnees!: DonneesScenePerf;
+  readonly #cortege = new CortegeMemorise();
   #placer!: Placer;
   #debut = 0;
   #derniereMaj = -Infinity;
@@ -96,7 +97,7 @@ export class ScenePerf extends Phaser.Scene {
     if (t0 - this.#derniereMaj < parametres.majMs) return;
     this.#derniereMaj = t0;
     const maintenant = new Date(scenario.maintenant.getTime() + (t0 - this.#debut));
-    const { avatars } = calculerCortege({ manif: scenario.manif, entrees: scenario.entrees, maintenant });
+    const { avatars } = this.#cortege.calculer({ manif: scenario.manif, entrees: scenario.entrees, maintenant });
     const { width, height } = this.scale.gameSize;
     const s = this.#echelle;
     const ox = this.#dx - TAILLE / 2;

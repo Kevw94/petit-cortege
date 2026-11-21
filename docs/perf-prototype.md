@@ -114,6 +114,33 @@ Sans ralentissement, la vue `tout` tombe déjà à 23–28 images/s à 5 000 ava
 principal ne travaille que 1,5 à 4 ms : c'est la limite de **SwiftShader**, pas de Phaser. À ×6, le coût du
 fil principal par avatar dessiné est d'environ **3 µs en sprites** et **1,7 µs en Blitter**.
 
+### Placement mémorisé (ticket #36)
+
+Depuis #36, le Cortège se calcule en deux temps (`client/src/cortege/cortege.ts`) : le **placement**
+(hachage, tri des groupes d'entrée, grille, place sur la place d'arrivée) est gardé par `CortegeMemorise`
+et refait seulement quand un avatar entre ou que les entrées, les propres, les retraits ou le départ changent ;
+à chaque image, seules les **positions** à l'heure courante sont recalculées. Le prototype, la vue 2D et la
+vue 3D l'utilisent. Même machine, même passage, `npm run mesure-perf -- --n=10000,20000
+--techniques=sprites,blitter --vues=rue --ralentis=4,6 --majs=0,250 --duree=4000`, vue `rue`, 20 000 avatars
+(images/s · MAJ en ms par image) :
+
+| CPU | maj | technique | avant | après |
+|---|---|---|---|---|
+| ×4 | chaque image | sprites | 13,9 · 61,7 | **33,9 · 18,1** |
+| ×4 | chaque image | blitter | 14,7 · 60,7 | **43,1 · 15,2** |
+| ×4 | 250 ms | sprites | 45,4 · 6,4 (p95 67 ms) | **58,9 · 1,2 (p95 17 ms)** |
+| ×4 | 250 ms | blitter | 47,7 · 5,8 (p95 67 ms) | **59,7 · 1,1 (p95 17 ms)** |
+| ×6 | chaque image | sprites | 9,2 · 94,3 | **26,1 · 23,2** |
+| ×6 | chaque image | blitter | 9,7 · 94,6 | **32,5 · 20,6** |
+| ×6 | 250 ms | sprites | 39,9 · 9,2 (p95 100 ms) | **54,8 · 2,3 (p95 33 ms)** |
+| ×6 | 250 ms | blitter | 39,5 · 9,8 (p95 109 ms) | **58,7 · 1,4 (p95 17 ms)** |
+
+Sans ralentissement (Node, `scenarioPerf(20000)`), une image coûte ≈ 22 ms avec `calculerCortege` et
+≈ 3,6 ms avec `CortegeMemorise`. Ce qui reste à chaque image, c'est la position de chaque avatar et, dans le
+prototype, sa conversion en pixels pour les 20 000 : l'à-coup de l'image du recalcul (point 1 ci-dessous)
+disparaît presque (p95 de 67–109 ms à 17–33 ms). Pendant une vraie manif, le placement est refait à chaque
+seconde où quelqu'un entre (heures d'entrée à la seconde), au plus une fois par seconde.
+
 ## Analyse
 
 1. **À l'échelle de jeu, 20 000 avatars en marche tiennent ≈ 55 images/s** (CPU ×4 et ×6), en sprites
