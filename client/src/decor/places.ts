@@ -4,7 +4,7 @@
  * aucun nom de rue). Libellé sous le centre de la place (les libellés « Départ » et
  * « Arrivée » sont au-dessus de leur point), au-dessus de la foule, gardé dans l'écran.
  */
-import * as Phaser from 'phaser';
+import type * as Phaser from 'phaser';
 import { METRES_PAR_TUILE, type Decor } from '@petit-cortege/shared';
 import type { PointM, PointPx } from '../cadrage';
 

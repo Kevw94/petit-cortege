@@ -30,7 +30,7 @@ export async function retirerParLeSoutien(sql: Sql, requete: RequeteRetrait): Pr
   const [avatar] = await sql<{ hachage_retrait: Buffer | null }[]>`
     select hachage_retrait from avatar where id = ${requete.avatar}`;
   const attendu = avatar?.hachage_retrait;
-  if (!attendu || attendu.length !== 32 || !timingSafeEqual(attendu, sha256(requete.jeton))) {
+  if (attendu?.length !== 32 || !timingSafeEqual(attendu, sha256(requete.jeton))) {
     return { ok: false, erreur: 'retrait-refuse' };
   }
   await retirerAvatar(sql, requete.avatar, 'soutien');

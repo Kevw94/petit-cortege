@@ -69,5 +69,5 @@ export function rappelIcs({ fin, url, maintenant }: DemandeRappel): string {
     'END:VEVENT',
     'END:VCALENDAR',
   ];
-  return lignes.map(replier).join('\r\n') + '\r\n';
+  return `${lignes.map(replier).join('\r\n')}\r\n`;
 }

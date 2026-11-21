@@ -77,12 +77,13 @@ export async function executerImport(argv: string[], deps: DependancesImportMani
     return 1;
   }
   try {
-    let options;
-    try {
-      options = parseArgs({ args: reste, options: OPTIONS, strict: true }).values;
-    } catch (e) {
-      throw new ErreurImport(`${(e as Error).message}\n\n${AIDE}`);
-    }
+    const options = (() => {
+      try {
+        return parseArgs({ args: reste, options: OPTIONS, strict: true }).values;
+      } catch (e) {
+        throw new ErreurImport(`${(e as Error).message}\n\n${AIDE}`);
+      }
+    })();
     if (!options.fichier) throw new ErreurImport(`option --fichier obligatoire.\n\n${AIDE}`);
     const fichier = resolve(deps.dossierCourant, options.fichier);
     const journee = await lireFichierDuJour(fichier);

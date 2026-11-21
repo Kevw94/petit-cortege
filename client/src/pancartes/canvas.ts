@@ -87,7 +87,7 @@ function ecrire(ctx: CanvasRenderingContext2D, texte: string, cx: number, cy: nu
     const parLigne = Math.ceil(texte.length / n);
     let courante = '';
     for (const mot of mots) {
-      if (courante && (courante + ' ' + mot).length > parLigne && lignes.length < n - 1) {
+      if (courante && (`${courante} ${mot}`).length > parLigne && lignes.length < n - 1) {
         lignes.push(courante);
         courante = mot;
       } else courante = courante ? `${courante} ${mot}` : mot;

@@ -109,7 +109,7 @@ export function genererDecor(options: OptionsDecor): CarteTiled {
   // Le parcours passe toujours : là où il franchit l'eau sans rue cartographiée, un passage piéton.
   const avantPassage = grille.cases.slice();
   grille.peindreLigne(parcours, rayonDe(LARGEUR_PASSAGE_PARCOURS_M), Terrain.pieton);
-  grille.cases.forEach((t, i) => {
+  grille.cases.forEach((_t, i) => {
     if (avantPassage[i] !== Terrain.eau) grille.cases[i] = avantPassage[i]!;
   });
   // Ponts : ce qui a été peint par-dessus l'eau (rues, parcours) en est le tablier.

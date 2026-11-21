@@ -23,6 +23,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "biome check .",
+    "format": "biome format --write .",
     "build": "npm run build --workspace=@petit-cortege/client",
     "mesure-perf": "npm run mesure-perf --workspace=@petit-cortege/scripts --",
     "serveur": "tsx server/src/principal.ts",
@@ -32,6 +34,7 @@
     "generer-favicon": "tsx scripts/generer-favicon.ts"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.6.6",
     "@types/node": "^26.6.6",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",

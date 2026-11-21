@@ -49,7 +49,7 @@ export function sectionPancarte(initiale: CompositionPancarte): SectionPancarte 
   apercu.append(panneau);
   const actualiser = () => {
     const couleur = COULEURS_PANCARTE[composition.couleur]!;
-    panneau.dataset['forme'] = FORMES_PANCARTE[composition.forme]!;
+    panneau.dataset.forme = FORMES_PANCARTE[composition.forme]!;
     panneau.style.setProperty('--fond', enCss(couleur.fond));
     panneau.style.setProperty('--texte', enCss(couleur.texte));
     texte.textContent = SLOGANS[composition.slogan]!;
@@ -89,7 +89,7 @@ export function sectionPancarte(initiale: CompositionPancarte): SectionPancarte 
     rendu: (forme, b) => {
       const mini = document.createElement('span');
       mini.className = 'pancarte mini';
-      mini.dataset['forme'] = forme;
+      mini.dataset.forme = forme;
       b.append(mini);
       b.setAttribute('aria-label', NOMS_FORMES[forme]);
       b.title = NOMS_FORMES[forme];

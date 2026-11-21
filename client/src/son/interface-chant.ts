@@ -52,7 +52,7 @@ export function brancherChant(options: {
     if (composition) {
       const couleur = COULEURS_PANCARTE[composition.couleur]!;
       pulsant.className = 'pancarte chant-pancarte';
-      pulsant.dataset['forme'] = FORMES_PANCARTE[composition.forme]!;
+      pulsant.dataset.forme = FORMES_PANCARTE[composition.forme]!;
       pulsant.style.setProperty('--fond', enCss(couleur.fond));
       pulsant.style.setProperty('--texte', enCss(couleur.texte));
       const texte = document.createElement('span');

@@ -117,7 +117,7 @@ export function composerFoule<A extends AvatarAComposer>(
     }
     const tirage = tirageIdentifiant(avatar.id);
     const troncon = avatar.surPlace ? undefined : parTroncon.get(numeroDe(avatar))!;
-    if (!troncon || !troncon.enMasse || tirage < fractionPremierPlan(troncon.densite) * 2 ** 32) candidats.push({ avatar, tirage });
+    if (!troncon?.enMasse || tirage < fractionPremierPlan(troncon.densite) * 2 ** 32) candidats.push({ avatar, tirage });
   }
 
   // Budget : seuil de tirage divisé par 2 jusqu'à tenir. Par paliers, pour que le tirage reste
