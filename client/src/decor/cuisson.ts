@@ -19,14 +19,22 @@ export interface SourceTuile {
 }
 
 /** Image et position dans la planche d'un gid (0 = vide). */
-export function sourceDeTuile(tilesets: readonly TilesetTiled[], images: ImagesTilesets, gid: number): SourceTuile | null {
+export function sourceDeTuile(
+  tilesets: readonly TilesetTiled[],
+  images: ImagesTilesets,
+  gid: number,
+): SourceTuile | null {
   if (gid === 0) return null;
   const tileset = tilesets.reduce<TilesetTiled | null>((t, c) => (gid >= c.firstgid ? c : t), null);
   const image = tileset && images(tileset.name);
   if (!tileset || !image) return null;
   const i = gid - tileset.firstgid;
   const pas = tileset.tilewidth + tileset.spacing;
-  return { image, sx: tileset.margin + (i % tileset.columns) * pas, sy: tileset.margin + Math.floor(i / tileset.columns) * pas };
+  return {
+    image,
+    sx: tileset.margin + (i % tileset.columns) * pas,
+    sy: tileset.margin + Math.floor(i / tileset.columns) * pas,
+  };
 }
 
 /** Dessine les couches d'un bloc dans un canvas (16 px par tuile) ; renvoie aussi les rangées non vides. */
@@ -51,7 +59,17 @@ export function cuireBloc(
       const rangee = Math.floor(i / TAILLE_BLOC);
       pleines.add(rangee);
       const x = (i % TAILLE_BLOC) * TAILLE_TUILE_PX;
-      ctx.drawImage(source.image, source.sx, source.sy, TAILLE_TUILE_PX, TAILLE_TUILE_PX, x, rangee * TAILLE_TUILE_PX, TAILLE_TUILE_PX, TAILLE_TUILE_PX);
+      ctx.drawImage(
+        source.image,
+        source.sx,
+        source.sy,
+        TAILLE_TUILE_PX,
+        TAILLE_TUILE_PX,
+        x,
+        rangee * TAILLE_TUILE_PX,
+        TAILLE_TUILE_PX,
+        TAILLE_TUILE_PX,
+      );
     });
   }
   return { canvas, rangees: [...pleines].sort((a, b) => a - b) };
@@ -69,7 +87,17 @@ export function couleursDeTuiles(tilesets: readonly TilesetTiled[], images: Imag
       if (s) {
         echantillon.canvas.width = echantillon.canvas.height = TAILLE_TUILE_PX;
         echantillon.clearRect(0, 0, TAILLE_TUILE_PX, TAILLE_TUILE_PX);
-        echantillon.drawImage(s.image, s.sx, s.sy, TAILLE_TUILE_PX, TAILLE_TUILE_PX, 0, 0, TAILLE_TUILE_PX, TAILLE_TUILE_PX);
+        echantillon.drawImage(
+          s.image,
+          s.sx,
+          s.sy,
+          TAILLE_TUILE_PX,
+          TAILLE_TUILE_PX,
+          0,
+          0,
+          TAILLE_TUILE_PX,
+          TAILLE_TUILE_PX,
+        );
         const d = echantillon.getImageData(0, 0, TAILLE_TUILE_PX, TAILLE_TUILE_PX).data;
         let n = 0;
         for (let i = 0; i < d.length; i += 4) {
@@ -88,7 +116,11 @@ export function couleursDeTuiles(tilesets: readonly TilesetTiled[], images: Imag
 }
 
 /** Vue d'ensemble : un pixel par tuile, de la couleur moyenne de la tuile la plus haute des `couches`. */
-export function dessinerVueDEnsemble(decor: Decor, images: ImagesTilesets, couches: readonly string[] = decor.nomsCouches): HTMLCanvasElement {
+export function dessinerVueDEnsemble(
+  decor: Decor,
+  images: ImagesTilesets,
+  couches: readonly string[] = decor.nomsCouches,
+): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, decor.largeur);
   canvas.height = Math.max(1, decor.hauteur);
@@ -119,6 +151,8 @@ export async function chargerImagesTilesets(): Promise<ImagesTilesets> {
       image.onerror = () => rejeter(new Error(`Image introuvable : ${url}`));
       image.src = url;
     });
-  const images = new Map(await Promise.all(Object.entries(IMAGES_TILESETS).map(async ([nom, url]) => [nom, await charger(url)] as const)));
+  const images = new Map(
+    await Promise.all(Object.entries(IMAGES_TILESETS).map(async ([nom, url]) => [nom, await charger(url)] as const)),
+  );
   return (nom) => images.get(nom);
 }

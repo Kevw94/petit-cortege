@@ -7,7 +7,12 @@ describe('Paramètres du prototype de performance', () => {
   });
 
   it('lit n, la technique et la vue depuis la requête', () => {
-    expect(lireParametres('?n=5000&technique=gpulayer&vue=rue')).toEqual({ n: 5000, technique: 'gpulayer', vue: 'rue', majMs: 0 });
+    expect(lireParametres('?n=5000&technique=gpulayer&vue=rue')).toEqual({
+      n: 5000,
+      technique: 'gpulayer',
+      vue: 'rue',
+      majMs: 0,
+    });
   });
 
   it('lit l’intervalle de recalcul des positions (0 = à chaque image)', () => {
@@ -16,6 +21,11 @@ describe('Paramètres du prototype de performance', () => {
   });
 
   it('ignore les valeurs inconnues ou absurdes', () => {
-    expect(lireParametres('?n=-3&technique=canvas&vue=ciel&maj=-5')).toEqual({ n: 20_000, technique: 'sprites', vue: 'tout', majMs: 0 });
+    expect(lireParametres('?n=-3&technique=canvas&vue=ciel&maj=-5')).toEqual({
+      n: 20_000,
+      technique: 'sprites',
+      vue: 'tout',
+      majMs: 0,
+    });
   });
 });

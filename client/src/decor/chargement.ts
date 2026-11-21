@@ -20,7 +20,10 @@ export const PREFIXE_DECORS = '/decors/';
 
 type Charger = (url: string) => Promise<Response>;
 
-export async function chargerDecor(parcours: Position[], charger: Charger = (url) => fetch(url)): Promise<Decor | null> {
+export async function chargerDecor(
+  parcours: Position[],
+  charger: Charger = (url) => fetch(url),
+): Promise<Decor | null> {
   try {
     const reponseIndex = await charger(PREFIXE_DECORS + CHEMIN_INDEX_DECORS);
     if (!reponseIndex.ok) return null;

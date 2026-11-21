@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { METRES_PAR_TUILE, positionDansLeCortege, versTuiles, type Parcours, type Position } from '@petit-cortege/shared';
+import {
+  METRES_PAR_TUILE,
+  positionDansLeCortege,
+  versTuiles,
+  type Parcours,
+  type Position,
+} from '@petit-cortege/shared';
 import { creerPlaceur, versMetres, versScene } from './repere';
 
 describe('mètres → coordonnées de la scène 3D', () => {
@@ -17,7 +23,7 @@ describe('mètres → coordonnées de la scène 3D', () => {
 const origine: Position = [2.3633, 48.8674];
 const parcours: Parcours = {
   type: 'LineString',
-  coordinates: [origine, [2.3674, 48.8674], [2.3700, 48.8655], [2.3720, 48.8640]],
+  coordinates: [origine, [2.3674, 48.8674], [2.37, 48.8655], [2.372, 48.864]],
 };
 const projeter = (p: Position) => {
   const t = versTuiles({ origine }, p);

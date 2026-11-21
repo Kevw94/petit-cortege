@@ -159,16 +159,24 @@ async function publierSousVerrou(sql: Requeteur, maintenant: Date, dossierPublic
   return incidents;
 }
 
-
 /** Retraits des avatars des manifs publiées (mêmes manifs que la liste). */
-async function publierRetraits(sql: Requeteur, dossier: string, manifs: ManifPubliee[], maintenant: Date): Promise<void> {
+async function publierRetraits(
+  sql: Requeteur,
+  dossier: string,
+  manifs: ManifPubliee[],
+  maintenant: Date,
+): Promise<void> {
   const ids = manifs.map((m) => m.id);
   const lignes = await sql<{ id: string }[]>`
     select r.avatar_id as id from retrait r
     join avatar a on a.id = r.avatar_id
     where a.manif_id = any(${ids}::text[])
     order by r.avatar_id collate "C"`;
-  const retraits: Retraits = { v: VERSION_FORMAT, generee: maintenant.toISOString(), retraits: lignes.map((l) => l.id) };
+  const retraits: Retraits = {
+    v: VERSION_FORMAT,
+    generee: maintenant.toISOString(),
+    retraits: lignes.map((l) => l.id),
+  };
   await ecrire(dossier, CHEMIN_RETRAITS, retraits);
 }
 
@@ -216,7 +224,12 @@ async function entreesParMinute(
   return parMinute;
 }
 
-async function publierMinutes(sql: Requeteur, dossier: string, manifs: ManifPubliee[], maintenant: Date): Promise<void> {
+async function publierMinutes(
+  sql: Requeteur,
+  dossier: string,
+  manifs: ManifPubliee[],
+  maintenant: Date,
+): Promise<void> {
   const attendues = new Set<number>();
   for (const manif of manifs) for (const m of minutesPubliees(manif, maintenant)) attendues.add(m.getTime());
 
@@ -262,7 +275,12 @@ async function publierMinutes(sql: Requeteur, dossier: string, manifs: ManifPubl
  * par minute manquant ou abîmé est reconstitué depuis la base (même requête que
  * sa publication), avec une ligne de journal.
  */
-async function compacterHeures(sql: Requeteur, dossier: string, manifs: ManifPubliee[], maintenant: Date): Promise<void> {
+async function compacterHeures(
+  sql: Requeteur,
+  dossier: string,
+  manifs: ManifPubliee[],
+  maintenant: Date,
+): Promise<void> {
   const heures = new Map<number, Set<number>>();
   for (const manif of manifs) {
     for (const { heure, minutes } of fichiersPublies(manif, maintenant).heures) {
@@ -276,7 +294,8 @@ async function compacterHeures(sql: Requeteur, dossier: string, manifs: ManifPub
     const chemin = cheminEntreesHeure(new Date(heure));
     if (await existe(join(dossier, chemin))) continue;
     const entrees: EntreePubliee[] = [];
-    for (const m of [...minutes].sort((a, b) => a - b)) entrees.push(...(await entreesDeLaMinute(sql, dossier, manifs, m)));
+    for (const m of [...minutes].sort((a, b) => a - b))
+      entrees.push(...(await entreesDeLaMinute(sql, dossier, manifs, m)));
     const fichier: EntreesHeure = { v: VERSION_FORMAT, heure: new Date(heure).toISOString(), entrees };
     await ecrire(dossier, chemin, fichier);
   }

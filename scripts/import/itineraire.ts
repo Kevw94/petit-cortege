@@ -78,7 +78,9 @@ export const ITINERAIRE_IGN: ServiceItineraire = {
       coordonnees,
       distanceM: reponse.distance,
       rues: fusionnerRues(
-        (reponse.portions ?? []).flatMap((p) => (p.steps ?? []).map((s) => ({ nom: nomVoie(s.attributes?.name), m: s.distance }))),
+        (reponse.portions ?? []).flatMap((p) =>
+          (p.steps ?? []).map((s) => ({ nom: nomVoie(s.attributes?.name), m: s.distance })),
+        ),
       ),
       service: ITINERAIRE_IGN.nom,
       attribution: 'IGN – Géoplateforme, BD TOPO® (Licence Ouverte 2.0)',
@@ -90,7 +92,11 @@ export const ITINERAIRE_IGN: ServiceItineraire = {
 interface ReponseOsrm {
   code: string;
   message?: string;
-  routes?: { distance: number; geometry: { coordinates: Position[] }; legs: { steps?: { name: string; distance: number }[] }[] }[];
+  routes?: {
+    distance: number;
+    geometry: { coordinates: Position[] };
+    legs: { steps?: { name: string; distance: number }[] }[];
+  }[];
 }
 
 export const ITINERAIRE_OSRM: ServiceItineraire = {
@@ -99,7 +105,8 @@ export const ITINERAIRE_OSRM: ServiceItineraire = {
     const url = `${URL_OSRM_PIETON}/${points.map(enTexte).join(';')}?overview=full&geometries=geojson&steps=true`;
     const reponse = await requeteJson<ReponseOsrm>(reseau, url);
     const route = reponse.routes?.[0];
-    if (reponse.code !== 'Ok' || !route) throw new ErreurService(`routing.openstreetmap.de : ${reponse.code} ${reponse.message ?? ''}`);
+    if (reponse.code !== 'Ok' || !route)
+      throw new ErreurService(`routing.openstreetmap.de : ${reponse.code} ${reponse.message ?? ''}`);
     return {
       coordonnees: route.geometry.coordinates,
       distanceM: route.distance,

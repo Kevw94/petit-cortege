@@ -100,8 +100,7 @@ class Toile {
   /** Disque de centre (cx, cy) (demi-pixels permis) et de rayon r. */
   disque(cx: number, cy: number, r: number, couleur: number): void {
     for (let y = 0; y < CELLULE.hauteur; y++)
-      for (let x = 0; x < CELLULE.largeur; x++)
-        if ((x - cx) ** 2 + (y - cy) ** 2 <= r * r) this.point(x, y, couleur);
+      for (let x = 0; x < CELLULE.largeur; x++) if ((x - cx) ** 2 + (y - cy) ** 2 <= r * r) this.point(x, y, couleur);
   }
 
   /** Segment de Bresenham. */
@@ -284,12 +283,16 @@ function couches(planche: ImageRGBA): [string, Toile][] {
   liste.push(['chaussures', tuileKenney(planche, TUILE_CHAUSSURES)]);
   HAUTS.forEach((haut, h) => {
     const piece = tuileKenney(planche, haut.tuile!);
-    COULEURS_VETEMENTS.forEach((c, i) => liste.push([`haut/${h}/${i}`, changerPalette(piece, RANGS_VETEMENTS, c.rampe)]));
+    COULEURS_VETEMENTS.forEach((c, i) =>
+      liste.push([`haut/${h}/${i}`, changerPalette(piece, RANGS_VETEMENTS, c.rampe)]),
+    );
   });
   COUPES.forEach((coupe, k) => {
     if (!coupe.tuile) return;
     const piece = tuileKenney(planche, coupe.tuile);
-    COULEURS_CHEVEUX.forEach((c, i) => liste.push([`cheveux/${k}/${i}`, changerPalette(piece, RANGS_CHEVEUX, c.rampe)]));
+    COULEURS_CHEVEUX.forEach((c, i) =>
+      liste.push([`cheveux/${k}/${i}`, changerPalette(piece, RANGS_CHEVEUX, c.rampe)]),
+    );
   });
   ACCESSOIRES.forEach((accessoire, a) => {
     if (a === 0) return;

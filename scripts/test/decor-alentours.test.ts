@@ -43,18 +43,41 @@ const FIXTURES = join(import.meta.dirname, 'fixtures/decor');
 const KX = 111_320 * Math.cos((48.87 * Math.PI) / 180);
 const KY = 110_540;
 const enPosition = (x: number, y: number): Position => [2.36 + x / KX, 48.87 - y / KY];
-const geom = (...points: [number, number][]) => points.map(([x, y]) => {
-  const [lon, lat] = enPosition(x, y);
-  return { lat, lon };
-});
+const geom = (...points: [number, number][]) =>
+  points.map(([x, y]) => {
+    const [lon, lat] = enPosition(x, y);
+    return { lat, lon };
+  });
 
 const ALENTOURS: ExtraitOverpass = {
   elements: [
-    { type: 'way', id: 1, tags: { highway: 'primary', name: 'Boulevard Test' }, nodes: [1, 2], geometry: geom([-200, 0], [600, 0]) },
-    { type: 'way', id: 2, tags: { highway: 'residential', name: 'Rue du Nord', 'maxspeed': '30' }, nodes: [3, 4], geometry: geom([-200, -300], [600, -300]) },
+    {
+      type: 'way',
+      id: 1,
+      tags: { highway: 'primary', name: 'Boulevard Test' },
+      nodes: [1, 2],
+      geometry: geom([-200, 0], [600, 0]),
+    },
+    {
+      type: 'way',
+      id: 2,
+      tags: { highway: 'residential', name: 'Rue du Nord', maxspeed: '30' },
+      nodes: [3, 4],
+      geometry: geom([-200, -300], [600, -300]),
+    },
     { type: 'way', id: 3, tags: { highway: 'footway' }, geometry: geom([0, -320], [400, -320]) },
-    { type: 'way', id: 4, tags: { building: 'yes' }, geometry: geom([100, -350], [140, -350], [140, -380], [100, -380], [100, -350]) },
-    { type: 'way', id: 5, tags: { highway: 'residential', name: 'Rue Lointaine' }, geometry: geom([-200, -1000], [600, -1000]) },
+    {
+      type: 'way',
+      id: 4,
+      tags: { building: 'yes' },
+      geometry: geom([100, -350], [140, -350], [140, -380], [100, -380], [100, -350]),
+    },
+    {
+      type: 'way',
+      id: 5,
+      tags: { highway: 'residential', name: 'Rue Lointaine' },
+      geometry: geom([-200, -1000], [600, -1000]),
+    },
     { type: 'node', id: 6, lat: 48.87, lon: 2.36, tags: { shop: 'bakery', name: 'Boulangerie' } },
     {
       type: 'relation',
@@ -94,7 +117,10 @@ describe('emprise du plan', () => {
   it('couvre l’écran entier au dézoom maximal dans tous les formats, plus le fondu', () => {
     // 21:9 : l'écran fait 21/9 × 1 rayons, sa demi-diagonale ≈ 2,54 rayons.
     expect(facteurDiagonaleEcran()).toBeCloseTo(Math.hypot(1, 2560 / 1080), 6);
-    const e = empriseDuPlan([{ x: 0, y: 0 }, { x: 400, y: 0 }]);
+    const e = empriseDuPlan([
+      { x: 0, y: 0 },
+      { x: 400, y: 0 },
+    ]);
     expect(e.centre).toEqual({ x: 200, y: 0 });
     expect(e.demiCote).toBeGreaterThan((200 + 40) * Math.hypot(1, 2560 / 1080) + FONDU_PLAN_M);
     expect(e.demiCote).toBeLessThan(1000);
@@ -102,10 +128,16 @@ describe('emprise du plan', () => {
   });
 
   it('grandit avec le parcours (plusieurs km pour un défilé parisien), borné à 12 km de côté', () => {
-    const paris = empriseDuPlan([{ x: 0, y: 0 }, { x: 3000, y: 1200 }]);
+    const paris = empriseDuPlan([
+      { x: 0, y: 0 },
+      { x: 3000, y: 1200 },
+    ]);
     expect(2 * paris.demiCote).toBeGreaterThan(8000);
     expect(2 * paris.demiCote).toBeLessThan(10_000);
-    const immense = empriseDuPlan([{ x: 0, y: 0 }, { x: 9000, y: 0 }]);
+    const immense = empriseDuPlan([
+      { x: 0, y: 0 },
+      { x: 9000, y: 0 },
+    ]);
     expect(2 * immense.demiCote).toBe(12_000);
     expect(immense.borne).toBe(true);
   });
@@ -213,7 +245,10 @@ describe('couche du plan de la ville', () => {
   });
 
   it('couvre un carré homogène autour du parcours, sans halo, et s’arrête à son bord', () => {
-    const { demiCote } = empriseDuPlan([{ x: 0, y: 0 }, { x: 400, y: 0 }]);
+    const { demiCote } = empriseDuPlan([
+      { x: 0, y: 0 },
+      { x: 400, y: 0 },
+    ]);
     // Même contenu près du parcours et loin de lui, dans les coins du carré compris.
     expect(caseEn(200 + demiCote - 20, -demiCote + 20)).toBe(TUILES.ilot);
     expect(caseEn(200 - demiCote + 20, demiCote - 20)).toBe(TUILES.ilot);
@@ -231,9 +266,18 @@ describe('lecture des cartes anciennes', () => {
     const couche: CoucheTuilesTiled = {
       ...(carte.layers.find((c) => c.name === COUCHE_ALENTOURS) as CoucheTuilesTiled),
       properties: [{ name: 'tuiles_par_case', type: 'int', value: 2 }],
-      chunks: [-64, -32].map((x) => ({ x, y: -32, width: 32, height: 32, data: deflateSync(octets).toString('base64') })),
+      chunks: [-64, -32].map((x) => ({
+        x,
+        y: -32,
+        width: 32,
+        height: 32,
+        data: deflateSync(octets).toString('base64'),
+      })),
     };
-    const ancienne = await lireDecor({ ...carte, layers: carte.layers.map((c) => (c.name === COUCHE_ALENTOURS ? couche : c)) });
+    const ancienne = await lireDecor({
+      ...carte,
+      layers: carte.layers.map((c) => (c.name === COUCHE_ALENTOURS ? couche : c)),
+    });
     expect(ancienne.alentours).toMatchObject({ tuilesParCase: 2, x: -64, y: -32, largeur: 64, hauteur: 32 });
     expect(ancienne.alentours!.teintesIlots).toBeUndefined();
     expect(ancienne.alentours!.gids[100]).toBe(TUILES.pateDeMaisons);

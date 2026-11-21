@@ -3,7 +3,14 @@
  * des rues) → itinéraire piéton → contrôles → GeoJSON relisible et versionné.
  */
 import { distanceM, longueurParcours, type Parcours, type Position } from '@petit-cortege/shared';
-import { controlerTrace, demiTours, distanceAuTrace, echantillonner, nettoyerTrace, type ZoneGeocodee } from './controles';
+import {
+  controlerTrace,
+  demiTours,
+  distanceAuTrace,
+  echantillonner,
+  nettoyerTrace,
+  type ZoneGeocodee,
+} from './controles';
 import { decrireEtape, empreinteTrace, ErreurImport, type ManifDeclaree } from './fichier';
 import { geocoder, SERVICES_GEOCODAGE, type LieuGeocode, type ServiceGeocodage } from './geocodage';
 import { calculerItineraire, SERVICES_ITINERAIRE, type Itineraire, type ServiceItineraire } from './itineraire';
@@ -96,7 +103,9 @@ export async function tracerManif(manif: ManifDeclaree, deps: DependancesTrace):
     };
     if ('rue' in etape) {
       if (lieu.type !== 'street') {
-        throw new ErreurImport(`${quoi(rang)} : « ${etape.rue} » donne « ${lieu.libelle} », qui n'est pas une voie (${lieu.type}).`);
+        throw new ErreurImport(
+          `${quoi(rang)} : « ${etape.rue} » donne « ${lieu.libelle} », qui n'est pas une voie (${lieu.type}).`,
+        );
       }
       resolues.push({ etape: etapeTracee, rue: { geocode: lieu } });
     } else {
@@ -138,7 +147,9 @@ export async function tracerManif(manif: ManifDeclaree, deps: DependancesTrace):
     const raccord = (a: GeometrieRue, b: GeometrieRue, reference: Position) => {
       const r = raccorder(a, b, reference);
       if (r.ecartM > RACCORD_SIGNALE_M) {
-        avertissements.push(`« ${a.nom} » et « ${b.nom} » ne se croisent pas : raccord non annoncé de ${Math.round(r.ecartM)} m entre elles.`);
+        avertissements.push(
+          `« ${a.nom} » et « ${b.nom} » ne se croisent pas : raccord non annoncé de ${Math.round(r.ecartM)} m entre elles.`,
+        );
       }
       return r;
     };
@@ -158,7 +169,13 @@ export async function tracerManif(manif: ManifDeclaree, deps: DependancesTrace):
   // 4. Zones à éviter.
   const zones: ZoneGeocodee[] = [];
   for (const [i, zone] of manif.zonesEvitees.entries()) {
-    const lieu = await geocoder(deps.reseau, zone.adresse, manif.ville, `manif « ${manif.id} », zone évitée n° ${i + 1}`, services);
+    const lieu = await geocoder(
+      deps.reseau,
+      zone.adresse,
+      manif.ville,
+      `manif « ${manif.id} », zone évitée n° ${i + 1}`,
+      services,
+    );
     zones.push({ nom: lieu.nom, libelle: lieu.libelle, position: lieu.position, rayonM: zone.rayonM });
   }
 
@@ -169,9 +186,17 @@ export async function tracerManif(manif: ManifDeclaree, deps: DependancesTrace):
   const evaluer = (itineraire: Itineraire) => {
     const parcours: Parcours = { type: 'LineString', coordinates: nettoyerTrace(itineraire.coordonnees) };
     const constat = controlerTrace({ parcours, points, rues: itineraire.rues, zones });
-    return { itineraire, parcours, constat, demiTours: demiTours(parcours.coordinates).length, longueur: longueurParcours(parcours) };
+    return {
+      itineraire,
+      parcours,
+      constat,
+      demiTours: demiTours(parcours.coordinates).length,
+      longueur: longueurParcours(parcours),
+    };
   };
-  const premier = evaluer(await calculerItineraire(deps.reseau, points, `manif « ${manif.id} »`, deps.journal, servicesIti));
+  const premier = evaluer(
+    await calculerItineraire(deps.reseau, points, `manif « ${manif.id} »`, deps.journal, servicesIti),
+  );
   const candidats = [premier];
   if (premier.demiTours > 0 || premier.constat.erreurs.length > 0) {
     for (const service of servicesIti.filter((s) => s.nom !== premier.itineraire.service)) {
@@ -193,11 +218,18 @@ export async function tracerManif(manif: ManifDeclaree, deps: DependancesTrace):
   const { itineraire, parcours, constat } = meilleur;
   attribution.add(`Itinéraire : ${itineraire.attribution}`);
   if (constat.erreurs.length > 0) {
-    throw new ErreurImport(`manif « ${manif.id} » : tracé refusé (${itineraire.service}) :\n  - ${constat.erreurs.join('\n  - ')}`);
+    throw new ErreurImport(
+      `manif « ${manif.id} » : tracé refusé (${itineraire.service}) :\n  - ${constat.erreurs.join('\n  - ')}`,
+    );
   }
   const ecartes = candidats
     .filter((c) => c !== meilleur)
-    .map((c) => ({ service: c.itineraire.service, longueurM: Math.round(c.longueur), demiTours: c.demiTours, erreurs: c.constat.erreurs }));
+    .map((c) => ({
+      service: c.itineraire.service,
+      longueurM: Math.round(c.longueur),
+      demiTours: c.demiTours,
+      erreurs: c.constat.erreurs,
+    }));
   const echantillons = echantillonner(parcours);
   return {
     type: 'Feature',
@@ -226,7 +258,8 @@ export async function tracerManif(manif: ManifDeclaree, deps: DependancesTrace):
       avertissements: [...avertissements, ...constat.avertissements],
       calculeLe: deps.maintenant().toISOString(),
       attribution: [...attribution],
-      licence: 'Tracé calculé, dérivé de données sous Licence Ouverte 2.0 (IGN, BAN) et, le cas échéant, ODbL (OpenStreetMap)',
+      licence:
+        'Tracé calculé, dérivé de données sous Licence Ouverte 2.0 (IGN, BAN) et, le cas échéant, ODbL (OpenStreetMap)',
     },
     geometry: parcours,
   };

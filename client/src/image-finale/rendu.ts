@@ -333,7 +333,15 @@ function etiquetteToi(ctx: CanvasRenderingContext2D, x: number, bas: number): vo
 }
 
 /** Texte réduit jusqu'à tenir dans `largeurMax`. */
-function texte(ctx: CanvasRenderingContext2D, contenu: string, x: number, y: number, taille: number, largeurMax: number, gras = false) {
+function texte(
+  ctx: CanvasRenderingContext2D,
+  contenu: string,
+  x: number,
+  y: number,
+  taille: number,
+  largeurMax: number,
+  gras = false,
+) {
   let t = taille;
   ctx.font = `${gras ? 'bold ' : ''}${t}px ${POLICE}`;
   while (t > 12 && ctx.measureText(contenu).width > largeurMax) {
@@ -370,7 +378,15 @@ function dessinerBandeaux(ctx: CanvasRenderingContext2D, { manif, image, nomPlac
 
   const n = image.compteur;
   ctx.fillStyle = '#222';
-  texte(ctx, `${n.toLocaleString('fr-FR')} ${n > 1 ? 'soutiens' : 'soutien'}`, marge, H - BANDEAU_BAS_PX + 96, 76, L - 2 * marge, true);
+  texte(
+    ctx,
+    `${n.toLocaleString('fr-FR')} ${n > 1 ? 'soutiens' : 'soutien'}`,
+    marge,
+    H - BANDEAU_BAS_PX + 96,
+    76,
+    L - 2 * marge,
+    true,
+  );
   ctx.fillStyle = '#444';
   texte(ctx, 'rassemblés au point d’arrivée · Petit Cortège', marge, H - BANDEAU_BAS_PX + 140, 30, L - 2 * marge);
   ctx.fillStyle = '#666';

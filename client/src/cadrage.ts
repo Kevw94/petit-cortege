@@ -82,6 +82,9 @@ export function zoomerAutour(cadrage: Cadrage, facteur: number, point: PointPx, 
 export function deplacer(cadrage: Cadrage, glissement: PointPx): Cadrage {
   return {
     ...cadrage,
-    centre: { x: cadrage.centre.x - glissement.x / cadrage.echelle, y: cadrage.centre.y - glissement.y / cadrage.echelle },
+    centre: {
+      x: cadrage.centre.x - glissement.x / cadrage.echelle,
+      y: cadrage.centre.y - glissement.y / cadrage.echelle,
+    },
   };
 }

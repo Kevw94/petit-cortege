@@ -118,7 +118,10 @@ export function atlasPancartes(pxParM: number, cote: number, avecSlogan = true):
   return new Atlas({
     largeur: cote,
     hauteur: cote,
-    case: { largeur: Math.ceil(CADRE_PANCARTE_M.largeur * pxParM), hauteur: Math.ceil(CADRE_PANCARTE_M.hauteur * pxParM) },
+    case: {
+      largeur: Math.ceil(CADRE_PANCARTE_M.largeur * pxParM),
+      hauteur: Math.ceil(CADRE_PANCARTE_M.hauteur * pxParM),
+    },
     pixelArt: false,
     dessiner: (ctx, indice, x, y) => dessinerPancarteCanvas(ctx, indice, x, y, pxParM, avecSlogan),
   });
@@ -140,7 +143,10 @@ export function texturePaquets(couches: CanvasImageSource): { texture: THREE.Can
   const ctx = canvas.getContext('2d')!;
   ctx.imageSmoothingEnabled = false;
   dessinerPaquets(ctx, couches);
-  const cadres = Array.from({ length: VARIANTES_PAQUET }, (_, v): CadreUv => [v / VARIANTES_PAQUET, 0, (v + 1) / VARIANTES_PAQUET, 1]);
+  const cadres = Array.from(
+    { length: VARIANTES_PAQUET },
+    (_, v): CadreUv => [v / VARIANTES_PAQUET, 0, (v + 1) / VARIANTES_PAQUET, 1],
+  );
   return { texture: textureCanvas(canvas, true), cadres };
 }
 
@@ -148,7 +154,11 @@ export function texturePaquets(couches: CanvasImageSource): { texture: THREE.Can
  * Texture répétable composée de tuiles Kenney (une rangée de `gids`, chacune pouvant être une
  * pile de gids dessinés l'un sur l'autre) : toit, ou façade « mur + fenêtre, mur ».
  */
-export function textureDeTuiles(decor: Decor, images: ImagesTilesets, gids: readonly (readonly number[])[]): THREE.CanvasTexture {
+export function textureDeTuiles(
+  decor: Decor,
+  images: ImagesTilesets,
+  gids: readonly (readonly number[])[],
+): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = TAILLE_TUILE_PX * gids.length;
   canvas.height = TAILLE_TUILE_PX;
@@ -157,7 +167,18 @@ export function textureDeTuiles(decor: Decor, images: ImagesTilesets, gids: read
   gids.forEach((pile, i) => {
     for (const gid of pile) {
       const s = sourceDeTuile(decor.tilesets, images, gid);
-      if (s) ctx.drawImage(s.image, s.sx, s.sy, TAILLE_TUILE_PX, TAILLE_TUILE_PX, i * TAILLE_TUILE_PX, 0, TAILLE_TUILE_PX, TAILLE_TUILE_PX);
+      if (s)
+        ctx.drawImage(
+          s.image,
+          s.sx,
+          s.sy,
+          TAILLE_TUILE_PX,
+          TAILLE_TUILE_PX,
+          i * TAILLE_TUILE_PX,
+          0,
+          TAILLE_TUILE_PX,
+          TAILLE_TUILE_PX,
+        );
     }
   });
   const t = new THREE.CanvasTexture(canvas);

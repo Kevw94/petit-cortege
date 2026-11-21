@@ -23,7 +23,10 @@ export function estPlace(tags: Record<string, string>): boolean {
   const nom = tags.name;
   if (!nom) return false;
   if (tags.place === 'square') return true;
-  return NOM_DE_PLACE.test(nom) && (tags.highway !== undefined || tags['area:highway'] !== undefined || tags.place !== undefined);
+  return (
+    NOM_DE_PLACE.test(nom) &&
+    (tags.highway !== undefined || tags['area:highway'] !== undefined || tags.place !== undefined)
+  );
 }
 
 /**
@@ -45,9 +48,20 @@ export function placesTraversees(objets: CandidatPlace[], parcours: PointTuiles[
     const xs = points.map((p) => p.x);
     const ys = points.map((p) => p.y);
     const aLArrivee = Math.min(...groupe.map((o) => distanceAuParcours(o, [arrivee])));
-    return [{ nom, x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2, arrivee: false, aLArrivee }];
+    return [
+      {
+        nom,
+        x: (Math.min(...xs) + Math.max(...xs)) / 2,
+        y: (Math.min(...ys) + Math.max(...ys)) / 2,
+        arrivee: false,
+        aLArrivee,
+      },
+    ];
   });
-  const plusProche = places.reduce<(typeof places)[number] | undefined>((p, q) => (!p || q.aLArrivee < p.aLArrivee ? q : p), undefined);
+  const plusProche = places.reduce<(typeof places)[number] | undefined>(
+    (p, q) => (!p || q.aLArrivee < p.aLArrivee ? q : p),
+    undefined,
+  );
   return places
     .map(({ aLArrivee, ...p }) => ({ ...p, arrivee: p.nom === plusProche?.nom && aLArrivee <= distanceMax }))
     .sort((a, b) => a.nom.localeCompare(b.nom));
@@ -59,7 +73,8 @@ function distanceAuParcours(o: CandidatPlace, parcours: PointTuiles[]): number {
   const segmentsObjet = [...segments(o.ligne), ...o.anneaux.flatMap(segments)];
   const segmentsParcours = segments(parcours);
   let d = Infinity;
-  for (const [a, b] of segmentsObjet) for (const [c, e] of segmentsParcours) d = Math.min(d, distanceSegments(a, b, c, e));
+  for (const [a, b] of segmentsObjet)
+    for (const [c, e] of segmentsParcours) d = Math.min(d, distanceSegments(a, b, c, e));
   return d;
 }
 
@@ -85,7 +100,8 @@ function distancePointSegment(p: PointTuiles, a: PointTuiles, b: PointTuiles): n
   return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
 }
 
-const orientation = (a: PointTuiles, b: PointTuiles, c: PointTuiles) => Math.sign((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
+const orientation = (a: PointTuiles, b: PointTuiles, c: PointTuiles) =>
+  Math.sign((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
 
 function distanceSegments(a: PointTuiles, b: PointTuiles, c: PointTuiles, d: PointTuiles): number {
   const o1 = orientation(a, b, c);
@@ -93,5 +109,10 @@ function distanceSegments(a: PointTuiles, b: PointTuiles, c: PointTuiles, d: Poi
   const o3 = orientation(c, d, a);
   const o4 = orientation(c, d, b);
   if (o1 * o2 < 0 && o3 * o4 < 0) return 0;
-  return Math.min(distancePointSegment(a, c, d), distancePointSegment(b, c, d), distancePointSegment(c, a, b), distancePointSegment(d, a, b));
+  return Math.min(
+    distancePointSegment(a, c, d),
+    distancePointSegment(b, c, d),
+    distancePointSegment(c, a, b),
+    distancePointSegment(d, a, b),
+  );
 }

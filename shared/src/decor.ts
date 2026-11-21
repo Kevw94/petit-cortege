@@ -334,7 +334,8 @@ function echantillonsParcours(parcours: Position[], pasM: number): Position[] {
     if (a) {
       const { kx, ky } = metresParDegre({ origine: a });
       const n = Math.floor(Math.hypot((b[0] - a[0]) * kx, (b[1] - a[1]) * ky) / pasM);
-      for (let k = 1; k <= n; k++) points.push([a[0] + ((b[0] - a[0]) * k) / (n + 1), a[1] + ((b[1] - a[1]) * k) / (n + 1)]);
+      for (let k = 1; k <= n; k++)
+        points.push([a[0] + ((b[0] - a[0]) * k) / (n + 1), a[1] + ((b[1] - a[1]) * k) / (n + 1)]);
     }
     points.push(b);
   }
@@ -380,7 +381,8 @@ export function decorDuParcours(index: IndexDecors, parcours: Position[]): Entre
   for (const entree of candidats) {
     if (!entree.trace || !entree.demiLargeurM) continue;
     const ecart = ecartAuTraceDuDecor(entree, parcours);
-    if (ecart <= entree.demiLargeurM * COUVERTURE_DEMI_BANDE && ecart < meilleurEcart) [choisi, meilleurEcart] = [entree, ecart];
+    if (ecart <= entree.demiLargeurM * COUVERTURE_DEMI_BANDE && ecart < meilleurEcart)
+      [choisi, meilleurEcart] = [entree, ecart];
   }
   return choisi ?? candidats.find((e) => !e.trace || !e.demiLargeurM);
 }
@@ -457,7 +459,8 @@ export async function lireDecor(carte: CarteTiled): Promise<Decor> {
   if (propriete(carte, 'format') !== FORMAT_DECOR || typeof lon !== 'number' || typeof lat !== 'number') {
     throw new Error('Carte de décor illisible');
   }
-  const tuilesParCase = (c: CoucheTuilesTiled) => c.properties?.find((p) => p.name === PROPRIETE_TUILES_PAR_CASE)?.value;
+  const tuilesParCase = (c: CoucheTuilesTiled) =>
+    c.properties?.find((p) => p.name === PROPRIETE_TUILES_PAR_CASE)?.value;
   const toutes = carte.layers.filter((c): c is CoucheTuilesTiled => c.type === 'tilelayer');
   const couches = toutes.filter((c) => c.name !== COUCHE_ALENTOURS);
   const coucheAlentours = toutes.find((c) => c.name === COUCHE_ALENTOURS);
@@ -482,7 +485,9 @@ export async function lireDecor(carte: CarteTiled): Promise<Decor> {
       y: o.y / TAILLE_TUILE_PX,
       arrivee: o.properties?.find((p) => p.name === 'arrivee')?.value === true,
     }));
-  const alentours = coucheAlentours ? await lireAlentours(coucheAlentours, Number(tuilesParCase(coucheAlentours))) : undefined;
+  const alentours = coucheAlentours
+    ? await lireAlentours(coucheAlentours, Number(tuilesParCase(coucheAlentours)))
+    : undefined;
   return {
     georef: { origine: [lon, lat] },
     largeur: carte.width,
@@ -513,7 +518,8 @@ async function lireAlentours(couche: CoucheTuilesTiled, tuilesParCase: number): 
   const gids = new Uint32Array(largeur * hauteur);
   for (const bloc of couche.chunks) {
     const donnees = await decompresser(bloc.data);
-    if (donnees.length !== bloc.width * bloc.height) throw new Error(`Bloc des alentours tronqué (${bloc.x}, ${bloc.y})`);
+    if (donnees.length !== bloc.width * bloc.height)
+      throw new Error(`Bloc des alentours tronqué (${bloc.x}, ${bloc.y})`);
     for (let r = 0; r < bloc.height; r++) {
       gids.set(donnees.subarray(r * bloc.width, (r + 1) * bloc.width), (bloc.y - y + r) * largeur + (bloc.x - x));
     }

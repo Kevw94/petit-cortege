@@ -21,7 +21,8 @@ export function itineraireLeLongDe(
   };
   for (const e of extrait.elements) {
     const t = e.tags ?? {};
-    if (e.type !== 'way' || !options.rues.includes(t.name ?? '') || !t.highway || NON_CHAUSSEES.includes(t.highway)) continue;
+    if (e.type !== 'way' || !options.rues.includes(t.name ?? '') || !t.highway || NON_CHAUSSEES.includes(t.highway))
+      continue;
     const noeuds = e.nodes ?? [];
     const geometrie = e.geometry ?? [];
     noeuds.forEach((id, i) => {
@@ -37,7 +38,9 @@ export function itineraireLeLongDe(
   if (positions.size === 0) throw new Error(`Aucun chemin ${noms} dans l'extrait.`);
 
   const plusProche = (p: Position) =>
-    [...positions].reduce((meilleur, courant) => (distanceM(courant[1], p) < distanceM(meilleur[1], p) ? courant : meilleur))[0];
+    [...positions].reduce((meilleur, courant) =>
+      distanceM(courant[1], p) < distanceM(meilleur[1], p) ? courant : meilleur,
+    )[0];
   const depart = plusProche(options.depart);
   const arrivee = plusProche(options.arrivee);
 

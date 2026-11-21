@@ -24,7 +24,11 @@ const enCss = (couleur: number) => `#${couleur.toString(16).padStart(6, '0')}`;
 /** Une pancarte tirée au hasard, point de départ de la composition (variété dans la foule). */
 export function pancarteAuHasard(alea: () => number = Math.random): CompositionPancarte {
   const tirer = (n: number) => Math.floor(alea() * n);
-  return { slogan: tirer(SLOGANS.length), couleur: tirer(COULEURS_PANCARTE.length), forme: tirer(FORMES_PANCARTE.length) };
+  return {
+    slogan: tirer(SLOGANS.length),
+    couleur: tirer(COULEURS_PANCARTE.length),
+    forme: tirer(FORMES_PANCARTE.length),
+  };
 }
 
 export interface SectionPancarte {

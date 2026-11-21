@@ -98,7 +98,13 @@ export function composerFoule<A extends AvatarAComposer>(
       troncon.debutM = Math.min(troncon.debutM, avatar.distanceM);
       troncon.finM = Math.max(troncon.finM, avatar.distanceM);
     } else {
-      parTroncon.set(numero, { debutM: avatar.distanceM, finM: avatar.distanceM, nombre: 1, densite: 0, enMasse: false });
+      parTroncon.set(numero, {
+        debutM: avatar.distanceM,
+        finM: avatar.distanceM,
+        nombre: 1,
+        densite: 0,
+        enMasse: false,
+      });
     }
   }
   for (const troncon of parTroncon.values()) {
@@ -117,7 +123,8 @@ export function composerFoule<A extends AvatarAComposer>(
     }
     const tirage = tirageIdentifiant(avatar.id);
     const troncon = avatar.surPlace ? undefined : parTroncon.get(numeroDe(avatar))!;
-    if (!troncon?.enMasse || tirage < fractionPremierPlan(troncon.densite) * 2 ** 32) candidats.push({ avatar, tirage });
+    if (!troncon?.enMasse || tirage < fractionPremierPlan(troncon.densite) * 2 ** 32)
+      candidats.push({ avatar, tirage });
   }
 
   // Budget : seuil de tirage divisé par 2 jusqu'à tenir. Par paliers, pour que le tirage reste

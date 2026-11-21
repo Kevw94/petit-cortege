@@ -70,7 +70,9 @@ function densiteA(noeuds: readonly Noeud[], minute: number): number {
     const a = noeuds[i - 1]!;
     const b = noeuds[i]!;
     if (minute >= a.minute && minute <= b.minute) {
-      return b.minute === a.minute ? a.densite : a.densite + ((b.densite - a.densite) * (minute - a.minute)) / (b.minute - a.minute);
+      return b.minute === a.minute
+        ? a.densite
+        : a.densite + ((b.densite - a.densite) * (minute - a.minute)) / (b.minute - a.minute);
     }
   }
   return 0;
@@ -120,7 +122,14 @@ export function centiles(valeurs: readonly number[]): Centiles {
   const rang = (p: number) => tries[Math.min(tries.length - 1, Math.max(0, Math.ceil((p / 100) * tries.length) - 1))]!;
   let somme = 0;
   for (const v of tries) somme += v;
-  return { n: tries.length, p50: rang(50), p95: rang(95), p99: rang(99), max: tries[tries.length - 1]!, moyenne: somme / tries.length };
+  return {
+    n: tries.length,
+    p50: rang(50),
+    p95: rang(95),
+    p99: rang(99),
+    max: tries[tries.length - 1]!,
+    moyenne: somme / tries.length,
+  };
 }
 
 /** Tarif CDN : prix par Go (10⁹ octets), facturation minimale mensuelle. */

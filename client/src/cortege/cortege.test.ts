@@ -62,7 +62,7 @@ describe('Cortège', () => {
     expect(cortege.avatars.map((a) => a.id)).toEqual(['av-tot']);
   });
 
-  it("un retardataire rejoint le cortège là où il est, pas au point de départ", () => {
+  it('un retardataire rejoint le cortège là où il est, pas au point de départ', () => {
     // av-tard entré à 14:15:40, à côté d'av-tot (seul dans sa rangée) : à 14:30:00 tous deux
     // sont à 1000 m, là où l'aurait laissé un départ du point de départ (≈ 477,78 m).
     const cortege = calculerCortege({ manif, entrees, maintenant: new Date('2026-05-01T14:30:00Z') });
@@ -73,7 +73,9 @@ describe('Cortège', () => {
 
   it('passe de Ouverte à Terminée à la fin publiée (arrivée de la queue + 10 min de danse)', () => {
     // Une seule rangée : la queue arrive avec la tête, ≈ 14:30:01 ; fin ≈ 14:40:01.
-    expect(manif.fin).toBe(new Date(Date.parse(manif.depart) + manif.longueurM / (2000 / 3_600_000) + 600_000).toISOString());
+    expect(manif.fin).toBe(
+      new Date(Date.parse(manif.depart) + manif.longueurM / (2000 / 3_600_000) + 600_000).toISOString(),
+    );
     const fin = Date.parse(manif.fin);
     const avant = calculerCortege({ manif, entrees, maintenant: new Date(fin - 30_000) });
     const apres = calculerCortege({ manif, entrees, maintenant: new Date(fin + 30_000) });
@@ -83,8 +85,12 @@ describe('Cortège', () => {
   });
 
   it('les entrées ferment quand la tête arrive au bout du parcours', () => {
-    expect(calculerCortege({ manif, entrees, maintenant: new Date('2026-05-01T14:30:00Z') }).entreesOuvertes).toBe(true);
-    expect(calculerCortege({ manif, entrees, maintenant: new Date('2026-05-01T14:30:02Z') }).entreesOuvertes).toBe(false);
+    expect(calculerCortege({ manif, entrees, maintenant: new Date('2026-05-01T14:30:00Z') }).entreesOuvertes).toBe(
+      true,
+    );
+    expect(calculerCortege({ manif, entrees, maintenant: new Date('2026-05-01T14:30:02Z') }).entreesOuvertes).toBe(
+      false,
+    );
   });
 
   it('une fois terminée, tout le cortège est rassemblé sur la place, immobile', () => {
@@ -100,7 +106,8 @@ describe('Cortège', () => {
 
 describe('Cortège : avatars en marche (pour l’animation)', () => {
   const enMarche = (maintenant: string, id: string, autres = entrees) =>
-    calculerCortege({ manif, entrees: autres, maintenant: new Date(maintenant) }).avatars.find((a) => a.id === id)?.enMarche;
+    calculerCortege({ manif, entrees: autres, maintenant: new Date(maintenant) }).avatars.find((a) => a.id === id)
+      ?.enMarche;
 
   it("n'avance pas avant le départ", () => {
     expect(enMarche('2026-05-01T13:59:00Z', 'av-tot')).toBe(false);
@@ -120,7 +127,9 @@ describe('Cortège : avatars en marche (pour l’animation)', () => {
   it('ne marche plus une fois la manif terminée', () => {
     const retardataire = minuteAvec(['av-dernier'], '2026-05-01T14:20:00Z');
     expect(enMarche('2026-05-01T14:20:30Z', 'av-dernier', [...entrees, retardataire])).toBe(true);
-    expect(enMarche(new Date(Date.parse(manif.fin) + 30_000).toISOString(), 'av-dernier', [...entrees, retardataire])).toBe(false);
+    expect(
+      enMarche(new Date(Date.parse(manif.fin) + 30_000).toISOString(), 'av-dernier', [...entrees, retardataire]),
+    ).toBe(false);
   });
 
   it('ne change pas les positions', () => {
@@ -172,10 +181,7 @@ describe('Cortège : répartition de la foule', () => {
 
   it("même foule quel que soit l'ordre des fichiers et des entrées (même entrée, même sortie)", () => {
     const tard = minuteAvec(['av-x', 'av-y', 'av-z'], '2026-05-01T14:05:07Z');
-    const melange = [
-      tard,
-      { ...groupe[0]!, entrees: [...groupe[0]!.entrees].reverse() },
-    ];
+    const melange = [tard, { ...groupe[0]!, entrees: [...groupe[0]!.entrees].reverse() }];
     const maintenant = new Date('2026-05-01T14:10:00Z');
 
     const parId = (c: ReturnType<typeof calculerCortege>) =>
@@ -263,8 +269,16 @@ describe('Cortège : retardataires à la queue', () => {
     // Fin publiée pour ces 41 soutiens : 9 rangées, la queue arrive ≈ 29 s après la tête.
     const manif41 = { ...manif, fin: calculerFin(new Date(manif.depart), manif.longueurM, 41).toISOString() };
     // Tête arrivée ≈ 14:30:01 ; av-tard-1, 16 m derrière, arrive ≈ 29 s plus tard.
-    const juste = calculerCortege({ manif: manif41, entrees: [foule, tard], maintenant: new Date('2026-05-01T14:30:10Z') });
-    const apres = calculerCortege({ manif: manif41, entrees: [foule, tard], maintenant: new Date('2026-05-01T14:32:00Z') });
+    const juste = calculerCortege({
+      manif: manif41,
+      entrees: [foule, tard],
+      maintenant: new Date('2026-05-01T14:30:10Z'),
+    });
+    const apres = calculerCortege({
+      manif: manif41,
+      entrees: [foule, tard],
+      maintenant: new Date('2026-05-01T14:32:00Z'),
+    });
 
     expect(juste.avatars.find((a) => a.id === 'av-tard-1')).toMatchObject({ surPlace: false, enMarche: true });
     expect(apres.avatars.find((a) => a.id === 'av-tard-1')).toMatchObject({ surPlace: true });
@@ -278,10 +292,16 @@ describe('Cortège : avatars propres au soutien', () => {
 
   it("apparaît tout de suite, avant publication et avant même son heure d'entrée tirée, à la queue du cortège", () => {
     // 40 avatars entrés avant le départ : 8 rangées complètes ; av-moi ouvre la 9e, 16 m derrière la tête.
-    const foule = minuteAvec(Array.from({ length: 40 }, (_, i) => `av-${i}`), '2026-05-01T13:58:00Z');
+    const foule = minuteAvec(
+      Array.from({ length: 40 }, (_, i) => `av-${i}`),
+      '2026-05-01T13:58:00Z',
+    );
     const cortege = calculerCortege({ manif, entrees: [foule], propres: [propre], maintenant: avant });
 
-    expect(cortege.avatars.find((a) => a.id === 'av-moi')).toMatchObject({ distanceM: cortege.avanceeM - 16, propre: true });
+    expect(cortege.avatars.find((a) => a.id === 'av-moi')).toMatchObject({
+      distanceM: cortege.avanceeM - 16,
+      propre: true,
+    });
   });
 
   it('seuls ses propres avatars sont mis en valeur', () => {
@@ -296,9 +316,7 @@ describe('Cortège : avatars propres au soutien', () => {
 
     const cortege = calculerCortege({ manif, entrees: [...entrees, publie], propres: [propre], maintenant });
 
-    expect(cortege.avatars.filter((a) => a.id === 'av-moi')).toEqual([
-      expect.objectContaining({ propre: true }),
-    ]);
+    expect(cortege.avatars.filter((a) => a.id === 'av-moi')).toEqual([expect.objectContaining({ propre: true })]);
   });
 
   it('marche ensuite à la place où les autres le verront', () => {
@@ -367,8 +385,7 @@ describe('Cortège : place d’arrivée et danse finale', () => {
   const ids = Array.from({ length: 60 }, (_, i) => `av-${i}`);
   const foule = minuteAvec(ids, '2026-05-01T13:58:00Z');
   const manif60 = { ...manif, fin: calculerFin(new Date(manif.depart), manif.longueurM, 60).toISOString() };
-  const a = (iso: string | number) =>
-    calculerCortege({ manif: manif60, entrees: [foule], maintenant: new Date(iso) });
+  const a = (iso: string | number) => calculerCortege({ manif: manif60, entrees: [foule], maintenant: new Date(iso) });
 
   it('sur la place, chacun a sa propre place, devant le point d’arrivée, sans superposition', () => {
     const { avatars } = a(Date.parse(manif60.fin) - 60_000);
@@ -416,8 +433,11 @@ describe('Cortège : place d’arrivée et danse finale', () => {
     expect(places(fin)).toEqual(places(pendant));
   });
 
-  it("une queue trop longue est considérée arrivée au début de la danse, 1 h après la tête", () => {
-    const longue = minuteAvec(Array.from({ length: 12_000 }, (_, i) => `l-${i}`), '2026-05-01T13:58:00Z');
+  it('une queue trop longue est considérée arrivée au début de la danse, 1 h après la tête', () => {
+    const longue = minuteAvec(
+      Array.from({ length: 12_000 }, (_, i) => `l-${i}`),
+      '2026-05-01T13:58:00Z',
+    );
     const manifLongue = { ...manif, fin: calculerFin(new Date(manif.depart), manif.longueurM, 12_000).toISOString() };
     const tete = Date.parse(manif.depart) + manif.longueurM / (2000 / 3_600_000);
     expect(Date.parse(manifLongue.fin)).toBeCloseTo(tete + 70 * 60_000, -2);

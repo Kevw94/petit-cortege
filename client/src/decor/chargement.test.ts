@@ -8,7 +8,8 @@ import { chargerDecor } from './chargement';
 const RACINE = join(import.meta.dirname, '../../..');
 const DECOR = join(RACINE, 'client/public/decors/republique-nation.json');
 const lireParcours = async (): Promise<Position[]> =>
-  JSON.parse(await readFile(join(RACINE, 'donnees/osm/republique-nation/parcours.geojson'), 'utf8')).geometry.coordinates;
+  JSON.parse(await readFile(join(RACINE, 'donnees/osm/republique-nation/parcours.geojson'), 'utf8')).geometry
+    .coordinates;
 
 /** Faux serveur statique : un index à deux décors, et le journal des URL demandées. */
 function fauxServeur() {
@@ -42,13 +43,27 @@ describe('chargement du décor d’une manif', () => {
     const paris = fauxServeur();
     await chargerDecor(await lireParcours(), paris.charger);
     const ailleurs = fauxServeur();
-    await chargerDecor([[5.37, 43.29], [5.38, 43.3]], ailleurs.charger);
+    await chargerDecor(
+      [
+        [5.37, 43.29],
+        [5.38, 43.3],
+      ],
+      ailleurs.charger,
+    );
     expect(paris.demandees).toEqual(['/decors/index.json', '/decors/lyon.json', '/decors/republique-nation.json']);
     expect(ailleurs.demandees).toEqual(paris.demandees);
   });
 
   it('se passe de décor si aucun ne couvre le parcours, ou si l’index est introuvable', async () => {
-    expect(await chargerDecor([[5.37, 43.29], [5.38, 43.3]], fauxServeur().charger)).toBeNull();
+    expect(
+      await chargerDecor(
+        [
+          [5.37, 43.29],
+          [5.38, 43.3],
+        ],
+        fauxServeur().charger,
+      ),
+    ).toBeNull();
     expect(await chargerDecor(await lireParcours(), async () => new Response('', { status: 404 }))).toBeNull();
   });
 });

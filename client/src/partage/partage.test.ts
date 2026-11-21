@@ -64,7 +64,7 @@ describe("partage de l'image finale", () => {
     }
   });
 
-  it("ne télécharge rien quand le soutien ferme la feuille de partage", async () => {
+  it('ne télécharge rien quand le soutien ferme la feuille de partage', async () => {
     const { environnement, telechargements } = navigateurSimule({
       share: true,
       canShareFichiers: true,
@@ -84,7 +84,7 @@ describe("partage de l'image finale", () => {
     expect(telechargements).toHaveLength(1);
   });
 
-  it("télécharge sous un nom neutre, sans identifiant de manif", () => {
+  it('télécharge sous un nom neutre, sans identifiant de manif', () => {
     const { environnement, telechargements } = navigateurSimule({ share: true, canShareFichiers: true });
     telechargerImage(png, environnement);
     expect(NOM_FICHIER_IMAGE).toBe('petit-cortege.png');

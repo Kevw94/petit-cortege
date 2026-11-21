@@ -77,10 +77,10 @@ export function brancherChant(options: {
         setTimeout(
           () => {
             if (mouvementReduit) return; // affichage fixe, sans animation
-            pulsant.animate(
-              [{ transform: `scale(${p.fort ? 1.16 : 1.08})` }, { transform: 'scale(1)' }],
-              { duration: p.fort ? 260 : 180, easing: 'ease-out' },
-            );
+            pulsant.animate([{ transform: `scale(${p.fort ? 1.16 : 1.08})` }, { transform: 'scale(1)' }], {
+              duration: p.fort ? 260 : 180,
+              easing: 'ease-out',
+            });
           },
           (delai + p.t) * 1000,
         ),

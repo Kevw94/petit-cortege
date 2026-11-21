@@ -90,7 +90,13 @@ interface Marcheur {
   pancarte: number;
 }
 
-export function calculerCortege({ manif, entrees, propres = [], retraits = [], maintenant }: EntreesDuCortege): Cortege {
+export function calculerCortege({
+  manif,
+  entrees,
+  propres = [],
+  retraits = [],
+  maintenant,
+}: EntreesDuCortege): Cortege {
   const depart = Date.parse(manif.depart);
   const t = maintenant.getTime();
   const idsPropres = new Set(propres.filter((e) => e.m === manif.id).map((e) => e.a));
@@ -127,7 +133,9 @@ export function calculerCortege({ manif, entrees, propres = [], retraits = [], m
   const places = new PlacesDuCortege();
   const avatars: AvatarDuCortege[] = [];
   for (const entreeMs of [...groupes.keys()].sort((a, b) => a - b)) {
-    const groupe = groupes.get(entreeMs)!.sort((a, b) => a.hachage - b.hachage || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    const groupe = groupes
+      .get(entreeMs)!
+      .sort((a, b) => a.hachage - b.hachage || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     for (const marcheur of groupe) {
       const { rang, colonne, case_ } = places.prendre(marcheur.hachage);
       const decalageRueM = (colonne - (COLONNES_FOULE - 1) / 2) * PAS_FOULE_M;
@@ -172,7 +180,7 @@ export function placeSurLaPlace(numero: number): { avantM: number; coteM: number
   // Au-delà de la contenance, une nouvelle couche, décalée d'une demi-place.
   const indice = (numero % CONTENANCE_RASSEMBLEMENT) + 0.5 * Math.floor(numero / CONTENANCE_RASSEMBLEMENT);
   const rayon = Math.sqrt(((indice + 0.5) * 2 * AIRE_PLACE_RASSEMBLEMENT_M2) / Math.PI);
-  const angle = (((indice * ANGLE_D_OR) % (2 * Math.PI)) / 2) - Math.PI / 2;
+  const angle = ((indice * ANGLE_D_OR) % (2 * Math.PI)) / 2 - Math.PI / 2;
   return { avantM: rayon * Math.cos(angle), coteM: rayon * Math.sin(angle) };
 }
 

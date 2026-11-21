@@ -71,7 +71,8 @@ export class TraceAuSol3D {
     for (const p of ligne) {
       const c = sommet(p, 0, 0);
       const premier = centres.length / 3;
-      for (let k = 0; k < RAYONS; k++) sommet(p, Math.cos((k / RAYONS) * Math.PI * 2), Math.sin((k / RAYONS) * Math.PI * 2));
+      for (let k = 0; k < RAYONS; k++)
+        sommet(p, Math.cos((k / RAYONS) * Math.PI * 2), Math.sin((k / RAYONS) * Math.PI * 2));
       for (let k = 0; k < RAYONS; k++) indices.push(c, premier + ((k + 1) % RAYONS), premier + k);
     }
     const g = new THREE.BufferGeometry();
@@ -97,7 +98,10 @@ export class TraceAuSol3D {
     for (const f of trace.fleches) fleches.push(...pointe(f, TAILLE_FLECHE_M));
     const gf = new THREE.BufferGeometry();
     gf.setAttribute('position', new THREE.Float32BufferAttribute(fleches, 3));
-    this.#fleches = new THREE.Mesh(gf, materiauDeSol({ color: COULEUR_FLECHE, side: THREE.DoubleSide }, ORDRE_SOL.marques));
+    this.#fleches = new THREE.Mesh(
+      gf,
+      materiauDeSol({ color: COULEUR_FLECHE, side: THREE.DoubleSide }, ORDRE_SOL.marques),
+    );
     this.#fleches.renderOrder = ORDRE_SOL.marques;
     this.groupe.add(this.#fleches);
 
@@ -138,14 +142,26 @@ function pointe(c: PointOriente, taille: number): number[] {
   const [nx, ny] = [-uy, ux];
   const [avant, arriere, demi] = [0.6 * taille, 0.4 * taille, 0.45 * taille];
   return [
-    c.x + ux * avant, 0, c.y + uy * avant,
-    c.x - ux * arriere + nx * demi, 0, c.y - uy * arriere + ny * demi,
-    c.x - ux * arriere - nx * demi, 0, c.y - uy * arriere - ny * demi,
+    c.x + ux * avant,
+    0,
+    c.y + uy * avant,
+    c.x - ux * arriere + nx * demi,
+    0,
+    c.y - uy * arriere + ny * demi,
+    c.x - ux * arriere - nx * demi,
+    0,
+    c.y - uy * arriere - ny * demi,
   ];
 }
 
 /** Bande en travers du parcours (2 rangées de cases de 2 m), couleur par case. */
-function bande(p: PointOriente, couleur: (i: number, j: number) => number, positions: number[], couleurs: number[], c: THREE.Color): void {
+function bande(
+  p: PointOriente,
+  couleur: (i: number, j: number) => number,
+  positions: number[],
+  couleurs: number[],
+  c: THREE.Color,
+): void {
   const a = (p.angle * Math.PI) / 180;
   const u = { x: Math.cos(a), y: Math.sin(a) };
   const n = { x: -u.y, y: u.x };

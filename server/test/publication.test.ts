@@ -94,7 +94,7 @@ describe('tâche de publication', () => {
     expect(vide.corps).toEqual({ v: 1, minute: '2026-05-01T13:57:00.000Z', entrees: [] });
   });
 
-  it("ne publie pas la minute en cours, et le compteur ne compte que les entrées publiées", async () => {
+  it('ne publie pas la minute en cours, et le compteur ne compte que les entrées publiées', async () => {
     banc.horloge.regler('2026-05-01T14:30:20Z');
     await banc.serveur.publier();
 

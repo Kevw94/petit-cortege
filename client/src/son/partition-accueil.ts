@@ -52,11 +52,34 @@ const ACCORDS: Record<NomAccord, Accord> = {
 
 /** Enchaînements possibles et leurs poids (jamais deux fois le même accord). */
 const SUITES: Record<NomAccord, readonly (readonly [NomAccord, number])[]> = {
-  I: [['vi', 3], ['IV', 3.5], ['ii', 1.5], ['V', 2]],
-  ii: [['V', 5], ['IV', 3], ['vi', 2]],
-  IV: [['I', 3.5], ['V', 2.5], ['vi', 2.5], ['ii', 1.5]],
-  V: [['I', 5], ['vi', 3.5], ['IV', 1.5]],
-  vi: [['IV', 4], ['ii', 2.5], ['I', 2], ['V', 1.5]],
+  I: [
+    ['vi', 3],
+    ['IV', 3.5],
+    ['ii', 1.5],
+    ['V', 2],
+  ],
+  ii: [
+    ['V', 5],
+    ['IV', 3],
+    ['vi', 2],
+  ],
+  IV: [
+    ['I', 3.5],
+    ['V', 2.5],
+    ['vi', 2.5],
+    ['ii', 1.5],
+  ],
+  V: [
+    ['I', 5],
+    ['vi', 3.5],
+    ['IV', 1.5],
+  ],
+  vi: [
+    ['IV', 4],
+    ['ii', 2.5],
+    ['I', 2],
+    ['V', 1.5],
+  ],
 };
 
 /** Gamme pentatonique de do, sur deux octaves (do4 à la5) : hauteurs de l'arpège. */

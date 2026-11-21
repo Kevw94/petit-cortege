@@ -97,14 +97,17 @@ function lirePosition(v: unknown, ou: string): Position {
     throw new ErreurImport(`${ou} : « position » attendue sous la forme [longitude, latitude].`);
   }
   // En France métropolitaine, une inversion lon/lat se voit tout de suite.
-  if (lat < lon) throw new ErreurImport(`${ou} : position [${lon}, ${lat}] suspecte (longitude et latitude inversées ?).`);
+  if (lat < lon)
+    throw new ErreurImport(`${ou} : position [${lon}, ${lat}] suspecte (longitude et latitude inversées ?).`);
   return [lon, lat];
 }
 
 function lireEtape(v: unknown, ou: string): EtapeDeclaree {
-  if (!estObjet(v)) throw new ErreurImport(`${ou} : objet attendu ({ "adresse": … }, { "rue": … } ou { "position": … }).`);
+  if (!estObjet(v))
+    throw new ErreurImport(`${ou} : objet attendu ({ "adresse": … }, { "rue": … } ou { "position": … }).`);
   const genres = ['adresse', 'rue', 'position'].filter((c) => v[c] !== undefined);
-  if (genres.length !== 1) throw new ErreurImport(`${ou} : donner exactement un de « adresse », « rue », « position ».`);
+  if (genres.length !== 1)
+    throw new ErreurImport(`${ou} : donner exactement un de « adresse », « rue », « position ».`);
   const libelle = texteFacultatif(v, 'libelle', ou);
   const avecLibelle = libelle === undefined ? {} : { libelle };
   switch (genres[0]) {
@@ -116,7 +119,8 @@ function lireEtape(v: unknown, ou: string): EtapeDeclaree {
       return { rue: texte(v, 'rue', ou), ...avecLibelle };
     default:
       clesConnues(v, ['position', 'libelle'], ou);
-      if (libelle === undefined) throw new ErreurImport(`${ou} : une « position » explicite demande un « libelle » (ce qu'elle désigne).`);
+      if (libelle === undefined)
+        throw new ErreurImport(`${ou} : une « position » explicite demande un « libelle » (ce qu'elle désigne).`);
       return { position: lirePosition(v.position, ou), libelle };
   }
 }
@@ -131,13 +135,16 @@ function lireSource(v: unknown, ou: string): Source {
   } catch {
     // traité ci-dessous
   }
-  if (protocole !== 'https:' && protocole !== 'http:') throw new ErreurImport(`${ou} : URL publique http(s) attendue, pas « ${url} ».`);
+  if (protocole !== 'https:' && protocole !== 'http:')
+    throw new ErreurImport(`${ou} : URL publique http(s) attendue, pas « ${url} ».`);
   return { libelle: texte(v, 'libelle', ou), url };
 }
 
 function lireVerification(v: unknown, ou: string): Verification {
   if (!estObjet(v)) {
-    throw new ErreurImport(`${ou} : objet { "declaree": …, "sansInterdiction": … } attendu (texte, ou null si pas encore vérifié).`);
+    throw new ErreurImport(
+      `${ou} : objet { "declaree": …, "sansInterdiction": … } attendu (texte, ou null si pas encore vérifié).`,
+    );
   }
   clesConnues(v, ['declaree', 'sansInterdiction'], ou);
   const champ = (cle: 'declaree' | 'sansInterdiction') => {
@@ -154,7 +161,19 @@ function lireManif(v: unknown, rang: number, jour: string): ManifDeclaree {
   if (!estObjet(v)) throw new ErreurImport(`${ou} : objet attendu.`);
   clesConnues(
     v,
-    ['id', 'intitule', 'ville', 'depart', 'ouverture', 'parcoursAnnonce', 'etapes', 'zonesEvitees', 'sources', 'verifie', 'aVerifier'],
+    [
+      'id',
+      'intitule',
+      'ville',
+      'depart',
+      'ouverture',
+      'parcoursAnnonce',
+      'etapes',
+      'zonesEvitees',
+      'sources',
+      'verifie',
+      'aVerifier',
+    ],
     ou,
   );
   const ville = texte(v, 'ville', ou);
@@ -169,7 +188,8 @@ function lireManif(v: unknown, rang: number, jour: string): ManifDeclaree {
     throw new ErreurImport(`${ou} : l'ouverture des entrées doit précéder le départ.`);
   }
   const id = texteFacultatif(v, 'id', ou) ?? `${enIdentifiant(ville)}-${jour}`;
-  if (!FORMAT_ID_MANIF.test(id)) throw new ErreurImport(`${ou} : identifiant « ${id} » invalide (minuscules, chiffres et tirets).`);
+  if (!FORMAT_ID_MANIF.test(id))
+    throw new ErreurImport(`${ou} : identifiant « ${id} » invalide (minuscules, chiffres et tirets).`);
   ou = `manif « ${id} »`;
 
   if (!Array.isArray(v.etapes) || v.etapes.length < 2) {
@@ -178,7 +198,9 @@ function lireManif(v: unknown, rang: number, jour: string): ManifDeclaree {
   const etapes = v.etapes.map((e, i) => lireEtape(e, `${ou}, étape n° ${i + 1}`));
   for (const extremite of [0, etapes.length - 1]) {
     if ('rue' in etapes[extremite]!) {
-      throw new ErreurImport(`${ou}, étape n° ${extremite + 1} : le départ et l'arrivée sont des lieux (« adresse » ou « position »), pas une « rue ».`);
+      throw new ErreurImport(
+        `${ou}, étape n° ${extremite + 1} : le départ et l'arrivée sont des lieux (« adresse » ou « position »), pas une « rue ».`,
+      );
     }
   }
   const zones = v.zonesEvitees === undefined ? [] : v.zonesEvitees;
@@ -188,7 +210,8 @@ function lireManif(v: unknown, rang: number, jour: string): ManifDeclaree {
     if (!estObjet(z)) throw new ErreurImport(`${ouZ} : objet { "adresse", "rayonM" } attendu.`);
     clesConnues(z, ['adresse', 'rayonM'], ouZ);
     const rayonM = z.rayonM;
-    if (typeof rayonM !== 'number' || !(rayonM > 0 && rayonM <= 1000)) throw new ErreurImport(`${ouZ} : « rayonM » entre 0 et 1000 m.`);
+    if (typeof rayonM !== 'number' || !(rayonM > 0 && rayonM <= 1000))
+      throw new ErreurImport(`${ouZ} : « rayonM » entre 0 et 1000 m.`);
     return { adresse: texte(z, 'adresse', ouZ), rayonM };
   });
   if (!Array.isArray(v.sources) || v.sources.length === 0) {
@@ -224,11 +247,13 @@ export function lireJournee(json: unknown, nomFichier: string): JourneeDeclaree 
   if (!jour) throw new ErreurImport(`${nomFichier} : le fichier du jour se nomme <AAAA-MM-JJ>.json.`);
   if (!estObjet(json)) throw new ErreurImport(`${nomFichier} : objet { "manifs": [...] } attendu.`);
   clesConnues(json, ['$commentaire', 'manifs'], nomFichier);
-  if (!Array.isArray(json.manifs) || json.manifs.length === 0) throw new ErreurImport(`${nomFichier} : « manifs » doit être une liste non vide.`);
+  if (!Array.isArray(json.manifs) || json.manifs.length === 0)
+    throw new ErreurImport(`${nomFichier} : « manifs » doit être une liste non vide.`);
   const manifs = json.manifs.map((m, i) => lireManif(m, i, jour));
   const vus = new Set<string>();
   for (const m of manifs) {
-    if (vus.has(m.id)) throw new ErreurImport(`${nomFichier} : identifiant « ${m.id} » en double (donner un « id » à l'une des deux).`);
+    if (vus.has(m.id))
+      throw new ErreurImport(`${nomFichier} : identifiant « ${m.id} » en double (donner un « id » à l'une des deux).`);
     vus.add(m.id);
   }
   return { jour, manifs };

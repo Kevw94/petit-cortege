@@ -16,7 +16,10 @@ export interface OptionsIpClient {
   proxysDeConfiance: readonly string[];
 }
 
-export type LireIpClient = (adresseConnexion: string | undefined, lireEntete: (nom: string) => string | undefined) => string;
+export type LireIpClient = (
+  adresseConnexion: string | undefined,
+  lireEntete: (nom: string) => string | undefined,
+) => string;
 
 export function creerLecteurIp(options: OptionsIpClient): LireIpClient {
   const confiance = new BlockList();

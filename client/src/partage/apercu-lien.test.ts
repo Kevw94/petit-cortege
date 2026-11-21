@@ -71,7 +71,7 @@ describe('aperçu de lien', () => {
     expect(meta.get('twitter:image:alt')).toBe(meta.get('og:image:alt'));
   });
 
-  it("pointe une image unique de 1200 × 630, servie telle quelle par le site", () => {
+  it('pointe une image unique de 1200 × 630, servie telle quelle par le site', () => {
     const image = meta.get('og:image')!;
     expect(image).toBe('https://petit-cortege.fr/apercu.png');
     const chemin = new URL(image).pathname;
@@ -80,7 +80,7 @@ describe('aperçu de lien', () => {
     expect({ largeur, hauteur }).toEqual({ largeur: 1200, hauteur: 630 });
   });
 
-  it("ne contient aucune URL ni mention par manif (ADR 0002)", () => {
+  it('ne contient aucune URL ni mention par manif (ADR 0002)', () => {
     for (const [cle, valeur] of meta) {
       if (!cle.startsWith('og:') && !cle.startsWith('twitter:')) continue;
       expect(valeur).not.toMatch(/manif\/|#/);
@@ -90,9 +90,7 @@ describe('aperçu de lien', () => {
   });
 
   it("n'est jamais modifié par le code du client (identique pour toutes les pages du site)", () => {
-    const sources = fichiersSource(join(racineClient, 'src')).filter(
-      (f) => /\.ts$/.test(f) && !f.endsWith('.test.ts'),
-    );
+    const sources = fichiersSource(join(racineClient, 'src')).filter((f) => /\.ts$/.test(f) && !f.endsWith('.test.ts'));
     expect(sources.length).toBeGreaterThan(0);
     for (const fichier of sources) {
       const contenu = readFileSync(fichier, 'utf8');

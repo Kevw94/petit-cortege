@@ -89,7 +89,14 @@ export function partiesParis(date: Date): PartiesParis {
   const heure = p.hour ?? '00';
   const minute = p.minute ?? '00';
   const seconde = p.second ?? '00';
-  const commeUtc = Date.UTC(Number(annee), Number(mois) - 1, Number(jour), Number(heure), Number(minute), Number(seconde));
+  const commeUtc = Date.UTC(
+    Number(annee),
+    Number(mois) - 1,
+    Number(jour),
+    Number(heure),
+    Number(minute),
+    Number(seconde),
+  );
   const deltaMin = Math.round((commeUtc - date.getTime()) / 60_000);
   const signe = deltaMin >= 0 ? '+' : '-';
   const abs = Math.abs(deltaMin);
@@ -127,7 +134,11 @@ export interface TextesManif {
 }
 
 /** Titre, description et chapeau. Les étapes longues restent dans la liste, pas dans le titre. */
-export function textesManif(manif: Pick<ManifPubliee, 'intitule' | 'ville' | 'depart'>, etapes: string[], terminee: boolean): TextesManif {
+export function textesManif(
+  manif: Pick<ManifPubliee, 'intitule' | 'ville' | 'depart'>,
+  etapes: string[],
+  terminee: boolean,
+): TextesManif {
   const { jourSemaine, date, heure } = dateParis(new Date(manif.depart));
   const court = parcoursCourt(etapes);
   let h1 = `Manif ${manif.ville} ${date}${court ? ` : parcours ${court}` : ''}`;
@@ -222,7 +233,8 @@ export function assetsDeLaCoque(coque: string): AssetsCoque {
     if (balise.startsWith('<link')) {
       const rel = /\brel="([^"]*)"/.exec(balise)?.[1] ?? '';
       const roles = rel.split(/\s+/);
-      if (roles.some((role) => role === 'stylesheet' || role === 'icon' || role === 'apple-touch-icon')) liens.push(balise);
+      if (roles.some((role) => role === 'stylesheet' || role === 'icon' || role === 'apple-touch-icon'))
+        liens.push(balise);
     } else if (/\btype="module"/.test(balise) && /\bsrc="/.test(balise)) {
       scripts.push(balise);
     }

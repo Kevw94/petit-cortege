@@ -24,7 +24,15 @@ const BLOCS_CUITS_PAR_IMAGE = 2;
 const DISTANCE_DETAIL_M = 700;
 
 /** Ordre de dessin du sol (avant tout le reste). */
-export const ORDRE_SOL = { lointain: -12, alentours: -11, ensemble: -10, blocs: -9, trace: -8, marques: -7, halo: -6 } as const;
+export const ORDRE_SOL = {
+  lointain: -12,
+  alentours: -11,
+  ensemble: -10,
+  blocs: -9,
+  trace: -8,
+  marques: -7,
+  halo: -6,
+} as const;
 
 export function materiauDeSol(options: THREE.MeshBasicMaterialParameters, ordre: number): THREE.MeshBasicMaterial {
   const m = new THREE.MeshBasicMaterial({ ...options, depthWrite: false, depthTest: false });
@@ -33,7 +41,14 @@ export function materiauDeSol(options: THREE.MeshBasicMaterialParameters, ordre:
 }
 
 /** Plan horizontal de `largeur` × `profondeur` m, coin nord-ouest en (x, z). */
-function planAuSol(x: number, z: number, largeur: number, profondeur: number, materiau: THREE.Material, ordre: number): THREE.Mesh {
+function planAuSol(
+  x: number,
+  z: number,
+  largeur: number,
+  profondeur: number,
+  materiau: THREE.Material,
+  ordre: number,
+): THREE.Mesh {
   const g = new THREE.PlaneGeometry(largeur, profondeur);
   g.rotateX(-Math.PI / 2);
   const mesh = new THREE.Mesh(g, materiau);
@@ -102,7 +117,9 @@ export class Sol {
   /** À chaque image : affiche les blocs proches dans le champ, en cuit quelques-uns de plus. */
   actualiser(camera: THREE.PerspectiveCamera): void {
     this.#image++;
-    this.#frustum.setFromProjectionMatrix(this.#matrice.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+    this.#frustum.setFromProjectionMatrix(
+      this.#matrice.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse),
+    );
     const position = camera.position;
     const candidats: { bloc: BlocDecor; distance: number }[] = [];
     for (const bloc of this.#decor.blocs.values()) {

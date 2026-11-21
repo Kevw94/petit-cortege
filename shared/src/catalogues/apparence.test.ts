@@ -23,7 +23,15 @@ describe("indice d'apparence", () => {
     // couleur du haut 14-17, couleur du bas 18-21, accessoire 22-24.
     // 2 + 1·8 + 3·64 + 4·1024 + 5·16384 + 6·262144 + 1·4194304 = 5 853 386
     expect(
-      encoderApparence({ teint: 2, couleurCheveux: 1, coupe: 3, haut: 4, couleurHaut: 5, couleurBas: 6, accessoire: 1 }),
+      encoderApparence({
+        teint: 2,
+        couleurCheveux: 1,
+        coupe: 3,
+        haut: 4,
+        couleurHaut: 5,
+        couleurBas: 6,
+        accessoire: 1,
+      }),
     ).toBe(5_853_386);
     expect(decoderApparence(0)).toEqual({
       teint: 0,
@@ -44,7 +52,7 @@ describe("indice d'apparence", () => {
     ['négatif', -1],
     ['non entier', 1.5],
     ['pas un nombre', Number.NaN],
-  ])("un indice qui ne désigne aucune apparence du catalogue est refusé (%s)", (_cas, indice) => {
+  ])('un indice qui ne désigne aucune apparence du catalogue est refusé (%s)', (_cas, indice) => {
     expect(decoderApparence(indice)).toBeNull();
     expect(estIndiceApparence(indice)).toBe(false);
   });

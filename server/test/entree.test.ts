@@ -48,9 +48,7 @@ describe('rejoindre le cortège', () => {
   it("l'heure d'entrée est la minute de réception plus un aléa, jamais l'instant exact (ADR 0001)", async () => {
     banc.horloge.regler('2026-06-01T09:20:45.500Z');
     const reponses = await Promise.all(
-      Array.from({ length: 20 }, () =>
-        banc.entrer<ReponseEntree>({ manif: 'manif-paris', apparence: 0, pancarte: 0 }),
-      ),
+      Array.from({ length: 20 }, () => banc.entrer<ReponseEntree>({ manif: 'manif-paris', apparence: 0, pancarte: 0 })),
     );
     banc.horloge.regler('2026-06-01T09:21:00Z');
     await banc.serveur.publier();

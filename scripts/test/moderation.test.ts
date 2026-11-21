@@ -68,13 +68,20 @@ describe('modération en ligne de commande', () => {
 
     const code = await moderer(
       'creer-manif',
-      '--id', 'marche-paris',
-      '--geojson', geojson,
-      '--intitule', 'Marche pour le climat',
-      '--ville', 'Paris',
-      '--depart', '2026-06-01T10:00:00Z',
-      '--source', 'Préfecture de police|https://www.prefecturedepolice.interieur.gouv.fr/',
-      '--source', 'Collectif organisateur|https://example.org/appel',
+      '--id',
+      'marche-paris',
+      '--geojson',
+      geojson,
+      '--intitule',
+      'Marche pour le climat',
+      '--ville',
+      'Paris',
+      '--depart',
+      '2026-06-01T10:00:00Z',
+      '--source',
+      'Préfecture de police|https://www.prefecturedepolice.interieur.gouv.fr/',
+      '--source',
+      'Collectif organisateur|https://example.org/appel',
     );
 
     expect(code).toBe(0);
@@ -83,7 +90,13 @@ describe('modération en ligne de commande', () => {
       intitule: 'Marche pour le climat',
       ville: 'Paris',
       depart: '2026-06-01T10:00:00.000Z',
-      parcours: { type: 'LineString', coordinates: [[2.35, 48.85], [2.35, 48.859]] },
+      parcours: {
+        type: 'LineString',
+        coordinates: [
+          [2.35, 48.85],
+          [2.35, 48.859],
+        ],
+      },
       sources: [
         { libelle: 'Préfecture de police', url: 'https://www.prefecturedepolice.interieur.gouv.fr/' },
         { libelle: 'Collectif organisateur', url: 'https://example.org/appel' },
@@ -107,12 +120,18 @@ describe('modération en ligne de commande', () => {
     async function creerDepuis(id: string, geojson: unknown): Promise<number> {
       return moderer(
         'creer-manif',
-        '--id', id,
-        '--geojson', await fichier(`${id}.geojson`, geojson),
-        '--intitule', 'Marche',
-        '--ville', 'Lyon',
-        '--depart', '2026-06-01T10:00:00Z',
-        '--source', 'Préfecture|https://example.org/',
+        '--id',
+        id,
+        '--geojson',
+        await fichier(`${id}.geojson`, geojson),
+        '--intitule',
+        'Marche',
+        '--ville',
+        'Lyon',
+        '--depart',
+        '2026-06-01T10:00:00Z',
+        '--source',
+        'Préfecture|https://example.org/',
       );
     }
 
@@ -121,8 +140,22 @@ describe('modération en ligne de commande', () => {
       ['aucune LineString (seulement des marqueurs)', collection(MARQUEUR), /aucune LineString/],
       ['plusieurs LineString', collection(feature(ligne(TRACE)), feature(ligne(TRACE))), /plusieurs LineString/],
       ['un seul point', collection(feature(ligne([[2.35, 48.85]]))), /au moins 2 points/],
-      ['coordonnées hors limites', ligne([[2.35, 48.85], [2.35, 148.85]]), /coordonnées/],
-      ['coordonnées non numériques', ligne([[2.35, 48.85], ['2.35', 48.86]]), /coordonnées/],
+      [
+        'coordonnées hors limites',
+        ligne([
+          [2.35, 48.85],
+          [2.35, 148.85],
+        ]),
+        /coordonnées/,
+      ],
+      [
+        'coordonnées non numériques',
+        ligne([
+          [2.35, 48.85],
+          ['2.35', 48.86],
+        ]),
+        /coordonnées/,
+      ],
     ])('refusé : %s', async (_cas, geojson, message) => {
       const id = `refus-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -136,7 +169,10 @@ describe('modération en ligne de commande', () => {
     it.each([
       ['une LineString seule', ligne(TRACE)],
       ['une Feature', feature(ligne(TRACE))],
-      ['une FeatureCollection avec des marqueurs en plus du tracé', collection(MARQUEUR, feature(ligne(TRACE)), MARQUEUR)],
+      [
+        'une FeatureCollection avec des marqueurs en plus du tracé',
+        collection(MARQUEUR, feature(ligne(TRACE)), MARQUEUR),
+      ],
       [
         'des positions avec altitude (ignorée)',
         ligne([
@@ -206,13 +242,15 @@ describe('modération en ligne de commande', () => {
     });
 
     it("sans --id, l'identifiant est tiré de la ville et de la date du départ", async () => {
-      expect(await moderer('creer-manif', ...options({ id: null, ville: 'Saint-Étienne', depart: '2026-06-03T10:00:00Z' }))).toBe(0);
+      expect(
+        await moderer('creer-manif', ...options({ id: null, ville: 'Saint-Étienne', depart: '2026-06-03T10:00:00Z' })),
+      ).toBe(0);
 
       expect(sorties.join('\n')).toMatch(/saint-etienne-2026-06-03/);
       expect((await manifsPubliees()).map((m) => m.id)).toContain('saint-etienne-2026-06-03');
     });
 
-    it("départ sans fuseau : heure de Paris (14:00 en juin = 12:00 UTC)", async () => {
+    it('départ sans fuseau : heure de Paris (14:00 en juin = 12:00 UTC)', async () => {
       expect(await moderer('creer-manif', ...options({ id: 'heure-paris', depart: '2026-06-01T14:00' }))).toBe(0);
 
       expect((await manifsPubliees()).find((m) => m.id === 'heure-paris')?.depart).toBe('2026-06-01T12:00:00.000Z');
@@ -254,12 +292,18 @@ describe('modération en ligne de commande', () => {
     const id = `${prefixe}-${Math.random().toString(36).slice(2, 8)}`;
     const code = await moderer(
       'creer-manif',
-      '--id', id,
-      '--geojson', await fichier(`${id}.geojson`, EXPORT_UMAP),
-      '--intitule', 'Marche',
-      '--ville', 'Paris',
-      '--depart', depart,
-      '--source', 'Préfecture|https://example.org/',
+      '--id',
+      id,
+      '--geojson',
+      await fichier(`${id}.geojson`, EXPORT_UMAP),
+      '--intitule',
+      'Marche',
+      '--ville',
+      'Paris',
+      '--depart',
+      depart,
+      '--source',
+      'Préfecture|https://example.org/',
     );
     expect(code).toBe(0);
     return id;
@@ -299,7 +343,11 @@ describe('modération en ligne de commande', () => {
     it.each([
       ['manif inconnue', ['--manif', 'inconnue', '--minutes', '10'], /inconnue/],
       ['ni --depart ni --minutes', ['--manif', '$id'], /--depart ou --minutes/],
-      ['--depart et --minutes à la fois', ['--manif', '$id', '--minutes', '5', '--depart', '2026-06-01T11:00:00Z'], /--depart ou --minutes/],
+      [
+        '--depart et --minutes à la fois',
+        ['--manif', '$id', '--minutes', '5', '--depart', '2026-06-01T11:00:00Z'],
+        /--depart ou --minutes/,
+      ],
       ['minutes illisibles', ['--manif', '$id', '--minutes', 'dix'], /minutes/],
       ["départ avant l'ouverture des entrées", ['--manif', '$id', '--depart', '2026-06-01T07:00:00Z'], /ouverture/],
     ])('refusé : %s', async (_cas, args, message) => {
@@ -342,7 +390,13 @@ describe('modération en ligne de commande', () => {
       const autre = await nouvelleManif('autorisee');
       expect((await entrer(retiree)).statut).toBe(201);
 
-      const code = await moderer('retirer-manif', '--manif', retiree, '--motif', 'Arrêté préfectoral n° 2026-123 du 31 mai');
+      const code = await moderer(
+        'retirer-manif',
+        '--manif',
+        retiree,
+        '--motif',
+        'Arrêté préfectoral n° 2026-123 du 31 mai',
+      );
 
       expect(code).toBe(0);
       const ids = (await manifsPubliees()).map((m) => m.id);

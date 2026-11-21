@@ -86,7 +86,13 @@ export function parametresZoom(zoom: number, distanceLoin: number): ParametresZo
   // Rasante jusqu'au zoom de suivi (l'horizon reste à l'écran), puis se redresse vers la verticale.
   const inclinaison = INCLINAISON_PROCHE + (INCLINAISON_LOIN - INCLINAISON_PROCHE) * lisser(0.2, 1, z);
   const avance = distance * AVANCE_REGARD * (1 - lisser(0.3, 0.8, z));
-  return { distance, inclinaison, hauteur: distance * Math.sin(inclinaison), recul: distance * Math.cos(inclinaison), avance };
+  return {
+    distance,
+    inclinaison,
+    hauteur: distance * Math.sin(inclinaison),
+    recul: distance * Math.cos(inclinaison),
+    avance,
+  };
 }
 
 /** Zoom qui place la caméra à `distance` du point regardé (borné à [0, 1]). */
@@ -150,7 +156,12 @@ export function poseCamera(options: {
  * Glisser la vue (vue détachée) : le sol suit le doigt. `metresParPx` : mètres au sol par
  * pixel d'écran autour du point regardé ; `cap` : direction du regard.
  */
-export function deplacerCible(cible: PointM, cap: number, glissement: { x: number; y: number }, metresParPx: number): PointM {
+export function deplacerCible(
+  cible: PointM,
+  cap: number,
+  glissement: { x: number; y: number },
+  metresParPx: number,
+): PointM {
   const avant = { x: Math.cos(cap), y: Math.sin(cap) };
   // Droite de l'écran au sol (y vers le sud) : (-avant.y, avant.x).
   const droite = { x: -avant.y, y: avant.x };

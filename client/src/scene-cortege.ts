@@ -161,7 +161,10 @@ export class SceneCortege extends Phaser.Scene {
     }
     this.#trace = new TraceAuSol(this, manif.parcours.coordinates.map(this.#projeter));
     this.#ensemble = this.#cadrageDEnsemble();
-    this.#cadrage = cadrerEnTroisiemePersonne(this.#ensemble, this.#projeter(this.#donnees.manif.parcours.coordinates[0]!));
+    this.#cadrage = cadrerEnTroisiemePersonne(
+      this.#ensemble,
+      this.#projeter(this.#donnees.manif.parcours.coordinates[0]!),
+    );
     this.scale.on(Phaser.Scale.Events.RESIZE, () => {
       this.#ensemble = this.#cadrageDEnsemble();
       this.#cadrage = { ...this.#cadrage!, echelleMin: this.#ensemble.echelleMin };
@@ -210,11 +213,14 @@ export class SceneCortege extends Phaser.Scene {
     });
     if (this.#suivi) {
       const cible = cibleDeSuivi(cortege.avatars);
-      const cibleM = this.#projeter(positionDansLeCortege(this.#donnees.manif.parcours, cible.distanceM, cible.decalageM));
+      const cibleM = this.#projeter(
+        positionDansLeCortege(this.#donnees.manif.parcours, cible.distanceM, cible.decalageM),
+      );
       const avant = this.#cadrage!.centre;
       this.#cadrage = suivre(this.#cadrage!, cibleM, this.#suiviImmediat ? 1 : LISSAGE_SUIVI);
       this.#suiviImmediat = false;
-      const bouge = Math.hypot(this.#cadrage.centre.x - avant.x, this.#cadrage.centre.y - avant.y) * this.#cadrage.echelle;
+      const bouge =
+        Math.hypot(this.#cadrage.centre.x - avant.x, this.#cadrage.centre.y - avant.y) * this.#cadrage.echelle;
       if (bouge >= 0.25) this.#parcoursADessiner = true;
     }
     const ecran = this.#ecran();
@@ -321,9 +327,7 @@ export class SceneCortege extends Phaser.Scene {
       }
       sprite.setFrame(this.#apparences.cadre(avatar.apparence), false, false);
       sprite.setPosition(avatar.xCorps, avatar.yCorps).setScale(echelle).setVisible(true);
-      sprite.setDepth(
-        avatar.propre ? PROFONDEUR.avatarToi : this.#profondeurSelonY(avatar.yPieds),
-      );
+      sprite.setDepth(avatar.propre ? PROFONDEUR.avatarToi : this.#profondeurSelonY(avatar.yPieds));
     });
     for (let i = avatars.length; i < this.#sprites.length; i++) this.#sprites[i]!.setVisible(false);
     this.#apparences.actualiser();
@@ -379,8 +383,10 @@ export class SceneCortege extends Phaser.Scene {
     const milieu: PointPx = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
     const avant = this.#pincement;
     this.#pincement = { ecart, milieu };
-    if (!avant || ecart <= 0 || (ecart === avant.ecart && milieu.x === avant.milieu.x && milieu.y === avant.milieu.y)) return;
-    if (!this.#suivi) this.#cadrage = deplacer(this.#cadrage!, { x: milieu.x - avant.milieu.x, y: milieu.y - avant.milieu.y });
+    if (!avant || ecart <= 0 || (ecart === avant.ecart && milieu.x === avant.milieu.x && milieu.y === avant.milieu.y))
+      return;
+    if (!this.#suivi)
+      this.#cadrage = deplacer(this.#cadrage!, { x: milieu.x - avant.milieu.x, y: milieu.y - avant.milieu.y });
     this.#zoomer(ecart / avant.ecart, milieu);
   }
 

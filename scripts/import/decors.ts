@@ -6,7 +6,13 @@
  * `client/public/decors/<id>.json`, inscrite dans `index.json` (ODbL).
  */
 import { join, relative } from 'node:path';
-import { COUCHE_PLACES, type CarteTiled, type CoucheObjetsTiled, type Parcours, type Position } from '@petit-cortege/shared';
+import {
+  COUCHE_PLACES,
+  type CarteTiled,
+  type CoucheObjetsTiled,
+  type Parcours,
+  type Position,
+} from '@petit-cortege/shared';
 import { inscrireDansIndex } from '../decor';
 import { DEMI_LARGEUR_PAR_DEFAUT_M, genererDecor } from '../decor/carte';
 import { lireExtrait, type ExtraitOverpass } from '../decor/osm';
@@ -48,12 +54,21 @@ export interface DecorGenere {
   zonesTraversees: string[];
 }
 
-export async function genererDecorManif(manif: ManifDeclaree, parcours: Parcours, deps: DependancesDecors): Promise<DecorGenere> {
+export async function genererDecorManif(
+  manif: ManifDeclaree,
+  parcours: Parcours,
+  deps: DependancesDecors,
+): Promise<DecorGenere> {
   const cheminExtrait = join(deps.racine, 'donnees/osm', manif.id, 'extrait-overpass.json');
   let texte = deps.rafraichir ? null : await deps.lire(cheminExtrait);
   if (texte === null) {
     deps.journal(`  extrait OSM de la bande de ${RAYON_EXTRACTION_M} m autour du parcours…`);
-    const reponse = await interrogerOverpass(deps.reseau, deps.urlsOverpass, requeteBande(parcours, RAYON_EXTRACTION_M), deps.journal);
+    const reponse = await interrogerOverpass(
+      deps.reseau,
+      deps.urlsOverpass,
+      requeteBande(parcours, RAYON_EXTRACTION_M),
+      deps.journal,
+    );
     texte = reponse.texte;
     await deps.ecrireFichier(cheminExtrait, texte);
     deps.journal(`  extrait de ${new URL(reponse.url).host} : ${reponse.extrait.elements.length} éléments OSM.`);
@@ -87,7 +102,14 @@ export async function genererDecorManif(manif: ManifDeclaree, parcours: Parcours
   });
   const contenu = `${JSON.stringify(carte)}\n`;
   await deps.ecrireFichier(sortie, contenu);
-  await inscrireDansIndex(join(deps.dossierDecors, 'index.json'), `${manif.id}.json`, carte, parcours, DEMI_LARGEUR_PAR_DEFAUT_M, deps.ecrireFichier);
+  await inscrireDansIndex(
+    join(deps.dossierDecors, 'index.json'),
+    `${manif.id}.json`,
+    carte,
+    parcours,
+    DEMI_LARGEUR_PAR_DEFAUT_M,
+    deps.ecrireFichier,
+  );
   const places = placesDuDecor(carte);
   // Second contrôle des zones à éviter, sur les vraies emprises OSM des places :
   // le tracé ne doit pas y entrer (il peut longer leur bord, par la rue qui les borde).
@@ -116,7 +138,9 @@ export function zonesEntrees(manif: ManifDeclaree, parcours: Parcours, osm: Extr
   return manif.zonesEvitees
     .map((z) => z.adresse.split(',')[0]!.trim())
     .filter((nom) =>
-      objets.some((o) => nomDeVoie(o.tags.name!) === nomDeVoie(nom) && echantillons.some((p) => dansAnneaux(p, o.anneaux))),
+      objets.some(
+        (o) => nomDeVoie(o.tags.name!) === nomDeVoie(nom) && echantillons.some((p) => dansAnneaux(p, o.anneaux)),
+      ),
     );
 }
 

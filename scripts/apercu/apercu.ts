@@ -54,7 +54,12 @@ class Toile {
         const dy = y + j;
         if (dx < 0 || dy < 0 || dx >= LARGEUR || dy >= HAUTEUR) continue;
         const s = ((sy + j) * source.largeur + sx + i) * 4;
-        const [r, g, b, a] = [source.donnees[s]!, source.donnees[s + 1]!, source.donnees[s + 2]!, source.donnees[s + 3]!];
+        const [r, g, b, a] = [
+          source.donnees[s]!,
+          source.donnees[s + 1]!,
+          source.donnees[s + 2]!,
+          source.donnees[s + 3]!,
+        ];
         if (a < 128 || (r === 255 && g === 0 && b === 255)) continue;
         this.donnees.set([r, g, b, 255], (dy * LARGEUR + dx) * 4);
       }
@@ -82,7 +87,9 @@ class Toile {
 }
 
 const assombrir = (couleur: number, f: number) =>
-  (Math.round((couleur >> 16) * f) << 16) | (Math.round(((couleur >> 8) & 0xff) * f) << 8) | Math.round((couleur & 0xff) * f);
+  (Math.round((couleur >> 16) * f) << 16) |
+  (Math.round(((couleur >> 8) & 0xff) * f) << 8) |
+  Math.round((couleur & 0xff) * f);
 
 export function genererApercuLien(racine: string): { image: ImageRGBA; png: Uint8Array } {
   const lire = (chemin: string) => lirePng(readFileSync(join(racine, chemin)));
@@ -90,7 +97,8 @@ export function genererApercuLien(racine: string): { image: ImageRGBA; png: Uint
   const atlas = lire(CHEMINS_ATLAS.png);
   const description = JSON.parse(readFileSync(join(racine, CHEMINS_ATLAS.json), 'utf8')) as DescriptionAtlasApparence;
   const toile = new Toile();
-  const tuile = (c: number, r: number, x: number, y: number) => toile.coller(ville, c * PAS, r * PAS, TUILE, TUILE, x * TUILE, y * TUILE);
+  const tuile = (c: number, r: number, x: number, y: number) =>
+    toile.coller(ville, c * PAS, r * PAS, TUILE, TUILE, x * TUILE, y * TUILE);
 
   // Sol : trottoir partout, chaussée large (rangées 7 à 11), pointillés au milieu.
   for (let y = 0; y < RANGEES; y++) for (let x = 0; x < COLONNES; x++) tuile(1, 20, x, y);
@@ -104,7 +112,25 @@ export function genererApercuLien(racine: string): { image: ImageRGBA; png: Uint
     for (let y = 0; y < 3; y++)
       for (let x = 0; x < l; x++) {
         const cx = x === 0 ? 0 : x === l - 1 ? 1 : 2;
-        const [c, r] = (y === 0 ? [[0, 0], [1, 0], [2, 0]] : y === 2 ? [[0, 1], [1, 1], [2, 1]] : [[3, 0], [3, 1], [2, 3]])[cx]!;
+        const [c, r] = (
+          y === 0
+            ? [
+                [0, 0],
+                [1, 0],
+                [2, 0],
+              ]
+            : y === 2
+              ? [
+                  [0, 1],
+                  [1, 1],
+                  [2, 1],
+                ]
+              : [
+                  [3, 0],
+                  [3, 1],
+                  [2, 3],
+                ]
+        )[cx]!;
         tuile(toitC0 + c!, r!, x0 + x, y);
       }
     for (let x = 0; x < l; x++) {
@@ -133,7 +159,8 @@ export function genererApercuLien(racine: string): { image: ImageRGBA; png: Uint
   const places: { x: number; y: number }[] = [];
   for (let y = 7; y <= 11; y++)
     for (let x = 0; x < COLONNES; x++)
-      if (hasard() < 0.72) places.push({ x: x * TUILE + Math.floor(hasard() * 7) - 3, y: y * TUILE + Math.floor(hasard() * 7) - 5 });
+      if (hasard() < 0.72)
+        places.push({ x: x * TUILE + Math.floor(hasard() * 7) - 3, y: y * TUILE + Math.floor(hasard() * 7) - 5 });
   places.sort((a, b) => a.y - b.y || a.x - b.x);
   for (const { x, y } of places) {
     const pancarte = hasard() < 0.45 ? COULEURS_PANCARTE[Math.floor(hasard() * COULEURS_PANCARTE.length)]! : null;

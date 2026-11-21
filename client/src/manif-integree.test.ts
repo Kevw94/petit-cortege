@@ -9,7 +9,13 @@ const manif: ManifPubliee = {
   ouverture: '2026-11-17T10:00:00.000Z',
   depart: '2026-11-17T13:00:00.000Z',
   fin: '2026-11-17T15:30:00.000Z',
-  parcours: { type: 'LineString', coordinates: [[2.39, 48.85], [2.36, 48.83]] },
+  parcours: {
+    type: 'LineString',
+    coordinates: [
+      [2.39, 48.85],
+      [2.36, 48.83],
+    ],
+  },
   longueurM: 1000,
   sources: [],
   compteur: 0,

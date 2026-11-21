@@ -64,7 +64,18 @@ export function teintesDesIlots(gids: Uint32Array, largeur: number, gidIlot: num
       const x = i % largeur;
       // Les quatre voisines, sans tableau intermédiaire (plus d'un million de cases pour Paris).
       for (let v = 0; v < 4; v++) {
-        const j = v === 0 ? (x > 0 ? i - 1 : -1) : v === 1 ? (x < largeur - 1 ? i + 1 : -1) : v === 2 ? i - largeur : i + largeur;
+        const j =
+          v === 0
+            ? x > 0
+              ? i - 1
+              : -1
+            : v === 1
+              ? x < largeur - 1
+                ? i + 1
+                : -1
+              : v === 2
+                ? i - largeur
+                : i + largeur;
         if (j < 0 || j >= gids.length || gids[j] !== gidIlot || teintes[j] !== -1) continue;
         teintes[j] = teinte;
         pile[n++] = j;
@@ -75,7 +86,8 @@ export function teintesDesIlots(gids: Uint32Array, largeur: number, gidIlot: num
 }
 
 /** Largeur du fondu au bord du plan, en cases. */
-export const fonduEnCases = (a: Pick<AlentoursDecor, 'tuilesParCase'>) => FONDU_PLAN_M / (a.tuilesParCase * METRES_PAR_TUILE);
+export const fonduEnCases = (a: Pick<AlentoursDecor, 'tuilesParCase'>) =>
+  FONDU_PLAN_M / (a.tuilesParCase * METRES_PAR_TUILE);
 
 /** Part de la couleur propre d'une case (0 : teinte du fond, 1 : sa couleur), selon sa distance au vide. */
 export function partDeLaCase(distance: number, fondu: number): number {

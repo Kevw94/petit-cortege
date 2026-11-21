@@ -40,20 +40,40 @@ class Tampons {
   }
 }
 
-export function maillageBatiments(decor: Decor, images: ImagesTilesets, boites: readonly Boite[], anisotropie: number): THREE.Group {
+export function maillageBatiments(
+  decor: Decor,
+  images: ImagesTilesets,
+  boites: readonly Boite[],
+  anisotropie: number,
+): THREE.Group {
   const groupe = new THREE.Group();
   const toits = new Map<number, Tampons>();
   const murs = new Map<string, { tampons: Tampons; mur: number; fenetre: number }>();
   const t = M_PAR_TUILE_TEXTURE;
   for (const b of boites) {
-    const [x0, z0, x1, z1] = [b.x0 * METRES_PAR_TUILE, b.y0 * METRES_PAR_TUILE, b.x1 * METRES_PAR_TUILE, b.y1 * METRES_PAR_TUILE];
+    const [x0, z0, x1, z1] = [
+      b.x0 * METRES_PAR_TUILE,
+      b.y0 * METRES_PAR_TUILE,
+      b.x1 * METRES_PAR_TUILE,
+      b.y1 * METRES_PAR_TUILE,
+    ];
     const h = b.hauteurM;
     let toit = toits.get(b.toit);
     if (!toit) toits.set(b.toit, (toit = new Tampons()));
     toit.quad(
-      [[x0, h, z1], [x1, h, z1], [x1, h, z0], [x0, h, z0]],
+      [
+        [x0, h, z1],
+        [x1, h, z1],
+        [x1, h, z0],
+        [x0, h, z0],
+      ],
       [0, 1, 0],
-      [[x0 / t, z1 / t], [x1 / t, z1 / t], [x1 / t, z0 / t], [x0 / t, z0 / t]],
+      [
+        [x0 / t, z1 / t],
+        [x1 / t, z1 / t],
+        [x1 / t, z0 / t],
+        [x0 / t, z0 / t],
+      ],
     );
     const cle = `${b.mur}/${b.fenetre}`;
     let m = murs.get(cle);
@@ -61,9 +81,19 @@ export function maillageBatiments(decor: Decor, images: ImagesTilesets, boites: 
     // Texture de façade sur deux tuiles (4 m) : u le long du mur, v vers le haut.
     const cote = (a: number[], bb: number[], normale: number[], u0: number, u1: number) =>
       m.tampons.quad(
-        [[a[0]!, 0, a[1]!], [bb[0]!, 0, bb[1]!], [bb[0]!, h, bb[1]!], [a[0]!, h, a[1]!]],
+        [
+          [a[0]!, 0, a[1]!],
+          [bb[0]!, 0, bb[1]!],
+          [bb[0]!, h, bb[1]!],
+          [a[0]!, h, a[1]!],
+        ],
         normale,
-        [[u0 / (2 * t), 0], [u1 / (2 * t), 0], [u1 / (2 * t), h / t], [u0 / (2 * t), h / t]],
+        [
+          [u0 / (2 * t), 0],
+          [u1 / (2 * t), 0],
+          [u1 / (2 * t), h / t],
+          [u0 / (2 * t), h / t],
+        ],
       );
     cote([x0, z1], [x1, z1], [0, 0, 1], x0, x1); // sud
     cote([x1, z0], [x0, z0], [0, 0, -1], -x1, -x0); // nord

@@ -160,9 +160,7 @@ describe('retrait de son avatar', () => {
     await banc.poster('/api/retrait', { avatar, jeton });
 
     const contenu = JSON.stringify(
-      await Promise.all(
-        ['manif', 'avatar', 'retrait'].map((table) => banc.sql.unsafe(`select * from ${table}`)),
-      ),
+      await Promise.all(['manif', 'avatar', 'retrait'].map((table) => banc.sql.unsafe(`select * from ${table}`))),
       (_cle, valeur: unknown) =>
         valeur && typeof valeur === 'object' && (valeur as { type?: unknown }).type === 'Buffer'
           ? Buffer.from((valeur as { data: number[] }).data).toString('hex')

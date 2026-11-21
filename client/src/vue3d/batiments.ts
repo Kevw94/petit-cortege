@@ -90,9 +90,13 @@ export function boitesDeBatiments(decor: Decor): Boite[] {
   const pris = new Uint8Array(largeur * hauteur);
   groupes.forEach((tuiles, n) => {
     const premiere = tuiles[0]!;
-    const hauteurM = HAUTEURS_M[tirageIdentifiant(`${gx + (premiere % largeur)},${gy + Math.floor(premiere / largeur)}`) % HAUTEURS_M.length]!;
+    const hauteurM =
+      HAUTEURS_M[
+        tirageIdentifiant(`${gx + (premiere % largeur)},${gy + Math.floor(premiere / largeur)}`) % HAUTEURS_M.length
+      ]!;
     // Toit : tuiles qui ont au moins RANGEES_FACADE_MAX rangées du bâtiment en dessous (jamais la façade).
-    const sousToit = (k: number) => Array.from({ length: RANGEES_FACADE_MAX }, (_, r) => k + (r + 1) * largeur).every((v) => dans(v, n));
+    const sousToit = (k: number) =>
+      Array.from({ length: RANGEES_FACADE_MAX }, (_, r) => k + (r + 1) * largeur).every((v) => dans(v, n));
     const sansFenetre = tuiles.filter((k) => facade[k] === 0);
     const toit =
       plusFrequent(sansFenetre.filter(sousToit).map((k) => batiment[k]!)) ??

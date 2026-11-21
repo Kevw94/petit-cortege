@@ -91,7 +91,12 @@ export function classer(objet: ObjetOsm): Classement | null {
       return { sorte: 'rue', terrain, largeurM: nombre(t.width) ?? LARGEUR_CHEMIN_M, trottoirM: 0 };
     }
     if (t.highway === 'cycleway') {
-      return { sorte: 'rue', terrain: Terrain.chaussee, largeurM: nombre(t.width) ?? LARGEUR_PISTE_CYCLABLE_M, trottoirM: 0 };
+      return {
+        sorte: 'rue',
+        terrain: Terrain.chaussee,
+        largeurM: nombre(t.width) ?? LARGEUR_PISTE_CYCLABLE_M,
+        trottoirM: 0,
+      };
     }
     const type = t.highway.replace(/_link$/, '');
     const defaut = RUES[type];

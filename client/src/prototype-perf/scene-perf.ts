@@ -194,7 +194,10 @@ export class ScenePerf extends Phaser.Scene {
     const xs = points.map((p) => p.x);
     const ys = points.map((p) => p.y);
     const [minX, maxX, minY, maxY] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-    const s = Math.min((width - 64) / Math.max(maxX - minX + marge, 1), (height - 64) / Math.max(maxY - minY + marge, 1));
+    const s = Math.min(
+      (width - 64) / Math.max(maxX - minX + marge, 1),
+      (height - 64) / Math.max(maxY - minY + marge, 1),
+    );
     this.#echelle = s;
     this.#dx = (width - (maxX - minX) * s) / 2 - minX * s;
     this.#dy = (height - (maxY - minY) * s) / 2 - minY * s;

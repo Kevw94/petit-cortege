@@ -28,10 +28,32 @@ describe('parcours lu depuis un export uMap', () => {
             { demande: '   ' },
           ],
         },
-        geometry: { type: 'LineString', coordinates: [[2.4, 48.85], [2.36, 48.83]] },
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [2.4, 48.85],
+            [2.36, 48.83],
+          ],
+        },
       }),
     ).toEqual(['Nation', 'Place d’Italie']);
-    expect(lireParcoursGeoJson({ type: 'LineString', coordinates: [[2.35, 48.85], [2.36, 48.86]] }).type).toBe('LineString');
-    expect(lireEtapesAnnoncees({ type: 'LineString', coordinates: [[2.35, 48.85], [2.36, 48.86]] })).toEqual([]);
+    expect(
+      lireParcoursGeoJson({
+        type: 'LineString',
+        coordinates: [
+          [2.35, 48.85],
+          [2.36, 48.86],
+        ],
+      }).type,
+    ).toBe('LineString');
+    expect(
+      lireEtapesAnnoncees({
+        type: 'LineString',
+        coordinates: [
+          [2.35, 48.85],
+          [2.36, 48.86],
+        ],
+      }),
+    ).toEqual([]);
   });
 });

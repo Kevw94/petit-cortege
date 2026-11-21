@@ -74,7 +74,9 @@ export class Publication {
     const heureEnCours = parMinute(minutes);
 
     await this.#telecharger([
-      ...terminees.flatMap((h): ATelecharger[] => (h.enMinutes ? h.minutesDeLHeure : [[h.cheminHeure, lireEntreesHeure]])),
+      ...terminees.flatMap((h): ATelecharger[] =>
+        h.enMinutes ? h.minutesDeLHeure : [[h.cheminHeure, lireEntreesHeure]],
+      ),
       ...heureEnCours,
     ]);
     // Fichier horaire pas encore publié : repli sur les minutes de cette heure.

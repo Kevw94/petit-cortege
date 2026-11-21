@@ -11,7 +11,11 @@ const MINUTE = 60_000;
 const HEURE = 60 * MINUTE;
 
 /** État d'une manif pour sa carte, et le texte court qui le dit. */
-export function etiquetteDepart(departMs: number, finMs: number, maintenantMs: number): { etat: EtatCarte; texte: string } {
+export function etiquetteDepart(
+  departMs: number,
+  finMs: number,
+  maintenantMs: number,
+): { etat: EtatCarte; texte: string } {
   if (maintenantMs >= finMs) return { etat: 'terminee', texte: 'Terminée' };
   if (maintenantMs >= departMs) return { etat: 'en-marche', texte: 'En marche' };
   const reste = departMs - maintenantMs;
@@ -63,7 +67,8 @@ export function carteManif(m: ManifPubliee, maintenant: Date): string {
 export function banniereCortege(nombre = 14): string {
   const teints = ['#f1c9a5', '#d9a77e', '#b97f55', '#8d5a3a', '#6a4129', '#e8b48f'];
   const rects: string[] = [];
-  const r = (x: number, y: number, l: number, h: number, c: string) => rects.push(`<rect x="${x}" y="${y}" width="${l}" height="${h}" fill="${c}"/>`);
+  const r = (x: number, y: number, l: number, h: number, c: string) =>
+    rects.push(`<rect x="${x}" y="${y}" width="${l}" height="${h}" fill="${c}"/>`);
   const enCss = (c: number) => `#${c.toString(16).padStart(6, '0')}`;
   for (let i = 0; i < nombre; i++) {
     const x = 2 + i * 9;

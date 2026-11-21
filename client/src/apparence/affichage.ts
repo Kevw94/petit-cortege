@@ -36,7 +36,12 @@ export function aLEcran(
   { largeur, hauteur, largeurSprite, hauteurSprite }: OptionsEcran,
 ): boolean {
   const demiLargeur = largeurSprite / 2;
-  return avatar.x + demiLargeur >= 0 && avatar.x - demiLargeur <= largeur && avatar.y >= 0 && avatar.y - hauteurSprite <= hauteur;
+  return (
+    avatar.x + demiLargeur >= 0 &&
+    avatar.x - demiLargeur <= largeur &&
+    avatar.y >= 0 &&
+    avatar.y - hauteurSprite <= hauteur
+  );
 }
 
 /** Couches de l'atlas pour un indice ; un indice hors catalogue prend l'apparence par défaut. */

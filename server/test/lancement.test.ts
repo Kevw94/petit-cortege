@@ -105,7 +105,13 @@ describe('lancement du serveur de production', () => {
         ville: 'Paris',
         ouverture: new Date('2026-05-01T13:55:00Z'),
         depart: new Date('2026-05-01T14:00:00Z'),
-        parcours: { type: 'LineString', coordinates: [[2.35, 48.85], [2.35, 48.86]] },
+        parcours: {
+          type: 'LineString',
+          coordinates: [
+            [2.35, 48.85],
+            [2.35, 48.86],
+          ],
+        },
         sources: [],
       });
 

@@ -59,9 +59,21 @@ describe('rectangle', () => {
   });
 
   it('dresse une façade de trois rangées sur le bord sud', () => {
-    expect([r.piece(2, 7), r.piece(6, 7), r.piece(11, 7)]).toEqual([m.mur.haut.gauche, m.mur.haut.milieu, m.mur.haut.droite]);
-    expect([r.piece(2, 8), r.piece(6, 8), r.piece(11, 8)]).toEqual([m.mur.milieu.gauche, m.mur.milieu.milieu, m.mur.milieu.droite]);
-    expect([r.piece(2, 9), r.piece(6, 9), r.piece(11, 9)]).toEqual([m.mur.bas.gauche, m.mur.bas.milieu, m.mur.bas.droite]);
+    expect([r.piece(2, 7), r.piece(6, 7), r.piece(11, 7)]).toEqual([
+      m.mur.haut.gauche,
+      m.mur.haut.milieu,
+      m.mur.haut.droite,
+    ]);
+    expect([r.piece(2, 8), r.piece(6, 8), r.piece(11, 8)]).toEqual([
+      m.mur.milieu.gauche,
+      m.mur.milieu.milieu,
+      m.mur.milieu.droite,
+    ]);
+    expect([r.piece(2, 9), r.piece(6, 9), r.piece(11, 9)]).toEqual([
+      m.mur.bas.gauche,
+      m.mur.bas.milieu,
+      m.mur.bas.droite,
+    ]);
   });
 
   it('perce des fenêtres dans la façade et une porte au rez-de-chaussée, rien sur le toit', () => {
@@ -129,7 +141,10 @@ describe('cour intérieure', () => {
 describe('polygone en biais', () => {
   // Rectangle de 14 × 7 tuiles tourné de 30°.
   const [cx, cy, a] = [12, 10, Math.PI / 6];
-  const coin = (u: number, v: number) => ({ x: cx + u * Math.cos(a) - v * Math.sin(a), y: cy + u * Math.sin(a) + v * Math.cos(a) });
+  const coin = (u: number, v: number) => ({
+    x: cx + u * Math.cos(a) - v * Math.sin(a),
+    y: cy + u * Math.sin(a) + v * Math.cos(a),
+  });
   const biais = [coin(-7, -3.5), coin(7, -3.5), coin(7, 3.5), coin(-7, 3.5), coin(-7, -3.5)];
   const r = autotiler([{ id: 'way/4', anneaux: [biais] }]);
   const m = materiauDe('way/4');
@@ -159,7 +174,9 @@ describe('polygone en biais', () => {
     const basses = [m.mur.bas, m.mur.unique].flatMap((rangee) => Object.values(rangee));
     let avecFacade = 0;
     for (const x of colonnes) {
-      const ys = tuiles().filter((p) => p.x === x).map((p) => p.y);
+      const ys = tuiles()
+        .filter((p) => p.x === x)
+        .map((p) => p.y);
       expect(piecesDeToit(m)).toContain(r.piece(x, Math.min(...ys)));
       if (basses.includes(r.piece(x, Math.max(...ys)))) avecFacade++;
     }

@@ -44,11 +44,16 @@ describe('import-manifs : publier', () => {
     await writeFile(join(dossier, '2026-11-14.json'), JSON.stringify({ manifs }));
     const journee = lireJournee({ manifs }, '2026-11-14.json');
     // Tracé enregistré de Caen (sortie réelle de « tracer »), recopié pour chaque manif.
-    const trace = JSON.parse(await readFile(join(import.meta.dirname, '../../donnees/manifs/2026-11-14/caen-2026-11-14.geojson'), 'utf8'));
+    const trace = JSON.parse(
+      await readFile(join(import.meta.dirname, '../../donnees/manifs/2026-11-14/caen-2026-11-14.geojson'), 'utf8'),
+    );
     await mkdir(join(dossier, '2026-11-14'));
     for (const m of journee.manifs.filter((x) => x.id !== 'sans-trace-2026-11-14')) {
       const empreinte = m.id === 'perimee-2026-11-14' ? 'etapes-modifiees' : empreinteTrace(m);
-      await writeFile(join(dossier, '2026-11-14', `${m.id}.geojson`), JSON.stringify({ ...trace, properties: { ...trace.properties, empreinte } }));
+      await writeFile(
+        join(dossier, '2026-11-14', `${m.id}.geojson`),
+        JSON.stringify({ ...trace, properties: { ...trace.properties, empreinte } }),
+      );
     }
   });
   afterAll(async () => {
@@ -67,7 +72,12 @@ describe('import-manifs : publier', () => {
       ecrire: (l) => sorties.push(l),
       dossierCourant: dossier,
       racine: dossier,
-      base: async () => ({ sql: banc.sql, horloge: banc.horloge, dossierPublication: banc.dossierPublication, fermer: async () => {} }),
+      base: async () => ({
+        sql: banc.sql,
+        horloge: banc.horloge,
+        dossierPublication: banc.dossierPublication,
+        fermer: async () => {},
+      }),
     });
   };
   const publiees = async () => (await banc.lire<ListeManifs>('/publie/manifs.json')).corps.manifs;
@@ -76,7 +86,9 @@ describe('import-manifs : publier', () => {
     expect(await publier()).toBe(1);
     const texte = sorties.join('\n');
     expect(texte).toMatch(/Créée : caen-2026-11-14/);
-    expect(texte).toMatch(/Refusée : non-verifiee-2026-11-14 : vérification humaine à faire : absence d'arrêté d'interdiction/);
+    expect(texte).toMatch(
+      /Refusée : non-verifiee-2026-11-14 : vérification humaine à faire : absence d'arrêté d'interdiction/,
+    );
     expect(texte).toMatch(/Refusée : perimee-2026-11-14 : le tracé ne correspond plus aux étapes/);
     expect(texte).toMatch(/Refusée : sans-trace-2026-11-14 : pas de tracé/);
     expect(texte).toMatch(/Refusée : a-verifier-2026-11-14 : marquée « aVerifier »/);

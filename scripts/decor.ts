@@ -81,7 +81,8 @@ export async function executerDecor(argv: string[], deps: DependancesDecor): Pro
   type OptionTexte = Exclude<keyof typeof OPTIONS, 'rue' | 'overpass'>;
   const urls = v.overpass ?? [];
   const reseau = deps.reseau ?? { ...reseauReel(), essais: 4 };
-  const telecharger = (requete: string) => interrogerOverpass(reseau, urls.length ? urls : URLS_OVERPASS_PAR_DEFAUT, requete, deps.ecrire);
+  const telecharger = (requete: string) =>
+    interrogerOverpass(reseau, urls.length ? urls : URLS_OVERPASS_PAR_DEFAUT, requete, deps.ecrire);
   const chemin = (nom: OptionTexte) => {
     const valeur = v[nom];
     if (!valeur) throw new Error(`option --${nom} manquante.\n\n${AIDE}`);
@@ -89,10 +90,12 @@ export async function executerDecor(argv: string[], deps: DependancesDecor): Pro
   };
   const nombre = (nom: OptionTexte, defaut: number, zeroPermis = false) => {
     const n = v[nom] === undefined ? defaut : Number(v[nom]);
-    if (!Number.isFinite(n) || n < 0 || (n === 0 && !zeroPermis)) throw new Error(`--${nom} illisible : « ${v[nom]} ».`);
+    if (!Number.isFinite(n) || n < 0 || (n === 0 && !zeroPermis))
+      throw new Error(`--${nom} illisible : « ${v[nom]} ».`);
     return n;
   };
-  const lireParcours = async (): Promise<Parcours> => lireParcoursGeoJson(JSON.parse(await readFile(chemin('parcours'), 'utf8')));
+  const lireParcours = async (): Promise<Parcours> =>
+    lireParcoursGeoJson(JSON.parse(await readFile(chemin('parcours'), 'utf8')));
   const ecrireFichier = async (fichier: string, contenu: string) => {
     await mkdir(dirname(fichier), { recursive: true });
     await writeFile(fichier, contenu);
@@ -106,11 +109,18 @@ export async function executerDecor(argv: string[], deps: DependancesDecor): Pro
   /** Demi-côté imposé du plan (--alentours, m) ; undefined : automatique ; 0 : aucun plan. */
   const demiCotePlan = () => (v.alentours === undefined ? undefined : nombre('alentours', 0, true));
   /** Extrait simplifié du plan : relu s'il existe, sinon téléchargé (et enregistré si --alentours-osm). */
-  const extraitAlentours = async (parcours: Parcours, demiCoteM: number | undefined): Promise<ExtraitOverpass | null> => {
+  const extraitAlentours = async (
+    parcours: Parcours,
+    demiCoteM: number | undefined,
+  ): Promise<ExtraitOverpass | null> => {
     const fichier = v['alentours-osm'] ? chemin('alentours-osm') : null;
     if (fichier && (await existe(fichier))) return JSON.parse(await readFile(fichier, 'utf8')) as ExtraitOverpass;
     if (!urls.length) return null;
-    const plan = await telechargerPlan(parcours, telecharger, deps.ecrire, { demiCoteM, pauseMs: deps.pauseEntrePavesMs, cache: fichier ? cacheDePaves(fichier) : undefined });
+    const plan = await telechargerPlan(parcours, telecharger, deps.ecrire, {
+      demiCoteM,
+      pauseMs: deps.pauseEntrePavesMs,
+      cache: fichier ? cacheDePaves(fichier) : undefined,
+    });
     if (fichier) await ecrireFichier(fichier, texteExtraitAlentours(plan));
     return plan;
   };
@@ -152,7 +162,14 @@ export async function executerDecor(argv: string[], deps: DependancesDecor): Pro
         dossierKenney: relative(dirname(sortie), join(RACINE, 'assets/kenney')).split('\\').join('/'),
       });
       await ecrireFichier(sortie, `${JSON.stringify(carte)}\n`);
-      await inscrireDansIndex(join(dirname(sortie), CHEMIN_INDEX_DECORS), basename(sortie), carte, parcours, demiLargeurM, ecrireFichier);
+      await inscrireDansIndex(
+        join(dirname(sortie), CHEMIN_INDEX_DECORS),
+        basename(sortie),
+        carte,
+        parcours,
+        demiLargeurM,
+        ecrireFichier,
+      );
       return;
     }
     case 'parcours': {
@@ -162,7 +179,11 @@ export async function executerDecor(argv: string[], deps: DependancesDecor): Pro
       if (rues.length === 0) throw new Error(`option --rue manquante.\n\n${AIDE}`);
       const osm = await extraitOsm(() => requeteRues(rues, depart, arrivee));
       const parcours = itineraireLeLongDe(osm, { rues, depart, arrivee });
-      const geojson = { type: 'Feature', properties: { name: rues.join(', '), source: '© les contributeurs d’OpenStreetMap (ODbL)' }, geometry: parcours };
+      const geojson = {
+        type: 'Feature',
+        properties: { name: rues.join(', '), source: '© les contributeurs d’OpenStreetMap (ODbL)' },
+        geometry: parcours,
+      };
       await ecrireFichier(chemin('sortie'), `${JSON.stringify(geojson, null, 1)}\n`);
       return;
     }
@@ -231,7 +252,10 @@ export async function inscrireDansIndex(
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   try {
-    await executerDecor(process.argv.slice(2), { ecrire: console.log, dossierCourant: process.env.INIT_CWD ?? process.cwd() });
+    await executerDecor(process.argv.slice(2), {
+      ecrire: console.log,
+      dossierCourant: process.env.INIT_CWD ?? process.cwd(),
+    });
   } catch (erreur) {
     console.error(`Erreur : ${erreur instanceof Error ? erreur.message : String(erreur)}`);
     process.exitCode = 1;

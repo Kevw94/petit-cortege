@@ -20,13 +20,12 @@ export interface PositionSurParcours {
  * Qui suivre : son propre avatar (le plus avancé s'il y en a plusieurs), sinon la
  * tête du cortège au milieu de la rue, sinon le point de départ.
  */
-export function cibleDeSuivi(
-  avatars: readonly (PositionSurParcours & { propre: boolean })[],
-): PositionSurParcours {
+export function cibleDeSuivi(avatars: readonly (PositionSurParcours & { propre: boolean })[]): PositionSurParcours {
   let propre: PositionSurParcours | null = null;
   let tete: number | null = null;
   for (const a of avatars) {
-    if (a.propre && (propre === null || a.distanceM > propre.distanceM)) propre = { distanceM: a.distanceM, decalageM: a.decalageM };
+    if (a.propre && (propre === null || a.distanceM > propre.distanceM))
+      propre = { distanceM: a.distanceM, decalageM: a.decalageM };
     if (tete === null || a.distanceM > tete) tete = a.distanceM;
   }
   return propre ?? { distanceM: tete ?? 0, decalageM: 0 };
