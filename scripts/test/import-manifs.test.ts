@@ -12,6 +12,7 @@ import { lireParcoursGeoJson } from '@petit-cortege/server';
 import { decorDuParcours, distanceM, lireDecor, lireIndexDecors, type Position } from '@petit-cortege/shared';
 import { executerImport, type DependancesImportManifs } from '../import-manifs';
 import { controlerTrace, demiTours, nettoyerTrace } from '../import/controles';
+import { reduireExtrait, texteExtrait } from '../decor/reduction';
 import { zonesEntrees } from '../import/decors';
 import { ErreurImport, lireJournee } from '../import/fichier';
 import { geocoder } from '../import/geocodage';
@@ -433,7 +434,7 @@ describe('npm run import-manifs', () => {
     expect(reseau.demandes.map((u) => u.hostname)).toEqual([
       'premier.exemple', 'premier.exemple', 'second.exemple', 'premier.exemple', 'premier.exemple', 'second.exemple',
     ]);
-    expect(await readFile(join(dossier, 'donnees/osm/mini-2026-11-14/extrait-overpass.json'), 'utf8')).toBe(extrait);
+    expect(await readFile(join(dossier, 'donnees/osm/mini-2026-11-14/extrait-overpass.json'), 'utf8')).toBe(texteExtrait(reduireExtrait(JSON.parse(extrait))));
     const alentours = await readFile(join(dossier, 'donnees/osm/mini-2026-11-14/plan-overpass.json'), 'utf8');
     expect(alentours).not.toMatch(/"building"|Boulangerie/);
     expect((await lireDecor(JSON.parse(await readFile(join(decors, 'mini-2026-11-14.json'), 'utf8')))).alentours).toBeDefined();

@@ -28,6 +28,7 @@ import { cacheDePaves, telechargerPlan, texteExtraitAlentours } from './decor/al
 import { interrogerOverpass, URLS_OVERPASS_PAR_DEFAUT } from './import/overpass';
 import { reseauReel, type Reseau } from './import/reseau';
 import { simplifierLigne } from './decor/geometrie';
+import { reduireExtrait, texteExtrait } from './decor/reduction';
 import { RACINE } from './config';
 
 export { simplifierLigne };
@@ -47,7 +48,10 @@ export interface DependancesDecor {
 
 const AIDE = `Commandes :
   extraire --parcours <geojson> --overpass <url> --sortie <extrait.json> [--rayon <m>]
-      Enregistre la réponse Overpass brute (bande autour du parcours ; rues, verts, eau, bâtiments, places).
+      Enregistre la réponse Overpass (bande autour du parcours ; rues, verts, eau, bâtiments, places),
+      réduite aux tags que le décor lit.
+  reduire --osm <extrait.json>
+      Réécrit sur place un extrait enregistré, réduit aux tags que le décor lit (sans réseau).
   extraire-alentours --parcours <geojson> --overpass <url> --sortie <plan.json> [--alentours <m>]
       Enregistre l'extrait simplifié du plan de la ville (rues, verts, eau ; sans bâtiments),
       téléchargé par pavés de 3 km.
@@ -98,6 +102,12 @@ export async function executerDecor(argv: string[], deps: DependancesDecor): Pro
     await writeFile(fichier, contenu);
     deps.ecrire(`Écrit : ${relative(deps.dossierCourant, fichier) || fichier}`);
   };
+  /** Extrait de bande réduit aux tags du décor (#38). */
+  const ecrireExtraitReduit = async (fichier: string, extrait: ExtraitOverpass) => {
+    const reduit = reduireExtrait(extrait);
+    await ecrireFichier(fichier, texteExtrait(reduit));
+    deps.ecrire(`${extrait.elements.length} éléments OSM, ${reduit.elements.length} gardés.`);
+  };
   const extraitOsm = async (requete: () => string): Promise<ExtraitOverpass> => {
     if (v.osm) return JSON.parse(await readFile(chemin('osm'), 'utf8')) as ExtraitOverpass;
     if (urls.length) return (await telecharger(requete())).extrait;
@@ -119,9 +129,14 @@ export async function executerDecor(argv: string[], deps: DependancesDecor): Pro
     case 'extraire': {
       const parcours = await lireParcours();
       if (!urls.length) throw new Error(`option --overpass manquante.\n\n${AIDE}`);
-      const { texte, extrait } = await telecharger(requeteBande(parcours, nombre('rayon', RAYON_EXTRACTION_M)));
-      await ecrireFichier(chemin('sortie'), texte);
-      deps.ecrire(`${extrait.elements.length} éléments OSM.`);
+      const { extrait } = await telecharger(requeteBande(parcours, nombre('rayon', RAYON_EXTRACTION_M)));
+      await ecrireExtraitReduit(chemin('sortie'), extrait);
+      return;
+    }
+    case 'reduire': {
+      // Réécrit sur place un extrait déjà enregistré, sans réseau (tags utiles au décor seulement).
+      const fichier = chemin('osm');
+      await ecrireExtraitReduit(fichier, JSON.parse(await readFile(fichier, 'utf8')) as ExtraitOverpass);
       return;
     }
     case 'extraire-alentours': {
