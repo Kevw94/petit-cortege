@@ -14,6 +14,16 @@ La position d'un avatar se calcule côté client à partir du parcours, de l'heu
 - Une foule entrée avant le départ, ou une file plus longue que le chemin déjà parcouru, a des rangées derrière la ligne de départ (distance négative).
 - Si la vraie manif part en retard, le cortège virtuel est en avance : accepté (pas un outil d'information terrain).
 
+## Retardataires : à la queue plutôt qu'au point de départ (révision)
+
+Au départ, chaque avatar marchait depuis le point de départ à partir de son heure d'entrée (`distance = 2 km/h × (maintenant − max(heure d'entrée, départ))`) : un retardataire partait seul du début du parcours, loin derrière le reste du cortège, et le cortège s'étirait sur tout le parcours. C'est abandonné au profit de la queue, parce que :
+
+- **Rejoindre, c'est être avec les autres** : un soutien qui arrive en cours de route doit se retrouver dans le cortège, pas seul sur un parcours vide. C'est le sens même du jeu (soutenir à distance, ensemble).
+- **Un cortège groupé se lit mieux** : une seule foule qui avance, au lieu d'avatars éparpillés du départ jusqu'à la tête.
+- **Les places sont stables** : chacun garde son rang dans le cortège ; avant, les vagues de retardataires entrés à quelques secondes d'écart se superposaient.
+
+Ce qui reste vrai : le calcul est toujours déterministe et local (mêmes fichiers, même foule pour tous), sans temps réel ni présence ; entrer tôt place toujours près de la tête. Ce qui change en contrepartie : tout le cortège s'arrête quand sa tête arrive (plus de retardataires qui finissent le parcours seuls pendant la marge), et la masse de foule ne vient plus de la densité pendant la marche, seulement du budget d'avatars dessinés.
+
 ## Conséquences
 
 - Pas de statut « présent » ni de double compteur : mesurer la présence imposerait des signaux réguliers de chaque client.
