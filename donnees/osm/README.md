@@ -65,10 +65,12 @@ qui télécharge le plan absent). L'ancien `alentours-overpass.json` (700 m auto
 
 Les extraits de bande ne gardent que les tags que le décor lit (`scripts/decor/reduction.ts`) : ceux du
 classement (`highway`, `area`, `area:highway`, `place`, `width`, `lanes`, `sidewalk`, `footway`, `tunnel`, `covered`,
-`location`, `indoor`, `layer`, `waterway`, `natural`, `landuse`, `leisure`, `type`), `building`, et `name` sauf sur les
-bâtiments (noms de commerces). Les éléments sans aucun de ces tags sont retirés, ainsi que les `bounds` et les nœuds
-des chemins qui ne sont pas des rues ; la géométrie est gardée telle quelle, le décor généré est identique. Plus de
-`email`, `phone`, `website`, `contact:*` ni `opening_hours` : publics dans OSM, ce sont des coordonnées de tiers inutiles
-ici. Un extrait enregistré avant ce filtre se réduit sans réseau : `npm run decor -- reduire --osm <extrait.json>`.
+`location`, `indoor`, `layer`, `waterway`, `natural`, `landuse`, `leisure`, `type`), `building`, et `name` sur les objets
+du décor et sur toute surface : le contrôle des zones à éviter (`scripts/import/decors.ts`) compare le nom de chaque
+surface (une zone interdite peut être une gare, une préfecture). Les éléments qui ne portent rien de tout cela sont
+retirés, ainsi que les `bounds` et les nœuds des chemins qui ne sont pas des rues ; la géométrie est gardée telle quelle,
+le décor généré est identique. Plus de `email`, `phone`, `website`, `contact:*`, `opening_hours`, `addr:*` ni
+`wikidata` : publics dans OSM, les premiers sont des coordonnées de tiers inutiles ici. Un extrait enregistré avant ce
+filtre se réduit sans réseau : `npm run decor -- reduire --osm <extrait.json>`.
 
 La tilemap dérivée (base de données dérivée, ODbL elle aussi) est dans `client/public/decors/`.

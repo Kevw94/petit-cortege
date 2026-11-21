@@ -6,28 +6,32 @@
  * généré est identique à celui de l'extrait brut.
  */
 import { TAGS_DU_CLASSEMENT } from './classement';
-import type { ElementOverpass, ExtraitOverpass } from './osm';
+import { lireExtrait, type ElementOverpass, type ExtraitOverpass } from './osm';
 
-/**
- * Tags lus par le décor : le classement (`classement.ts`, rues, surfaces, eau ; repris par le
- * plan), les bâtiments (`estBatiment`) et les noms (`name`, voir `garderLeNom`).
- */
-export const TAGS_DU_DECOR = [...TAGS_DU_CLASSEMENT, 'building'] as const;
+/** Tags lus par le décor, hors `name` : le classement (`classement.ts`) et les bâtiments (`estBatiment`). */
+const TAGS_DU_DECOR = new Set<string>([...TAGS_DU_CLASSEMENT, 'building']);
 
 /**
  * Le nom est lu pour les rues suivies par l'itinéraire (`itineraire.ts`), les places
- * traversées (`places.ts`) et les zones à éviter (`import/decors.ts`, surfaces nommées) : il
- * est gardé sur tout objet du décor sauf les bâtiments (noms de commerces, d'entreprises).
+ * traversées (`places.ts`), et pour toute surface nommée par le contrôle des zones à éviter
+ * (`zonesEntrees`, `import/decors.ts`) : une zone interdite peut être une gare, une
+ * préfecture… Il est donc gardé sur toute surface, et sur tout objet du décor qui n'est pas
+ * qu'un bâtiment (un chemin de bâtiment non fermé n'a pas de nom utile).
  */
-const garderLeNom = (tags: Record<string, string>) =>
-  Object.keys(tags).some((cle) => cle !== 'building' && cle !== 'type' && (TAGS_DU_DECOR as readonly string[]).includes(cle));
+const estSurface = (e: ElementOverpass) => lireExtrait({ elements: [e] }).some((o) => o.anneaux.length > 0);
 
-export function reduireExtrait<E extends ExtraitOverpass>(extrait: E): E {
+/** Un tag du décor autre que `building` et `type` (qui ne fait que décrire une relation). */
+const decritUnObjetDuDecor = (tags: Record<string, string>) =>
+  Object.keys(tags).some((cle) => cle !== 'building' && cle !== 'type');
+
+export function reduireExtrait(extrait: ExtraitOverpass): ExtraitOverpass {
   const elements: ElementOverpass[] = [];
   for (const e of extrait.elements) {
-    const tags = Object.fromEntries(Object.entries(e.tags ?? {}).filter(([cle]) => (TAGS_DU_DECOR as readonly string[]).includes(cle)));
-    if (Object.keys(tags).length === 0) continue;
-    if (e.tags?.name !== undefined && garderLeNom(tags)) tags.name = e.tags.name;
+    const tags = Object.fromEntries(Object.entries(e.tags ?? {}).filter(([cle]) => TAGS_DU_DECOR.has(cle)));
+    const nom = e.tags?.name;
+    const nomUtile = nom !== undefined && (decritUnObjetDuDecor(tags) || estSurface(e));
+    if (nomUtile) tags.name = nom;
+    else if (!decritUnObjetDuDecor(tags) && tags.building === undefined) continue; // rien que le décor lise
     // Les nœuds d'un chemin ne servent qu'au graphe de l'itinéraire, le long des rues.
     const nodes = tags.highway !== undefined ? e.nodes : undefined;
     elements.push({
@@ -44,11 +48,10 @@ export function reduireExtrait<E extends ExtraitOverpass>(extrait: E): E {
 }
 
 /**
- * Texte de l'extrait réduit, relisible comme une réponse Overpass : l'en-tête d'Overpass
- * (version, date des données, mention ODbL) puis un élément par ligne (diffs lisibles).
+ * Texte d'un extrait, relisible comme une réponse Overpass : l'en-tête d'Overpass (version,
+ * date des données, mention ODbL) puis un élément par ligne (diffs lisibles).
  */
-export function texteExtraitReduit(extrait: ExtraitOverpass): string {
-  const { elements, ...entete } = reduireExtrait(extrait);
+export function texteExtrait({ elements, ...entete }: ExtraitOverpass): string {
   const debut = JSON.stringify({ ...entete, elements: [] }).slice(0, -3); // jusqu’à « "elements": »
   return [`${debut}[`, elements.map((e) => JSON.stringify(e)).join(',\n'), ']}', ''].join('\n');
 }

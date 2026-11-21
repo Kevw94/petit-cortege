@@ -54,7 +54,7 @@ export const EAUX: Record<string, string[]> = {
 };
 export const COURS_D_EAU: Record<string, number> = { river: 30, canal: 20, stream: 3, ditch: 2 };
 
-/** Tags lus par le classement (`classer`) ; les alentours et l'extrait réduit ne gardent que ceux-là. */
+/** Tags lus par le classement (`classer`). */
 export const TAGS_DU_CLASSEMENT = [
   'highway', 'area', 'place', 'width', 'lanes', 'sidewalk', 'footway', 'tunnel', 'covered', 'location', 'indoor',
   'layer', 'waterway', 'natural', 'landuse', 'leisure', 'area:highway', 'type',

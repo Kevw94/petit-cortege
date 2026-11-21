@@ -28,7 +28,7 @@ import { cacheDePaves, telechargerPlan, texteExtraitAlentours } from './decor/al
 import { interrogerOverpass, URLS_OVERPASS_PAR_DEFAUT } from './import/overpass';
 import { reseauReel, type Reseau } from './import/reseau';
 import { simplifierLigne } from './decor/geometrie';
-import { reduireExtrait, texteExtraitReduit } from './decor/reduction';
+import { reduireExtrait, texteExtrait } from './decor/reduction';
 import { RACINE } from './config';
 
 export { simplifierLigne };
@@ -102,6 +102,12 @@ export async function executerDecor(argv: string[], deps: DependancesDecor): Pro
     await writeFile(fichier, contenu);
     deps.ecrire(`Écrit : ${relative(deps.dossierCourant, fichier) || fichier}`);
   };
+  /** Extrait de bande réduit aux tags du décor (#38). */
+  const ecrireExtraitReduit = async (fichier: string, extrait: ExtraitOverpass) => {
+    const reduit = reduireExtrait(extrait);
+    await ecrireFichier(fichier, texteExtrait(reduit));
+    deps.ecrire(`${extrait.elements.length} éléments OSM, ${reduit.elements.length} gardés.`);
+  };
   const extraitOsm = async (requete: () => string): Promise<ExtraitOverpass> => {
     if (v.osm) return JSON.parse(await readFile(chemin('osm'), 'utf8')) as ExtraitOverpass;
     if (urls.length) return (await telecharger(requete())).extrait;
@@ -124,18 +130,13 @@ export async function executerDecor(argv: string[], deps: DependancesDecor): Pro
       const parcours = await lireParcours();
       if (!urls.length) throw new Error(`option --overpass manquante.\n\n${AIDE}`);
       const { extrait } = await telecharger(requeteBande(parcours, nombre('rayon', RAYON_EXTRACTION_M)));
-      const reduit = reduireExtrait(extrait);
-      await ecrireFichier(chemin('sortie'), texteExtraitReduit(reduit));
-      deps.ecrire(`${extrait.elements.length} éléments OSM, ${reduit.elements.length} gardés.`);
+      await ecrireExtraitReduit(chemin('sortie'), extrait);
       return;
     }
     case 'reduire': {
       // Réécrit sur place un extrait déjà enregistré, sans réseau (tags utiles au décor seulement).
       const fichier = chemin('osm');
-      const extrait = JSON.parse(await readFile(fichier, 'utf8')) as ExtraitOverpass;
-      const reduit = reduireExtrait(extrait);
-      await ecrireFichier(fichier, texteExtraitReduit(reduit));
-      deps.ecrire(`${extrait.elements.length} éléments OSM, ${reduit.elements.length} gardés.`);
+      await ecrireExtraitReduit(fichier, JSON.parse(await readFile(fichier, 'utf8')) as ExtraitOverpass);
       return;
     }
     case 'extraire-alentours': {

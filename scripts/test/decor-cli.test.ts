@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { lireDecor, lireIndexDecors, type CarteTiled } from '@petit-cortege/shared';
 import { executerDecor } from '../decor';
-import { texteExtraitReduit } from '../decor/reduction';
+import { reduireExtrait, texteExtrait } from '../decor/reduction';
 
 const FIXTURES = join(import.meta.dirname, 'fixtures/decor');
 const PARCOURS = join(FIXTURES, 'parcours-mini.geojson');
@@ -54,7 +54,7 @@ describe('npm run decor', () => {
     expect(requete).toContain('(around:150,48.87,2.36,48.87,2.365463)');
     expect(requete).toContain('out geom;');
     const enregistre = await readFile(join(dossier, 'extrait.json'), 'utf8');
-    expect(enregistre).toBe(texteExtraitReduit(JSON.parse(await readFile(EXTRAIT, 'utf8'))));
+    expect(enregistre).toBe(texteExtrait(reduireExtrait(JSON.parse(await readFile(EXTRAIT, 'utf8')))));
     expect(enregistre).not.toMatch(/Boulangerie|"shop"/);
   });
 

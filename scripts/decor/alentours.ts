@@ -252,7 +252,7 @@ export function simplifierExtraitAlentours(extrait: ExtraitOverpass): ExtraitOve
     if (e.type === 'node') continue;
     const [objet] = lireExtrait({ elements: [e] });
     if (!objet || !classerAuxAlentours(objet)) continue;
-    const tags = Object.fromEntries(Object.entries(e.tags ?? {}).filter(([cle]) => (TAGS_DU_CLASSEMENT as readonly string[]).includes(cle)));
+    const tags = Object.fromEntries(Object.entries(e.tags ?? {}).filter(([cle]) => (TAGS_DU_CLASSEMENT as readonly string[]).includes(cle))); // sans les noms
     if (e.type === 'way') {
       elements.push({ type: 'way', id: e.id, tags, geometry: geometrie(objet.ligne) });
     } else {
