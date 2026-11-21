@@ -2,6 +2,10 @@
  * Le Cortège : fonction pure, sans Phaser ni réseau (ADR 0004).
  * Manif + entrées publiées + heure courante → état de la manif et position de
  * chaque avatar le long du parcours. Tous les clients calculent la même foule.
+ *
+ * Le cortège est un bloc qui avance derrière sa tête (horaire annoncé, 2 km/h) : les
+ * avatars y sont rangés dans l'ordre d'entrée, et qui rejoint en cours de route se place
+ * à la queue.
  */
 import { VITESSE_M_PAR_MS, type EntreePubliee, type FichierEntrees, type ManifPubliee } from '@petit-cortege/shared';
 import { hacherIdentifiant } from './hachage';
@@ -17,7 +21,7 @@ export interface AvatarDuCortege {
   id: string;
   /**
    * Abscisse le long du parcours, en mètres depuis le départ. Négative pour les
-   * rangées qui attendent derrière la ligne de départ.
+   * rangées qui sont encore derrière la ligne de départ.
    */
   distanceM: number;
   /** Décalage latéral en mètres, perpendiculaire au parcours (positif à gauche du sens de marche). */
@@ -27,9 +31,10 @@ export interface AvatarDuCortege {
   /** Avatar du soutien sur cet appareil : mis en valeur, sur son écran seulement. */
   propre: boolean;
   /**
-   * L'avatar avance en ce moment : parti (départ passé et entré), pas encore arrivé au bout
-   * du parcours, manif ouverte. Sert seulement au rendu (animation de marche, `marche.ts`) ;
-   * n'entre pas dans le calcul des positions.
+   * L'avatar avance en ce moment : le cortège est parti (départ passé), sa tête n'est pas
+   * encore arrivée au bout du parcours, manif ouverte ; tout le cortège marche ou s'arrête
+   * d'un bloc. Sert seulement au rendu (animation de marche, `marche.ts`) ; n'entre pas
+   * dans le calcul des positions.
    */
   enMarche: boolean;
 }
@@ -38,9 +43,9 @@ export interface Cortege {
   etat: EtatManif;
   avatars: AvatarDuCortege[];
   /**
-   * Distance parcourue depuis le départ par qui marche depuis le départ (plafonnée à la
-   * longueur) : origine d'un repère qui avance avec le cortège, où la foule en marche
-   * garde sa forme (sert à mesurer la densité, `composerFoule`).
+   * Position de la tête du cortège selon l'horaire annoncé : distance parcourue depuis le
+   * départ à 2 km/h, plafonnée à la longueur. Origine d'un repère qui avance avec le
+   * cortège, où la foule garde sa forme (sert à mesurer la densité, `composerFoule`).
    */
   avanceeM: number;
 }
@@ -74,35 +79,42 @@ export function calculerCortege({ manif, entrees, propres = [], retraits = [], m
   const t = maintenant.getTime();
   const idsPropres = new Set(propres.filter((e) => e.m === manif.id).map((e) => e.a));
 
-  // Regroupe par instant de début de marche : un groupe marche à la même distance.
+  // Regroupe par instant d'entrée dans le cortège (le départ pour qui est entré avant) :
+  // un groupe prend place d'un bloc, ses avatars départagés par leur hachage.
   const groupes = new Map<number, Marcheur[]>();
   const vus = new Set<string>(retraits); // un avatar retiré est ignoré comme un doublon
   const ajouter = (e: EntreePubliee) => {
     if (e.m !== manif.id || vus.has(e.a)) return;
     if (e.t * 1000 > t && !idsPropres.has(e.a)) return; // pas encore entré
     vus.add(e.a);
-    const debutMarcheMs = Math.max(e.t * 1000, depart);
+    const entreeMs = Math.max(e.t * 1000, depart);
     const marcheur = { id: e.a, hachage: hacherIdentifiant(e.a), apparence: e.ap, pancarte: e.pa };
-    const groupe = groupes.get(debutMarcheMs);
+    const groupe = groupes.get(entreeMs);
     if (groupe) groupe.push(marcheur);
-    else groupes.set(debutMarcheMs, [marcheur]);
+    else groupes.set(entreeMs, [marcheur]);
   };
   for (const fichier of entrees) for (const e of fichier.entrees) ajouter(e);
   for (const e of propres) ajouter(e);
 
-  // À la fin, tout le cortège est considéré arrivé (ADR 0004), retardataires compris.
+  // Tout le cortège avance d'un bloc derrière sa tête, qui suit l'horaire annoncé (ADR 0004) :
+  // partie au départ, à 2 km/h, arrêtée au bout du parcours. À la fin, tout le cortège est
+  // considéré arrivé : la tête y est déjà (fin = arrivée de la tête + marge).
   const terminee = t >= Date.parse(manif.fin);
+  const avanceeM = Math.min(manif.longueurM, Math.max(0, t - depart) * VITESSE_M_PAR_MS);
+  const enMarche = !terminee && t > depart && avanceeM < manif.longueurM;
+
+  // Places dans l'ordre d'entrée : qui rejoint le cortège en cours de route se range juste
+  // derrière la queue, pas au point de départ. Une place ne dépend que des entrées
+  // précédentes : elle ne bouge pas quand d'autres arrivent après.
+  const places = new PlacesDuCortege();
   const avatars: AvatarDuCortege[] = [];
-  for (const [debutMarcheMs, groupe] of groupes) {
-    const distanceM = terminee
-      ? manif.longueurM
-      : Math.min(manif.longueurM, Math.max(0, t - debutMarcheMs) * VITESSE_M_PAR_MS);
-    // Tout le groupe marche ensemble : après son début de marche, avant d'atteindre l'arrivée.
-    const enMarche = !terminee && t > debutMarcheMs && distanceM < manif.longueurM;
-    for (const { marcheur, rang, colonne } of placerEnRangees(groupe)) {
+  for (const entreeMs of [...groupes.keys()].sort((a, b) => a - b)) {
+    const groupe = groupes.get(entreeMs)!.sort((a, b) => a.hachage - b.hachage || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    for (const marcheur of groupe) {
+      const { rang, colonne } = places.prendre(marcheur.hachage);
       avatars.push({
         id: marcheur.id,
-        distanceM: distanceM - rang * PAS_FOULE_M,
+        distanceM: avanceeM - rang * PAS_FOULE_M,
         decalageM: (colonne - (COLONNES_FOULE - 1) / 2) * PAS_FOULE_M,
         apparence: marcheur.apparence,
         pancarte: marcheur.pancarte,
@@ -111,24 +123,25 @@ export function calculerCortege({ manif, entrees, propres = [], retraits = [], m
       });
     }
   }
-  const avanceeM = Math.min(manif.longueurM, Math.max(0, t - depart) * VITESSE_M_PAR_MS);
   return { etat: terminee ? 'terminee' : 'ouverte', avatars, avanceeM };
 }
 
 /**
- * Répartit un groupe d'avatars à la même distance sur une grille de
- * `COLONNES_FOULE` de front, rangées vers l'arrière. Chaque avatar vise la
- * colonne donnée par le hachage de son identifiant (première rangée) et prend
- * la case libre suivante : déterministe, sans collision, indépendant de
- * l'ordre des fichiers.
+ * Grille du cortège, `COLONNES_FOULE` de front, rangées numérotées depuis la tête. Chaque
+ * nouvel avatar vise, dans la première rangée incomplète, la colonne donnée par le hachage
+ * de son identifiant, et prend la case libre suivante (quitte à déborder sur la rangée
+ * d'après) : déterministe, sans collision, et la queue se complète avant de s'allonger.
  */
-function placerEnRangees(groupe: Marcheur[]): { marcheur: Marcheur; rang: number; colonne: number }[] {
-  const ordonnes = [...groupe].sort((a, b) => a.hachage - b.hachage || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-  const occupees = new Set<number>();
-  return ordonnes.map((marcheur) => {
-    let case_ = marcheur.hachage % COLONNES_FOULE;
-    while (occupees.has(case_)) case_++;
-    occupees.add(case_);
-    return { marcheur, rang: Math.floor(case_ / COLONNES_FOULE), colonne: case_ % COLONNES_FOULE };
-  });
+class PlacesDuCortege {
+  readonly #occupees = new Set<number>();
+  /** Première case libre : toutes celles d'avant sont prises. */
+  #libre = 0;
+
+  prendre(hachage: number): { rang: number; colonne: number } {
+    let case_ = this.#libre - (this.#libre % COLONNES_FOULE) + (hachage % COLONNES_FOULE);
+    while (this.#occupees.has(case_)) case_++;
+    this.#occupees.add(case_);
+    while (this.#occupees.has(this.#libre)) this.#libre++;
+    return { rang: Math.floor(case_ / COLONNES_FOULE), colonne: case_ % COLONNES_FOULE };
+  }
 }

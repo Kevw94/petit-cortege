@@ -16,7 +16,10 @@ _À éviter_ : marche, foule, défilé
 Le tracé annoncé publiquement d'une manif, de son point de départ à son point d'arrivée.
 
 **Tête** :
-L'avant du cortège, formé par les avatars entrés le plus tôt.
+L'avant du cortège, formé par les avatars entrés le plus tôt. Elle suit l'horaire annoncé.
+
+**Queue** :
+L'arrière du cortège, où se range un soutien qui le rejoint en cours de route.
 
 **Étape** :
 Moment clé d'une manif : départ, arrivée, prise de parole.

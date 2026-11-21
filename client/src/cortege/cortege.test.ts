@@ -51,17 +51,13 @@ describe('Cortège', () => {
     expect(cortege.avatars.map((a) => a.id)).toEqual(['av-tot']);
   });
 
-  it("un retardataire part du point de départ à son heure d'entrée", () => {
-    // av-tard entré à 14:15:40 : à 14:30:00 il a marché 860 s à 2 km/h ≈ 477,78 m.
+  it("un retardataire rejoint le cortège là où il est, pas au point de départ", () => {
+    // av-tard entré à 14:15:40, à côté d'av-tot (seul dans sa rangée) : à 14:30:00 tous deux
+    // sont à 1000 m, là où l'aurait laissé un départ du point de départ (≈ 477,78 m).
     const cortege = calculerCortege({ manif, entrees, maintenant: new Date('2026-05-01T14:30:00Z') });
 
-    expect(distanceDe(cortege, 'av-tard')).toBeCloseTo(477.78, 1);
-  });
-
-  it('entrer tôt place près de la tête : devant le retardataire', () => {
-    const cortege = calculerCortege({ manif, entrees, maintenant: new Date('2026-05-01T14:20:00Z') });
-
-    expect(distanceDe(cortege, 'av-tot')!).toBeGreaterThan(distanceDe(cortege, 'av-tard')!);
+    expect(distanceDe(cortege, 'av-tard')).toBeCloseTo(1000, 6);
+    expect(distanceDe(cortege, 'av-tard')).toBe(distanceDe(cortege, 'av-tot'));
   });
 
   it('passe de Ouverte à Terminée à départ + longueur ÷ 2 km/h + 1 h de marge', () => {
@@ -101,15 +97,15 @@ describe('Cortège : avatars en marche (pour l’animation)', () => {
     expect(enMarche('2026-05-01T14:20:00Z', 'av-tard')).toBe(true);
   });
 
-  it("s'arrête une fois arrivé au bout du parcours, même si d'autres marchent encore", () => {
-    // 14:45 : av-tot est arrivé (plafond), av-tard (entré à 14:15:40) marche encore.
+  it("tout le cortège s'arrête quand sa tête arrive au bout du parcours, queue comprise", () => {
+    // 14:45 : la tête est arrivée (≈ 14:30:01) ; av-tard, entré à 14:15:40, s'arrête avec elle.
     expect(enMarche('2026-05-01T14:45:00Z', 'av-tot')).toBe(false);
-    expect(enMarche('2026-05-01T14:45:00Z', 'av-tard')).toBe(true);
+    expect(enMarche('2026-05-01T14:45:00Z', 'av-tard')).toBe(false);
   });
 
   it('ne marche plus une fois la manif terminée', () => {
-    const retardataire = minuteAvec(['av-dernier'], '2026-05-01T15:29:00Z');
-    expect(enMarche('2026-05-01T15:29:30Z', 'av-dernier', [...entrees, retardataire])).toBe(true);
+    const retardataire = minuteAvec(['av-dernier'], '2026-05-01T14:20:00Z');
+    expect(enMarche('2026-05-01T14:20:30Z', 'av-dernier', [...entrees, retardataire])).toBe(true);
     expect(enMarche('2026-05-01T15:30:30Z', 'av-dernier', [...entrees, retardataire])).toBe(false);
   });
 
@@ -193,15 +189,82 @@ describe('Cortège : répartition de la foule', () => {
   });
 });
 
+describe('Cortège : retardataires à la queue', () => {
+  // 40 avatars entrés avant le départ de 14:00 : 8 rangées complètes de 5.
+  const tot = Array.from({ length: 40 }, (_, i) => `av-${i}`);
+  const foule = minuteAvec(tot, '2026-05-01T13:58:00Z');
+  const maintenant = new Date('2026-05-01T14:30:00Z');
+
+  it('se range juste derrière la dernière rangée, et avance avec le cortège', () => {
+    const tard = minuteAvec(['av-tard-1'], '2026-05-01T14:15:40Z');
+
+    const cortege = calculerCortege({ manif, entrees: [foule, tard], maintenant });
+
+    // Tête à 1000 m (30 min à 2 km/h), dernière rangée à 14 m derrière, le retardataire 2 m plus loin.
+    expect(Math.min(...tot.map((id) => distanceDe(cortege, id)!))).toBeCloseTo(986, 6);
+    expect(distanceDe(cortege, 'av-tard-1')).toBeCloseTo(984, 6);
+  });
+
+  it('entrer tôt place près de la tête : devant tous les retardataires', () => {
+    const tard = minuteAvec(['av-tard-1', 'av-tard-2'], '2026-05-01T14:15:40Z');
+
+    const cortege = calculerCortege({ manif, entrees: [foule, tard], maintenant });
+
+    const queue = Math.max(distanceDe(cortege, 'av-tard-1')!, distanceDe(cortege, 'av-tard-2')!);
+    for (const id of tot) expect(distanceDe(cortege, id)!).toBeGreaterThan(queue);
+  });
+
+  it("les retardataires complètent la dernière rangée avant d'en ouvrir une autre", () => {
+    const tard = Array.from({ length: 7 }, (_, i) => minuteAvec([`av-tard-${i}`], `2026-05-01T14:1${i}:00Z`));
+
+    const cortege = calculerCortege({ manif, entrees: [foule, ...tard], maintenant });
+
+    // 47 avatars à 5 de front : 10 rangées, la dernière 18 m derrière la tête, aucune superposition.
+    expect(Math.min(...cortege.avatars.map((a) => a.distanceM))).toBeCloseTo(1000 - 18, 6);
+    const places = new Set(cortege.avatars.map((a) => `${a.distanceM}:${a.decalageM}`));
+    expect(places.size).toBe(47);
+  });
+
+  it("garde sa place quand d'autres entrent après lui", () => {
+    const tard = minuteAvec(['av-tard-1'], '2026-05-01T14:15:40Z');
+    const plusTard = minuteAvec(['av-x', 'av-y', 'av-z'], '2026-05-01T14:20:00Z');
+    const place = (c: ReturnType<typeof calculerCortege>) => c.avatars.find((a) => a.id === 'av-tard-1');
+
+    const avant = calculerCortege({ manif, entrees: [foule, tard], maintenant });
+    const apres = calculerCortege({ manif, entrees: [foule, tard, plusTard], maintenant });
+
+    expect(place(apres)).toEqual(place(avant));
+  });
+
+  it("dans un cortège encore vide, le premier rejoint la tête là où l'horaire la place", () => {
+    const seul = minuteAvec(['av-seul'], '2026-05-01T14:15:00Z');
+
+    const cortege = calculerCortege({ manif, entrees: [seul], maintenant });
+
+    expect(distanceDe(cortege, 'av-seul')).toBeCloseTo(1000, 6);
+  });
+
+  it('une fois la tête arrivée, les retardataires attendent derrière la queue, arrêtés', () => {
+    const tard = minuteAvec(['av-tard-1'], '2026-05-01T14:50:00Z');
+
+    const cortege = calculerCortege({ manif, entrees: [foule, tard], maintenant: new Date('2026-05-01T15:00:00Z') });
+
+    expect(distanceDe(cortege, 'av-tard-1')).toBeCloseTo(manif.longueurM - 16, 6);
+    expect(cortege.avatars.every((a) => !a.enMarche)).toBe(true);
+  });
+});
+
 describe('Cortège : avatars propres au soutien', () => {
   // Réponse du serveur à l'entrée faite à 14:20:10 : heure stockée 14:20:47 (minute + aléa).
   const propre = { a: 'av-moi', m: 'manif-a', t: Date.parse('2026-05-01T14:20:47Z') / 1000, ap: 4, pa: 1 };
   const avant = new Date('2026-05-01T14:20:12Z');
 
-  it("apparaît tout de suite, avant publication et avant même son heure d'entrée tirée, au point de départ", () => {
-    const cortege = calculerCortege({ manif, entrees, propres: [propre], maintenant: avant });
+  it("apparaît tout de suite, avant publication et avant même son heure d'entrée tirée, à la queue du cortège", () => {
+    // 40 avatars entrés avant le départ : 8 rangées complètes ; av-moi ouvre la 9e, 16 m derrière la tête.
+    const foule = minuteAvec(Array.from({ length: 40 }, (_, i) => `av-${i}`), '2026-05-01T13:58:00Z');
+    const cortege = calculerCortege({ manif, entrees: [foule], propres: [propre], maintenant: avant });
 
-    expect(cortege.avatars.find((a) => a.id === 'av-moi')).toMatchObject({ distanceM: 0, propre: true });
+    expect(cortege.avatars.find((a) => a.id === 'av-moi')).toMatchObject({ distanceM: cortege.avanceeM - 16, propre: true });
   });
 
   it('seuls ses propres avatars sont mis en valeur', () => {
@@ -221,11 +284,18 @@ describe('Cortège : avatars propres au soutien', () => {
     ]);
   });
 
-  it('marche ensuite comme les autres le verront', () => {
-    // 14:25:00 − 14:20:47 = 253 s à 2 km/h ≈ 140,56 m.
-    const cortege = calculerCortege({ manif, entrees, propres: [propre], maintenant: new Date('2026-05-01T14:25:00Z') });
+  it('marche ensuite à la place où les autres le verront', () => {
+    const maintenant = new Date('2026-05-01T14:25:00Z');
+    const publie = { v: 1 as const, minute: '2026-05-01T14:20:00.000Z', entrees: [propre] };
+    const place = (c: ReturnType<typeof calculerCortege>) => {
+      const { distanceM, decalageM } = c.avatars.find((a) => a.id === 'av-moi')!;
+      return { distanceM, decalageM };
+    };
 
-    expect(distanceDe(cortege, 'av-moi')).toBeCloseTo(140.56, 1);
+    const surCetAppareil = calculerCortege({ manif, entrees, propres: [propre], maintenant });
+    const chezLesAutres = calculerCortege({ manif, entrees: [...entrees, publie], maintenant });
+
+    expect(place(surCetAppareil)).toEqual(place(chezLesAutres));
   });
 
   it("un avatar propre d'une autre manif n'apparaît pas", () => {
