@@ -22,7 +22,8 @@ let serveur: Server;
 let urlOverpass: string;
 const requetesRecues: string[] = [];
 const sorties: string[] = [];
-const executer = (...argv: string[]) => executerDecor(argv, { ecrire: (l) => sorties.push(l), dossierCourant: dossier });
+const executer = (...argv: string[]) =>
+  executerDecor(argv, { ecrire: (l) => sorties.push(l), dossierCourant: dossier });
 const lireJson = async (chemin: string) => JSON.parse(await readFile(chemin, 'utf8'));
 
 beforeAll(async () => {
@@ -78,11 +79,23 @@ describe('npm run decor', () => {
   it('génère aussi la tilemap directement depuis l’URL Overpass, et remplace l’entrée de l’index', async () => {
     const avant = requetesRecues.length;
     await executer(
-      'tilemap', '--parcours', PARCOURS, '--overpass', urlOverpass, '--sortie', 'decors/mini.json',
-      '--alentours-osm', 'alentours.json', '--alentours', '300',
+      'tilemap',
+      '--parcours',
+      PARCOURS,
+      '--overpass',
+      urlOverpass,
+      '--sortie',
+      'decors/mini.json',
+      '--alentours-osm',
+      'alentours.json',
+      '--alentours',
+      '300',
     );
     // La bande, puis le plan de la ville (sans bâtiments, un pavé ici), enregistré simplifié.
-    expect(requetesRecues.slice(avant)).toEqual([expect.stringContaining('around:150'), expect.stringContaining('[bbox:')]);
+    expect(requetesRecues.slice(avant)).toEqual([
+      expect.stringContaining('around:150'),
+      expect.stringContaining('[bbox:'),
+    ]);
     expect(requetesRecues.at(-1)).not.toContain('building');
     const alentours = await readFile(join(dossier, 'alentours.json'), 'utf8');
     expect(alentours).not.toContain('"building"');
@@ -93,9 +106,21 @@ describe('npm run decor', () => {
 
     // Rejoué sans réseau depuis les extraits enregistrés.
     const apres = requetesRecues.length;
-    await executer('tilemap', '--parcours', PARCOURS, '--osm', EXTRAIT, '--alentours-osm', 'alentours.json', '--sortie', 'decors/mini.json');
+    await executer(
+      'tilemap',
+      '--parcours',
+      PARCOURS,
+      '--osm',
+      EXTRAIT,
+      '--alentours-osm',
+      'alentours.json',
+      '--sortie',
+      'decors/mini.json',
+    );
     expect(requetesRecues).toHaveLength(apres);
-    expect((await lireDecor((await lireJson(join(dossier, 'decors/mini.json'))) as CarteTiled)).alentours).toBeDefined();
+    expect(
+      (await lireDecor((await lireJson(join(dossier, 'decors/mini.json'))) as CarteTiled)).alentours,
+    ).toBeDefined();
   });
 
   it('trace un parcours le long d’une rue de l’extrait, en GeoJSON', async () => {
@@ -119,6 +144,8 @@ describe('npm run decor', () => {
   });
 
   it('refuse une commande sans source OSM', async () => {
-    await expect(executer('tilemap', '--parcours', PARCOURS, '--sortie', 'x.json')).rejects.toThrow(/--osm ou --overpass/);
+    await expect(executer('tilemap', '--parcours', PARCOURS, '--sortie', 'x.json')).rejects.toThrow(
+      /--osm ou --overpass/,
+    );
   });
 });

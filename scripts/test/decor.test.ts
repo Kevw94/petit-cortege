@@ -9,7 +9,15 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { lireDecor, tuileEn, versTuiles, type CarteTiled, type Decor, type Parcours, type Position } from '@petit-cortege/shared';
+import {
+  lireDecor,
+  tuileEn,
+  versTuiles,
+  type CarteTiled,
+  type Decor,
+  type Parcours,
+  type Position,
+} from '@petit-cortege/shared';
 import { genererDecor } from '../decor/carte';
 import { MATERIAUX, TUILES } from '../decor/tuiles';
 
@@ -39,7 +47,13 @@ beforeAll(async () => {
 
 describe('tilemap Tiled', () => {
   it('est une carte Tiled infinie à tuiles de 16 px, avec les tilesets Kenney', () => {
-    expect(carte).toMatchObject({ type: 'map', orientation: 'orthogonal', infinite: true, tilewidth: 16, tileheight: 16 });
+    expect(carte).toMatchObject({
+      type: 'map',
+      orientation: 'orthogonal',
+      infinite: true,
+      tilewidth: 16,
+      tileheight: 16,
+    });
     expect(carte.tilesets.map((t) => t.name)).toEqual(['roguelikeCity', 'roguelikeSheet']);
   });
 
@@ -137,7 +151,8 @@ describe('découpage en blocs', () => {
 });
 
 describe('tracé du parcours (couche d’objets)', () => {
-  const objets = () => carte.layers.flatMap((c) => (c.type === 'objectgroup' && c.name === 'parcours' ? c.objects : []));
+  const objets = () =>
+    carte.layers.flatMap((c) => (c.type === 'objectgroup' && c.name === 'parcours' ? c.objects : []));
   const enPixels = (x: number, y: number) => {
     const t = versTuiles(decor.georef, enPosition(x, y));
     return { x: t.x * 16, y: t.y * 16 };
@@ -194,9 +209,10 @@ describe('ponts', () => {
   const colonne = (couche: string) => {
     const t = versTuiles(decor.georef, enPosition(350, 0));
     const x = Math.floor(t.x);
-    return Array.from({ length: 21 }, (_, i) => ({ y: Math.floor(t.y) - 10 + i, gid: tuileEn(decor, couche, x, Math.floor(t.y) - 10 + i) })).map(
-      (c) => ({ ...c, x }),
-    );
+    return Array.from({ length: 21 }, (_, i) => ({
+      y: Math.floor(t.y) - 10 + i,
+      gid: tuileEn(decor, couche, x, Math.floor(t.y) - 10 + i),
+    })).map((c) => ({ ...c, x }));
   };
 
   it('fait passer le boulevard au-dessus du canal (tablier), sans quai sous le pont', () => {
@@ -227,11 +243,18 @@ describe('noms des places traversées', () => {
   const places = () => carte.layers.flatMap((c) => (c.type === 'objectgroup' && c.name === 'places' ? c.objects : []));
 
   it('nomme les places que le parcours traverse, et seulement elles (ni rue, ni quartier)', () => {
-    expect(places().map((p) => p.name).sort()).toEqual(['Place Test', 'Place du Milieu']);
+    expect(
+      places()
+        .map((p) => p.name)
+        .sort(),
+    ).toEqual(['Place Test', 'Place du Milieu']);
   });
 
   it('marque la place d’arrivée', () => {
-    const arrivee = (nom: string) => places().find((p) => p.name === nom)!.properties?.find((q) => q.name === 'arrivee')?.value;
+    const arrivee = (nom: string) =>
+      places()
+        .find((p) => p.name === nom)!
+        .properties?.find((q) => q.name === 'arrivee')?.value;
     expect(arrivee('Place Test')).toBe(true);
     expect(arrivee('Place du Milieu')).toBe(false);
   });
@@ -245,7 +268,10 @@ describe('noms des places traversées', () => {
 
   it('est relu par le client avec le décor', () => {
     expect(decor.places).toEqual(
-      expect.arrayContaining([expect.objectContaining({ nom: 'Place Test', arrivee: true }), expect.objectContaining({ nom: 'Place du Milieu', arrivee: false })]),
+      expect.arrayContaining([
+        expect.objectContaining({ nom: 'Place Test', arrivee: true }),
+        expect.objectContaining({ nom: 'Place du Milieu', arrivee: false }),
+      ]),
     );
   });
 });

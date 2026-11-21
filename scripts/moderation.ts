@@ -74,12 +74,15 @@ const COMMANDES: Record<string, Commande> = {
       if (typeof depart === 'string') {
         nouveau = { a: lireHeure(depart, 'départ') };
       } else {
-        if (!/^[+-]?\d+$/.test(String(minutes).trim())) throw new ErreurModeration(`--minutes illisible : « ${String(minutes)} ».`);
+        if (!/^[+-]?\d+$/.test(String(minutes).trim()))
+          throw new ErreurModeration(`--minutes illisible : « ${String(minutes)} ».`);
         nouveau = { deMinutes: Number(minutes) };
       }
       const resultat = await decalerDepart(deps.sql, deps.horloge, id, nouveau);
       await publier(deps);
-      deps.ecrire(`Manif « ${id} » : départ ${enHeureDeParis(resultat.depart)}, fin ${enHeureDeParis(resultat.fin)} (publié).`);
+      deps.ecrire(
+        `Manif « ${id} » : départ ${enHeureDeParis(resultat.depart)}, fin ${enHeureDeParis(resultat.fin)} (publié).`,
+      );
     },
   },
   'retirer-manif': {
@@ -89,11 +92,13 @@ const COMMANDES: Record<string, Commande> = {
       const id = obligatoire(valeurs, 'manif');
       const retiree = await retirerManif(deps.sql, deps.horloge, id, obligatoire(valeurs, 'motif'));
       await publier(deps);
-      deps.ecrire(retiree ? `Manif « ${id} » retirée de la liste publiée ; entrées refusées.` : `Manif « ${id} » déjà retirée.`);
+      deps.ecrire(
+        retiree ? `Manif « ${id} » retirée de la liste publiée ; entrées refusées.` : `Manif « ${id} » déjà retirée.`,
+      );
     },
   },
   'supprimer-avatar': {
-    usage: 'supprimer-avatar --avatar <identifiant de l\'avatar signalé>',
+    usage: "supprimer-avatar --avatar <identifiant de l'avatar signalé>",
     options: { avatar: { type: 'string' } },
     executer: async (valeurs, deps) => {
       const avatar = obligatoire(valeurs, 'avatar');
@@ -204,7 +209,14 @@ function decalageFuseau(t: number, fuseau: string): number {
       .formatToParts(new Date(t))
       .map((p) => [p.type, Number(p.value)]),
   ) as Record<string, number>;
-  const local = Date.UTC(parties.year!, parties.month! - 1, parties.day!, parties.hour!, parties.minute!, parties.second!);
+  const local = Date.UTC(
+    parties.year!,
+    parties.month! - 1,
+    parties.day!,
+    parties.hour!,
+    parties.minute!,
+    parties.second!,
+  );
   return local - Math.floor(t / 1000) * 1000;
 }
 

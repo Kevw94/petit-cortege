@@ -77,10 +77,7 @@ export const ANTI_TRICHE_DE_TEST: OptionsAntiTriche = {
 };
 
 /** Démarre un vrai serveur HTTP sur une base jetable, avec une horloge contrôlée. */
-export async function demarrerBanc(
-  instantInitial: string,
-  antiTriche: Partial<OptionsAntiTriche> = {},
-): Promise<Banc> {
+export async function demarrerBanc(instantInitial: string, antiTriche: Partial<OptionsAntiTriche> = {}): Promise<Banc> {
   const base = await creerBaseDeTest();
   const horloge = new HorlogeControlee(instantInitial);
   const dossierPublication = await mkdtemp(join(tmpdir(), 'pc-publie-'));
@@ -127,8 +124,7 @@ export async function demarrerBanc(
     },
     poster,
     preuve,
-    entrer: async (corps, entetes) =>
-      poster(CHEMIN_API_ENTREE, { ...corps, preuve: await preuve(entetes) }, entetes),
+    entrer: async (corps, entetes) => poster(CHEMIN_API_ENTREE, { ...corps, preuve: await preuve(entetes) }, entetes),
     arreter: async () => {
       await serveur.fermer();
       await base.detruire();

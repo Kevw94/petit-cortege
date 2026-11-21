@@ -143,7 +143,7 @@ describe('compactage par heure : scénario sur plusieurs heures', () => {
     await banc.arreter();
   });
 
-  it('compacte chaque heure terminée, toutes manifs confondues, dans l\'ordre des entrées', async () => {
+  it("compacte chaque heure terminée, toutes manifs confondues, dans l'ordre des entrées", async () => {
     const h13 = await banc.lire<EntreesHeure>('/publie/entrees/2026-05-01T13.json');
     expect(h13.corps).toEqual({
       v: 1,
@@ -162,5 +162,4 @@ describe('compactage par heure : scénario sur plusieurs heures', () => {
     const m15h02 = await banc.lire<EntreesMinute>('/publie/entrees/2026-05-01T15-02.json');
     expect(m15h02.corps.entrees.map((e) => e.a)).toEqual(['av-15h02']);
   });
-
 });

@@ -62,10 +62,23 @@ const ECRANS = [
 ];
 /** Parcours (m) : défilé parisien d'est en ouest, nord-sud, en coude, et petit parcours. */
 const PARCOURS = [
-  [{ x: 0, y: 0 }, { x: 3100, y: 1300 }],
-  [{ x: 0, y: 0 }, { x: 200, y: 2800 }],
-  [{ x: 0, y: 0 }, { x: 1500, y: 0 }, { x: 1500, y: 1500 }],
-  [{ x: 0, y: 0 }, { x: 600, y: 300 }],
+  [
+    { x: 0, y: 0 },
+    { x: 3100, y: 1300 },
+  ],
+  [
+    { x: 0, y: 0 },
+    { x: 200, y: 2800 },
+  ],
+  [
+    { x: 0, y: 0 },
+    { x: 1500, y: 0 },
+    { x: 1500, y: 1500 },
+  ],
+  [
+    { x: 0, y: 0 },
+    { x: 600, y: 300 },
+  ],
 ];
 
 describe('emprise du plan au dézoom maximal', () => {
@@ -77,7 +90,8 @@ describe('emprise du plan au dézoom maximal', () => {
   it('3D : l’écran entier, quelle que soit l’orientation de la caméra, reste dans la partie nette du plan', () => {
     for (const points of PARCOURS) {
       const { centre, demiCote } = empriseDuPlan(points);
-      const rayon = Math.max(...points.map((p) => Math.hypot(p.x - centre.x, p.y - centre.y))) + MARGE_RAYON_VUE_DE_HAUT_M;
+      const rayon =
+        Math.max(...points.map((p) => Math.hypot(p.x - centre.x, p.y - centre.y))) + MARGE_RAYON_VUE_DE_HAUT_M;
       for (const e of ECRANS) {
         const aspect = e.largeur / e.hauteur;
         const distance = distancePourToutVoir(rayon, CHAMP_VERTICAL_DEG, aspect);
@@ -91,11 +105,24 @@ describe('emprise du plan au dézoom maximal', () => {
   it('2D : le dézoom maximal, borné au plan, garde l’écran dans sa partie nette sans empêcher la vue d’ensemble', () => {
     for (const points of PARCOURS) {
       const { centre, demiCote } = empriseDuPlan(points);
-      const net = { minX: centre.x - demiCote + FONDU_PLAN_M, maxX: centre.x + demiCote - FONDU_PLAN_M, minY: centre.y - demiCote + FONDU_PLAN_M, maxY: centre.y + demiCote - FONDU_PLAN_M };
-      const emprise = { minX: Math.min(...points.map((p) => p.x)), maxX: Math.max(...points.map((p) => p.x)), minY: Math.min(...points.map((p) => p.y)), maxY: Math.max(...points.map((p) => p.y)) };
+      const net = {
+        minX: centre.x - demiCote + FONDU_PLAN_M,
+        maxX: centre.x + demiCote - FONDU_PLAN_M,
+        minY: centre.y - demiCote + FONDU_PLAN_M,
+        maxY: centre.y + demiCote - FONDU_PLAN_M,
+      };
+      const emprise = {
+        minX: Math.min(...points.map((p) => p.x)),
+        maxX: Math.max(...points.map((p) => p.x)),
+        minY: Math.min(...points.map((p) => p.y)),
+        maxY: Math.max(...points.map((p) => p.y)),
+      };
       for (const e of ECRANS) {
         const ensemble = cadrerSur(emprise, e, 32);
-        const echelleMin = Math.max(ensemble.echelleMin, echelleMinDansLePlan(net, ensemble.centre, e, ensemble.echelle));
+        const echelleMin = Math.max(
+          ensemble.echelleMin,
+          echelleMinDansLePlan(net, ensemble.centre, e, ensemble.echelle),
+        );
         expect(echelleMin).toBeLessThanOrEqual(ensemble.echelle);
         expect(e.largeur / echelleMin / 2).toBeLessThanOrEqual(net.maxX - ensemble.centre.x + 1e-6);
         expect(e.hauteur / echelleMin / 2).toBeLessThanOrEqual(net.maxY - ensemble.centre.y + 1e-6);

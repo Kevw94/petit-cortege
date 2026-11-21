@@ -1,11 +1,6 @@
 import * as Phaser from 'phaser';
 import { apparenceAuHasard, ATTRIBUTION_OSM, type FichierEntrees } from '@petit-cortege/shared';
-import {
-  avatarsPropres,
-  jetonDeRetrait,
-  memoriserAvatarPropre,
-  suivreFinsDesManifs,
-} from './avatars-propres';
+import { avatarsPropres, jetonDeRetrait, memoriserAvatarPropre, suivreFinsDesManifs } from './avatars-propres';
 import { chargerDecor } from './decor/chargement';
 import { creerPanneauComposition, type PanneauComposition } from './composition/panneau';
 import { sectionApparence } from './composition/section-apparence';
@@ -24,7 +19,14 @@ import { lireManifIntegree } from './manif-integree';
 import { lienManif, lireRoute } from './routage';
 import { SceneCortege, type DonneesScene } from './scene-cortege';
 import type { VueCortege } from './vue-cortege';
-import { choisirModeVue, lireModeVue, memoriserModeVue, stockageLocal, webglDisponible, type ModeVue } from './vue3d/mode-vue';
+import {
+  choisirModeVue,
+  lireModeVue,
+  memoriserModeVue,
+  stockageLocal,
+  webglDisponible,
+  type ModeVue,
+} from './vue3d/mode-vue';
 import { banniereCortege, carteManif } from './accueil';
 import { icone } from './icones';
 import { creerLimiteur, phaseAmbiance, reglagesAmbiance } from './son/ambiance';
@@ -57,7 +59,13 @@ function jouerScene(vue: Vue, scene: SceneSon): void {
 const lienRetour = `<a class="retour" href="/">${icone('retour', 'icone icone-petite')}Toutes les manifs</a>`;
 
 const heure = (iso: string) =>
-  new Date(iso).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+  new Date(iso).toLocaleString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 const heureSeule = (iso: string) => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
 /** Flash de la photo finale, à la fin de la danse (sans animation si le mouvement réduit est demandé). */
@@ -328,7 +336,10 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
     retirerEl.disabled = true;
     messageEl.textContent = 'Retrait de ton avatar…';
     try {
-      const resultat = await retirerMesAvatars(propresRetirables.map((e) => e.a), new Date());
+      const resultat = await retirerMesAvatars(
+        propresRetirables.map((e) => e.a),
+        new Date(),
+      );
       const { retires, refuses } = resultat;
       for (const avatar of retires) retiresIci.add(avatar);
       propres = propres.filter((e) => !retires.includes(e.a));
@@ -336,7 +347,8 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
       propresRetirables = propresRetirables.filter((e) => !retires.includes(e.a) && !refuses.includes(e.a));
       if ('erreur' in resultat) messageEl.textContent = messageErreurRetrait(resultat.erreur);
       else if (refuses.length > 0) {
-        messageEl.textContent = "Le retrait n'est plus possible pour ton avatar : il reste dans le cortège jusqu'à la fin.";
+        messageEl.textContent =
+          "Le retrait n'est plus possible pour ton avatar : il reste dans le cortège jusqu'à la fin.";
       } else messageEl.textContent = "Ton avatar est retiré. Il disparaîtra pour tout le monde d'ici quelques minutes.";
     } finally {
       envoiEnCours = false;
@@ -383,7 +395,10 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
     mode = voulu;
     modeEl.textContent = mode === '3d' ? '2D' : '3D';
     modeEl.title = mode === '3d' ? 'Vue 2D' : 'Vue 3D';
-    modeEl.setAttribute('aria-label', mode === '3d' ? 'Passer à la vue 2D (de dessus)' : 'Passer à la vue 3D (troisième personne)');
+    modeEl.setAttribute(
+      'aria-label',
+      mode === '3d' ? 'Passer à la vue 2D (de dessus)' : 'Passer à la vue 3D (troisième personne)',
+    );
     modeEl.hidden = !webgl;
   };
   void afficherMode(mode);
@@ -525,7 +540,8 @@ async function naviguer(): Promise<void> {
   const route = lireRoute(`${window.location.pathname}${window.location.hash}`);
   try {
     if (route.page === 'manif') await afficherManif(route.id, vue);
-    else if (route.page === 'legale') interfaceEl.innerHTML = pageLegale(route.id); // en silence
+    else if (route.page === 'legale')
+      interfaceEl.innerHTML = pageLegale(route.id); // en silence
     else await afficherListe(vue);
   } catch (erreur) {
     // Vue quittée pendant un chargement : la nouvelle vue s'affiche, rien à faire.

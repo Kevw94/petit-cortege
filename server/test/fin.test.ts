@@ -52,13 +52,20 @@ describe('fin de la manif : effacement des hachages de jetons de retrait', () =>
 
   async function entrer(manif: string): Promise<{ avatar: string; jeton: string }> {
     const jeton = nouveauJeton();
-    const reponse = await banc.entrer<ReponseEntree>({ manif, apparence: 0, pancarte: 0, hachageRetrait: sha256(jeton) });
+    const reponse = await banc.entrer<ReponseEntree>({
+      manif,
+      apparence: 0,
+      pancarte: 0,
+      hachageRetrait: sha256(jeton),
+    });
     expect(reponse.statut).toBe(201);
     return { avatar: reponse.corps.avatar, jeton };
   }
   const hachagesRestants = async (manif: string) =>
-    (await banc.sql<{ n: number }[]>`
-      select count(*)::int as n from avatar where manif_id = ${manif} and hachage_retrait is not null`)[0]!.n;
+    (
+      await banc.sql<{ n: number }[]>`
+      select count(*)::int as n from avatar where manif_id = ${manif} and hachage_retrait is not null`
+    )[0]!.n;
 
   it("le retrait reste possible jusqu'à la fin ; dans l'heure qui suit, les hachages sont effacés et le retrait devient impossible", async () => {
     banc.horloge.regler('2026-06-01T09:10:00Z');

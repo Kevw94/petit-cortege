@@ -32,7 +32,7 @@ describe('pages légales et de confiance', () => {
     }
   });
 
-  it("un fragment inconnu ou une manif ne sont pas pris pour une page légale", () => {
+  it('un fragment inconnu ou une manif ne sont pas pris pour une page légale', () => {
     expect(lireRoute('#/inconnue')).toEqual({ page: 'liste' });
     expect(lireRoute('#/manif/vie-privee')).toEqual({ page: 'manif', id: 'vie-privee' });
   });

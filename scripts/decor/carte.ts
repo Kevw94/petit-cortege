@@ -79,7 +79,8 @@ export function genererDecor(options: OptionsDecor): CarteTiled {
     .filter((c): c is { objet: ObjetOsm; classe: Classement } => c.classe !== null);
   const surfaces = (terrain: Terrain) => {
     for (const { objet, classe } of classes) {
-      if (classe.sorte === 'surface' && classe.terrain === terrain) grille.peindrePolygone(objet.anneaux.map(projeter), terrain);
+      if (classe.sorte === 'surface' && classe.terrain === terrain)
+        grille.peindrePolygone(objet.anneaux.map(projeter), terrain);
     }
   };
   const rues = (terrain: Terrain, avecTrottoirs: boolean) => {
@@ -97,7 +98,8 @@ export function genererDecor(options: OptionsDecor): CarteTiled {
   surfaces(Terrain.vert);
   surfaces(Terrain.eau);
   for (const { objet, classe } of classes) {
-    if (classe.sorte === 'cours-d-eau') grille.peindreLigne(projeter(objet.ligne), rayonDe(classe.largeurM), Terrain.eau);
+    if (classe.sorte === 'cours-d-eau')
+      grille.peindreLigne(projeter(objet.ligne), rayonDe(classe.largeurM), Terrain.eau);
   }
   const eauAvantLesRues = grille.cases.map((t) => (t === Terrain.eau ? 1 : 0));
   rues(Terrain.chaussee, true);
@@ -109,12 +111,13 @@ export function genererDecor(options: OptionsDecor): CarteTiled {
   // Le parcours passe toujours : là où il franchit l'eau sans rue cartographiée, un passage piéton.
   const avantPassage = grille.cases.slice();
   grille.peindreLigne(parcours, rayonDe(LARGEUR_PASSAGE_PARCOURS_M), Terrain.pieton);
-  grille.cases.forEach((t, i) => {
+  grille.cases.forEach((_t, i) => {
     if (avantPassage[i] !== Terrain.eau) grille.cases[i] = avantPassage[i]!;
   });
   // Ponts : ce qui a été peint par-dessus l'eau (rues, parcours) en est le tablier.
   const pont = grille.cases.map((t, i) => (eauAvantLesRues[i] && t !== Terrain.eau ? 1 : 0));
-  const estPont = (x: number, y: number) => x >= 0 && y >= 0 && x < largeur && y < hauteur && pont[y * largeur + x] === 1;
+  const estPont = (x: number, y: number) =>
+    x >= 0 && y >= 0 && x < largeur && y < hauteur && pont[y * largeur + x] === 1;
 
   const { batiments, facades } = autotilerBatiments({
     largeur,
@@ -128,7 +131,9 @@ export function genererDecor(options: OptionsDecor): CarteTiled {
     enTuiles(DISTANCE_PLACE_TRAVERSEE_M),
   );
 
-  const trace = tracerParcours(parcours, { espacementFleches: enTuiles(options.espacementFlechesM ?? ESPACEMENT_FLECHES_M) });
+  const trace = tracerParcours(parcours, {
+    espacementFleches: enTuiles(options.espacementFlechesM ?? ESPACEMENT_FLECHES_M),
+  });
   const depuis = (gids: Uint32Array) => (_g: Grille, x: number, y: number) =>
     x < largeur && y < hauteur ? gids[y * largeur + x]! : 0;
   const couches: (CoucheTuilesTiled | CoucheObjetsTiled)[] = [
@@ -224,7 +229,9 @@ export function genererDecor(options: OptionsDecor): CarteTiled {
 /** Origine et taille de la carte : emprise de la bande, coin haut-gauche sur une tuile entière. */
 function cadrer(points: Position[], rayon: number): { georef: Georeference; largeur: number; hauteur: number } {
   if (points.length < 2) throw new Error('Parcours : au moins deux points');
-  const provisoire: Georeference = { origine: [Math.min(...points.map((p) => p[0])), Math.max(...points.map((p) => p[1]))] };
+  const provisoire: Georeference = {
+    origine: [Math.min(...points.map((p) => p[0])), Math.max(...points.map((p) => p[1]))],
+  };
   const t = points.map((p) => versTuiles(provisoire, p));
   // Une tuile de marge : l'échelle est-ouest dépend (à peine) de la latitude de l'origine.
   const minX = Math.floor(Math.min(...t.map((p) => p.x)) - rayon) - 1;

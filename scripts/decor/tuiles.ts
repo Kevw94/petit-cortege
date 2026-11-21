@@ -5,9 +5,19 @@
 import type { TilesetTiled } from '@petit-cortege/shared';
 
 /** Roguelike Modern City : rues, trottoirs, pelouse, bâtiments (#13). */
-const VILLE = { name: 'roguelikeCity', colonnes: 37, rangees: 28, chemin: 'city/Spritesheet/roguelikeCity_transparent.png' };
+const VILLE = {
+  name: 'roguelikeCity',
+  colonnes: 37,
+  rangees: 28,
+  chemin: 'city/Spritesheet/roguelikeCity_transparent.png',
+};
 /** Roguelike RPG pack : eau, quais en pierre, berges naturelles. */
-const RPG = { name: 'roguelikeSheet', colonnes: 57, rangees: 31, chemin: 'rpg/Spritesheet/roguelikeSheet_transparent.png' };
+const RPG = {
+  name: 'roguelikeSheet',
+  colonnes: 57,
+  rangees: 31,
+  chemin: 'rpg/Spritesheet/roguelikeSheet_transparent.png',
+};
 
 const PREMIER_GID_VILLE = 1;
 const PREMIER_GID_RPG = PREMIER_GID_VILLE + VILLE.colonnes * VILLE.rangees;
@@ -82,7 +92,12 @@ const rangee = (c0: number, r: number) => ({
   droite: ville(c0 + 3, r),
 });
 /** Façade : rangée sous le toit (haut), étages (milieu), soubassement (bas), ou rangée unique. */
-const mur = (c0: number) => ({ haut: rangee(c0, 9), milieu: rangee(c0, 5), bas: rangee(c0, 8), unique: rangee(c0, 10) });
+const mur = (c0: number) => ({
+  haut: rangee(c0, 9),
+  milieu: rangee(c0, 5),
+  bas: rangee(c0, 8),
+  unique: rangee(c0, 10),
+});
 export type PiecesMur = ReturnType<typeof mur>;
 
 export interface Materiau {
@@ -101,10 +116,28 @@ const PORTES = { brune: ville(20, 27), verte: ville(23, 27), orange: ville(26, 2
 /** Matériaux des bâtiments (façades génériques) : pierre beige et zinc d'abord, comme à Paris. */
 export const MATERIAUX: readonly Materiau[] = [
   { nom: 'pierre beige, zinc', toit: TOITS.zinc, mur: MURS.pierreBeige, fenetre: FENETRES.bois, porte: PORTES.brune },
-  { nom: 'pierre beige, ardoise', toit: TOITS.ardoiseClaire, mur: MURS.pierreBeige, fenetre: FENETRES.grise, porte: PORTES.verte },
-  { nom: 'pierre grise, zinc', toit: TOITS.zinc, mur: MURS.pierreGrise, fenetre: FENETRES.griseLarge, porte: PORTES.brune },
+  {
+    nom: 'pierre beige, ardoise',
+    toit: TOITS.ardoiseClaire,
+    mur: MURS.pierreBeige,
+    fenetre: FENETRES.grise,
+    porte: PORTES.verte,
+  },
+  {
+    nom: 'pierre grise, zinc',
+    toit: TOITS.zinc,
+    mur: MURS.pierreGrise,
+    fenetre: FENETRES.griseLarge,
+    porte: PORTES.brune,
+  },
   { nom: 'brique, tuiles', toit: TOITS.rouge, mur: MURS.brique, fenetre: FENETRES.boisLarge, porte: PORTES.orange },
-  { nom: 'pierre beige, toit beige', toit: TOITS.beige, mur: MURS.pierreBeige, fenetre: FENETRES.boisLarge, porte: PORTES.orange },
+  {
+    nom: 'pierre beige, toit beige',
+    toit: TOITS.beige,
+    mur: MURS.pierreBeige,
+    fenetre: FENETRES.boisLarge,
+    porte: PORTES.orange,
+  },
 ];
 /** Tirage pondéré des matériaux (indices dans MATERIAUX). */
 export const TIRAGE_MATERIAUX: readonly number[] = [0, 0, 0, 1, 1, 2, 2, 3, 4];

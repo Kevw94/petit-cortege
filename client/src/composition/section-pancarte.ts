@@ -24,7 +24,11 @@ const enCss = (couleur: number) => `#${couleur.toString(16).padStart(6, '0')}`;
 /** Une pancarte tirée au hasard, point de départ de la composition (variété dans la foule). */
 export function pancarteAuHasard(alea: () => number = Math.random): CompositionPancarte {
   const tirer = (n: number) => Math.floor(alea() * n);
-  return { slogan: tirer(SLOGANS.length), couleur: tirer(COULEURS_PANCARTE.length), forme: tirer(FORMES_PANCARTE.length) };
+  return {
+    slogan: tirer(SLOGANS.length),
+    couleur: tirer(COULEURS_PANCARTE.length),
+    forme: tirer(FORMES_PANCARTE.length),
+  };
 }
 
 export interface SectionPancarte {
@@ -49,7 +53,7 @@ export function sectionPancarte(initiale: CompositionPancarte): SectionPancarte 
   apercu.append(panneau);
   const actualiser = () => {
     const couleur = COULEURS_PANCARTE[composition.couleur]!;
-    panneau.dataset['forme'] = FORMES_PANCARTE[composition.forme]!;
+    panneau.dataset.forme = FORMES_PANCARTE[composition.forme]!;
     panneau.style.setProperty('--fond', enCss(couleur.fond));
     panneau.style.setProperty('--texte', enCss(couleur.texte));
     texte.textContent = SLOGANS[composition.slogan]!;
@@ -89,7 +93,7 @@ export function sectionPancarte(initiale: CompositionPancarte): SectionPancarte 
     rendu: (forme, b) => {
       const mini = document.createElement('span');
       mini.className = 'pancarte mini';
-      mini.dataset['forme'] = forme;
+      mini.dataset.forme = forme;
       b.append(mini);
       b.setAttribute('aria-label', NOMS_FORMES[forme]);
       b.title = NOMS_FORMES[forme];

@@ -51,7 +51,11 @@ export async function requeteTexte(reseau: Reseau, url: string, init: RequestIni
     try {
       reponse = await reseau.recuperer(url, {
         ...init,
-        headers: { 'user-agent': USER_AGENT, accept: 'application/json', ...(init.headers as Record<string, string> | undefined) },
+        headers: {
+          'user-agent': USER_AGENT,
+          accept: 'application/json',
+          ...(init.headers as Record<string, string> | undefined),
+        },
         signal: AbortSignal.timeout(reseau.delaiMs ?? DELAI_PAR_DEFAUT_MS),
       });
     } catch (erreur) {

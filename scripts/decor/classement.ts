@@ -56,8 +56,24 @@ export const COURS_D_EAU: Record<string, number> = { river: 30, canal: 20, strea
 
 /** Tags lus par le classement (`classer`). */
 export const TAGS_DU_CLASSEMENT = [
-  'highway', 'area', 'place', 'width', 'lanes', 'sidewalk', 'footway', 'tunnel', 'covered', 'location', 'indoor',
-  'layer', 'waterway', 'natural', 'landuse', 'leisure', 'area:highway', 'type',
+  'highway',
+  'area',
+  'place',
+  'width',
+  'lanes',
+  'sidewalk',
+  'footway',
+  'tunnel',
+  'covered',
+  'location',
+  'indoor',
+  'layer',
+  'waterway',
+  'natural',
+  'landuse',
+  'leisure',
+  'area:highway',
+  'type',
 ] as const;
 
 const correspond = (tags: Record<string, string>, table: Record<string, string[]>) =>
@@ -97,7 +113,12 @@ export function classer(objet: ObjetOsm): Classement | null {
       return { sorte: 'rue', terrain, largeurM: nombre(t.width) ?? LARGEUR_CHEMIN_M, trottoirM: 0 };
     }
     if (t.highway === 'cycleway') {
-      return { sorte: 'rue', terrain: Terrain.chaussee, largeurM: nombre(t.width) ?? LARGEUR_PISTE_CYCLABLE_M, trottoirM: 0 };
+      return {
+        sorte: 'rue',
+        terrain: Terrain.chaussee,
+        largeurM: nombre(t.width) ?? LARGEUR_PISTE_CYCLABLE_M,
+        trottoirM: 0,
+      };
     }
     const type = t.highway.replace(/_link$/, '');
     const defaut = RUES[type];

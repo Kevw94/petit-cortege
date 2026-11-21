@@ -48,7 +48,10 @@ function echapper(texte: string): string {
   return div.innerHTML;
 }
 
-export async function afficherImageFinale(conteneur: HTMLElement, depart: DonneesVueImageFinale): Promise<VueImageFinale> {
+export async function afficherImageFinale(
+  conteneur: HTMLElement,
+  depart: DonneesVueImageFinale,
+): Promise<VueImageFinale> {
   ressources ??= chargerRessourcesImageFinale().catch((erreur: unknown) => {
     ressources = null;
     throw erreur;
@@ -116,16 +119,20 @@ export async function afficherImageFinale(conteneur: HTMLElement, depart: Donnee
       bouton.disabled = false;
     }
   };
-  partagerEl.addEventListener('click', () =>
-    void agir(partagerEl, async (fichier) =>
-      (await partagerImage(fichier, environnement)) === 'telechargement' ? 'Image téléchargée.' : null,
-    ),
+  partagerEl.addEventListener(
+    'click',
+    () =>
+      void agir(partagerEl, async (fichier) =>
+        (await partagerImage(fichier, environnement)) === 'telechargement' ? 'Image téléchargée.' : null,
+      ),
   );
-  telechargerEl.addEventListener('click', () =>
-    void agir(telechargerEl, async (fichier) => {
-      telechargerImage(fichier, environnement);
-      return 'Image téléchargée.';
-    }),
+  telechargerEl.addEventListener(
+    'click',
+    () =>
+      void agir(telechargerEl, async (fichier) => {
+        telechargerImage(fichier, environnement);
+        return 'Image téléchargée.';
+      }),
   );
 
   return {

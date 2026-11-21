@@ -48,7 +48,14 @@ export interface Allure {
 }
 
 export function allureImmobile(): Allure {
-  return { sautM: 0, sautPxAtlas: 0, inclinaisonRad: 0, decalagePxAtlas: 0, inclinaisonPancarteRad: 0, decalagePancartePxAtlas: 0 };
+  return {
+    sautM: 0,
+    sautPxAtlas: 0,
+    inclinaisonRad: 0,
+    decalagePxAtlas: 0,
+    inclinaisonPancarteRad: 0,
+    decalagePancartePxAtlas: 0,
+  };
 }
 
 /** Phase propre d'un avatar, dans [0, 1[ (en pas) : stable, identique chez tous les clients. */
@@ -58,7 +65,9 @@ export function phaseDeMarche(id: string): number {
 
 /** Phase d'un tampon de masse de foule, dans [0, 1[, à partir de sa place dans le repère qui avance. */
 export function phaseDeTampon(distanceRelativeM: number, decalageM: number): number {
-  let h = Math.imul(Math.round(distanceRelativeM * 4) ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(Math.round(decalageM * 4) + 7, 0xc2b2ae35);
+  let h =
+    Math.imul(Math.round(distanceRelativeM * 4) ^ 0x9e3779b9, 0x85ebca6b) ^
+    Math.imul(Math.round(decalageM * 4) + 7, 0xc2b2ae35);
   h ^= h >>> 15;
   h = Math.imul(h, 0x2c1b3c6d);
   h ^= h >>> 13;

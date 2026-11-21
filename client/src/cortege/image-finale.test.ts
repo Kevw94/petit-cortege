@@ -14,7 +14,13 @@ const manif = lireListeManifs(JSON.parse(readFileSync(join(FIXTURES, 'manifs.jso
 /** `n` avatars de manif-a, entrés à partir de 14:05, au plus un par seconde pendant 20 min (entrées ouvertes). */
 function avatars(prefixe: string, n: number): EntreePubliee[] {
   const debut = Date.parse('2026-05-01T14:05:00Z') / 1000;
-  return Array.from({ length: n }, (_, i) => ({ a: `${prefixe}-${i}`, m: 'manif-a', t: debut + (i % 1200), ap: 0, pa: 0 }));
+  return Array.from({ length: n }, (_, i) => ({
+    a: `${prefixe}-${i}`,
+    m: 'manif-a',
+    t: debut + (i % 1200),
+    ap: 0,
+    pa: 0,
+  }));
 }
 const fichier = (entrees: EntreePubliee[]): EntreesMinute => ({ v: 1, minute: '2026-05-01T14:05:00.000Z', entrees });
 
@@ -22,7 +28,7 @@ const tous = (image: ImageFinale): AvatarImageFinale[] => [...image.premierPlan,
 const parId = (image: ImageFinale) => new Map(tous(image).map((a) => [a.id, a]));
 const distanceAuPointDArrivee = (a: AvatarImageFinale) => Math.hypot(a.xM, a.yM);
 
-describe("Cortège : image finale", () => {
+describe('Cortège : image finale', () => {
   it("rassemble tout le cortège au point d'arrivée, chacun à sa place, sans superposition", () => {
     const image = composerImageFinale({ manif, entrees: [fichier(avatars('av', 300))] });
 
@@ -40,7 +46,10 @@ describe("Cortège : image finale", () => {
   it("même entrée, même image, quel que soit l'ordre des fichiers et des entrées", () => {
     const liste = avatars('av', 200);
     const a = composerImageFinale({ manif, entrees: [fichier(liste)] });
-    const b = composerImageFinale({ manif, entrees: [fichier(liste.slice(100).reverse()), fichier(liste.slice(0, 100))] });
+    const b = composerImageFinale({
+      manif,
+      entrees: [fichier(liste.slice(100).reverse()), fichier(liste.slice(0, 100))],
+    });
 
     expect(b).toEqual(a);
   });
@@ -113,7 +122,8 @@ describe("Cortège : image finale", () => {
       retraits: retires,
     });
 
-    const ids = (image: ImageFinale) => new Set(image.premierPlan.map((a) => a.id).filter((id) => id.startsWith('av-')));
+    const ids = (image: ImageFinale) =>
+      new Set(image.premierPlan.map((a) => a.id).filter((id) => id.startsWith('av-')));
     expect(ids(apres)).toEqual(new Set([...ids(avant)].filter((id) => !retires.includes(id))));
   });
 

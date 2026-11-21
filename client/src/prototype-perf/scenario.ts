@@ -63,7 +63,13 @@ export function scenarioPerf(n: number): ScenarioPerf {
     // Secondes entières, comme les heures publiées : les entrées d'une même seconde marchent de front.
     const t = DEPART / 1000 + Math.floor((i / n) * DUREE_ENTREES_S);
     const minute = Math.floor(t / 60) * 60;
-    const entree: EntreePubliee = { a: `av-${i}`, m: manif.id, t, ap: Math.floor(hasard() * 64), pa: Math.floor(hasard() * 16) };
+    const entree: EntreePubliee = {
+      a: `av-${i}`,
+      m: manif.id,
+      t,
+      ap: Math.floor(hasard() * 64),
+      pa: Math.floor(hasard() * 16),
+    };
     const liste = parMinute.get(minute);
     if (liste) liste.push(entree);
     else parMinute.set(minute, [entree]);

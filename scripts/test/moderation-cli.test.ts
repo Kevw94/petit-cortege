@@ -31,10 +31,14 @@ describe('npm run moderation (sous-processus)', () => {
     const url = new URL(URL_POSTGRES_ADMIN);
     url.pathname = `/${banc.sql.options.database}`;
     try {
-      const { stdout } = await promisify(execFile)('npm', ['--prefix', RACINE, 'run', '--silent', 'moderation', '--', ...args], {
-        cwd: dossierCourant,
-        env: { ...process.env, DATABASE_URL: url.toString(), DOSSIER_PUBLICATION: banc.dossierPublication },
-      });
+      const { stdout } = await promisify(execFile)(
+        'npm',
+        ['--prefix', RACINE, 'run', '--silent', 'moderation', '--', ...args],
+        {
+          cwd: dossierCourant,
+          env: { ...process.env, DATABASE_URL: url.toString(), DOSSIER_PUBLICATION: banc.dossierPublication },
+        },
+      );
       return { code: 0, sortie: stdout };
     } catch (e) {
       const { code, stdout, stderr } = e as { code: number; stdout: string; stderr: string };
@@ -47,14 +51,37 @@ describe('npm run moderation (sous-processus)', () => {
       join(dossierCourant, 'parcours.geojson'),
       JSON.stringify({
         type: 'FeatureCollection',
-        features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [[4.83, 45.76], [4.84, 45.77]] } }],
+        features: [
+          {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'LineString',
+              coordinates: [
+                [4.83, 45.76],
+                [4.84, 45.77],
+              ],
+            },
+          },
+        ],
       }),
     );
     const demain = new Date(Date.now() + 24 * 3600_000).toISOString();
 
     const creation = await lancer(
-      'creer-manif', '--id', 'lyon-cli', '--geojson', 'parcours.geojson', '--intitule', 'Marche',
-      '--ville', 'Lyon', '--depart', demain, '--source', 'Préfecture|https://www.rhone.gouv.fr/',
+      'creer-manif',
+      '--id',
+      'lyon-cli',
+      '--geojson',
+      'parcours.geojson',
+      '--intitule',
+      'Marche',
+      '--ville',
+      'Lyon',
+      '--depart',
+      demain,
+      '--source',
+      'Préfecture|https://www.rhone.gouv.fr/',
     );
 
     expect(creation).toMatchObject({ code: 0, sortie: expect.stringMatching(/lyon-cli/) });
@@ -64,7 +91,9 @@ describe('npm run moderation (sous-processus)', () => {
     const retrait = await lancer('retirer-manif', '--manif', 'lyon-cli', '--motif', 'Arrêté');
 
     expect(retrait.code).toBe(0);
-    expect((await banc.lire<ListeManifs>('/publie/manifs.json')).corps.manifs.map((m) => m.id)).not.toContain('lyon-cli');
+    expect((await banc.lire<ListeManifs>('/publie/manifs.json')).corps.manifs.map((m) => m.id)).not.toContain(
+      'lyon-cli',
+    );
   });
 
   it('erreur : code de sortie non nul et message', async () => {

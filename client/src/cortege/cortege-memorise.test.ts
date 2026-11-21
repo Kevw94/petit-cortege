@@ -29,7 +29,7 @@ const retraits = ['tard-10', 'tot-5'];
 const base: Omit<EntreesDuCortege, 'maintenant'> = { manif, entrees, propres, retraits };
 
 describe('Cortège mémorisé', () => {
-  it("donne exactement le même Cortège que calculerCortege, à toute heure (avant, pendant, danse, fin)", () => {
+  it('donne exactement le même Cortège que calculerCortege, à toute heure (avant, pendant, danse, fin)', () => {
     const memorise = new CortegeMemorise();
     const fin = Date.parse(manif.fin);
     for (let t = DEPART - 900_000; t <= fin + 60_000; t += 3_500) {
@@ -74,7 +74,11 @@ describe('Cortège mémorisé', () => {
     const maintenant = new Date(DEPART + 75_000);
     const rangs = memorise.rangs({ ...base, maintenant });
 
-    const autresEntrees = memorise.rangs({ ...base, entrees: [...entrees, fichier([entree('x', DEPART)])], maintenant });
+    const autresEntrees = memorise.rangs({
+      ...base,
+      entrees: [...entrees, fichier([entree('x', DEPART)])],
+      maintenant,
+    });
     expect(autresEntrees).not.toBe(rangs);
     const autresPropres = memorise.rangs({ ...base, propres: [], maintenant });
     expect(autresPropres).not.toBe(autresEntrees);
@@ -88,7 +92,13 @@ describe('Cortège mémorisé', () => {
     const rangs = memorise.rangs({ ...base, maintenant });
 
     expect(
-      memorise.rangs({ manif: { ...manif }, entrees: [...entrees], propres: [...propres], retraits: [...retraits], maintenant }),
+      memorise.rangs({
+        manif: { ...manif },
+        entrees: [...entrees],
+        propres: [...propres],
+        retraits: [...retraits],
+        maintenant,
+      }),
     ).toBe(rangs);
   });
 

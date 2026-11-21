@@ -81,7 +81,7 @@ export function creerPlaceur(parcours: Parcours, projeter: (p: Position) => Poin
     },
     cap(distance) {
       if (n < 2) return 0;
-      let { i } = troncon(distance);
+      const { i } = troncon(distance);
       // Tronçons de longueur nulle : on prend le précédent ou le suivant.
       let u = direction(i);
       for (let j = i; !u && j > 1; ) u = direction(--j);

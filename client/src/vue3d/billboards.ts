@@ -117,7 +117,12 @@ export class Billboards {
       fragmentShader: fragment,
       uniforms: THREE.UniformsUtils.merge([
         THREE.UniformsLib.fog,
-        { uPxMin: { value: 8 }, uHauteurEcran: { value: 800 }, uTeinte: { value: new THREE.Color(teinte) }, uTexture: { value: null } },
+        {
+          uPxMin: { value: 8 },
+          uHauteurEcran: { value: 800 },
+          uTeinte: { value: new THREE.Color(teinte) },
+          uTexture: { value: null },
+        },
       ]),
     });
     this.#materiau.uniforms.uTexture!.value = texture;

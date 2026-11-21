@@ -35,7 +35,13 @@ function manif(surcharge: Partial<ManifPubliee> = {}): ManifPubliee {
     ouverture: '2026-11-17T10:00:00.000Z',
     depart: '2026-11-17T13:00:00.000Z',
     fin: '2026-11-17T15:30:00.000Z',
-    parcours: { type: 'LineString', coordinates: [[2.39, 48.85], [2.36, 48.83]] },
+    parcours: {
+      type: 'LineString',
+      coordinates: [
+        [2.39, 48.85],
+        [2.36, 48.83],
+      ],
+    },
     longueurM: 1000,
     sources: [{ libelle: 'Appel des organisateurs', url: 'https://exemple.org/appel?q=1&x=2' }],
     compteur: 3,
@@ -109,7 +115,8 @@ describe('page de manif', () => {
 
   it('garde le script et la feuille de style de la coque, pour ouvrir l’application', () => {
     expect(assetsDeLaCoque(COQUE)).toEqual({
-      liens: '<link rel="icon" href="/favicon.svg" type="image/svg+xml" />\n    <link rel="stylesheet" href="/assets/index-abc.css" />',
+      liens:
+        '<link rel="icon" href="/favicon.svg" type="image/svg+xml" />\n    <link rel="stylesheet" href="/assets/index-abc.css" />',
       scripts: '<script type="module" src="/assets/index-abc.js"></script>',
     });
     expect(html).toContain('<script type="module" src="/assets/index-abc.js"></script>');
@@ -146,7 +153,12 @@ describe('page de manif', () => {
 
   it('raccourcit le titre quand les lieux sont trop longs, sans les retirer du texte', () => {
     const long = 'Place de la Nation, douzième arrondissement de Paris';
-    const page = rendrePageManif({ manif: manif(), etapes: [long, 'Place d’Italie, treizième arrondissement'], terminee: false, coque: '' });
+    const page = rendrePageManif({
+      manif: manif(),
+      etapes: [long, 'Place d’Italie, treizième arrondissement'],
+      terminee: false,
+      coque: '',
+    });
     expect(page).toContain('<title>Manif Paris 17 novembre 2026 | Petit Cortège</title>');
     expect(page).toContain(`<li>${long}</li>`);
     expect(page).toContain('<li>Place d’Italie, treizième arrondissement</li>');

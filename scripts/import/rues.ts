@@ -37,9 +37,7 @@ const CLASSES: Record<string, string> = {
 
 /** Motif Overpass d'un nom normalisé, insensible aux accents, à la casse, aux tirets et apostrophes. */
 export function motifDeNom(nomNormalise: string): string {
-  return [...nomNormalise]
-    .map((c) => (c === ' ' ? "[-  '’.]+" : CLASSES[c] ? `[${CLASSES[c]}]` : c))
-    .join('');
+  return [...nomNormalise].map((c) => (c === ' ' ? "[-  '’.]+" : CLASSES[c] ? `[${CLASSES[c]}]` : c)).join('');
 }
 
 export function requeteRues(noms: string[], autour: Position[]): string {
@@ -77,7 +75,8 @@ export async function geometriesRues(
         if (g) noeuds.set(id, [g.lon, g.lat]);
       });
     }
-    if (noeuds.size === 0) throw new ErreurImport(`${quoi(rang)} : rue « ${nom} » introuvable dans OpenStreetMap près des autres étapes.`);
+    if (noeuds.size === 0)
+      throw new ErreurImport(`${quoi(rang)} : rue « ${nom} » introuvable dans OpenStreetMap près des autres étapes.`);
     const ecart = Math.min(...[...noeuds.values()].map((p) => distanceM(p, pointsBan[rang]!)));
     if (ecart > ECART_BAN_OSM_MAX_M) {
       throw new ErreurImport(
@@ -104,7 +103,11 @@ export function pointLePlusProche(rue: GeometrieRue, p: Position): Position {
  * en a plusieurs, le plus proche de `reference`), sinon le couple de points les
  * plus proches. Renvoie le point de sortie de `a` et le point d'entrée de `b`.
  */
-export function raccorder(a: GeometrieRue, b: GeometrieRue, reference: Position): { sortieA: Position; entreeB: Position; ecartM: number } {
+export function raccorder(
+  a: GeometrieRue,
+  b: GeometrieRue,
+  reference: Position,
+): { sortieA: Position; entreeB: Position; ecartM: number } {
   const communs = [...a.noeuds.keys()].filter((id) => b.noeuds.has(id)).map((id) => a.noeuds.get(id)!);
   if (communs.length > 0) {
     const croisement = communs.reduce((m, p) => (distanceM(p, reference) < distanceM(m, reference) ? p : m));

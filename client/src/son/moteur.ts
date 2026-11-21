@@ -78,7 +78,8 @@ export function creerMoteurSon(actifAuDepart: boolean): MoteurSon {
 
   const contexte = (): Bus | null => {
     if (bus) return bus;
-    const Constructeur = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    const Constructeur =
+      window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Constructeur) return null;
     try {
       const ctx = new Constructeur({ latencyHint: 'playback' });
@@ -103,10 +104,13 @@ export function creerMoteurSon(actifAuDepart: boolean): MoteurSon {
       arreterScene();
       if (minuterieSuspension === undefined && b.ctx.state === 'running') {
         // Le temps du fondu, puis contexte suspendu (pas de minuterie ni de calcul audio).
-        minuterieSuspension = setTimeout(() => {
-          minuterieSuspension = undefined;
-          if (!doitJouer()) void b.ctx.suspend().catch(() => {});
-        }, (FONDU_SORTIE_S + 0.1) * 1000);
+        minuterieSuspension = setTimeout(
+          () => {
+            minuterieSuspension = undefined;
+            if (!doitJouer()) void b.ctx.suspend().catch(() => {});
+          },
+          (FONDU_SORTIE_S + 0.1) * 1000,
+        );
       }
       return;
     }
@@ -200,7 +204,13 @@ function construireBus(ctx: AudioContext): Bus {
 function bruitRose(ctx: AudioContext, secondes: number): AudioBuffer {
   const tampon = ctx.createBuffer(1, Math.floor(ctx.sampleRate * secondes), ctx.sampleRate);
   const d = tampon.getChannelData(0);
-  let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+  let b0 = 0,
+    b1 = 0,
+    b2 = 0,
+    b3 = 0,
+    b4 = 0,
+    b5 = 0,
+    b6 = 0;
   for (let i = 0; i < d.length; i++) {
     const blanc = Math.random() * 2 - 1;
     b0 = 0.99886 * b0 + blanc * 0.0555179;
@@ -510,7 +520,13 @@ function rafale(
   b: Bus,
   sortie: AudioNode,
   t: number,
-  { type, frequence, q = 1, duree, volume }: { type: BiquadFilterType; frequence: number; q?: number; duree: number; volume: number },
+  {
+    type,
+    frequence,
+    q = 1,
+    duree,
+    volume,
+  }: { type: BiquadFilterType; frequence: number; q?: number; duree: number; volume: number },
 ): void {
   const { ctx } = b;
   const source = ctx.createBufferSource();
@@ -532,7 +548,12 @@ function rafale(
 }
 
 function jouerPas(b: Bus, sortie: AudioNode, t: number): void {
-  rafale(b, sortie, t, { type: 'lowpass', frequence: 260 + Math.random() * 220, duree: 0.08, volume: 0.05 + Math.random() * 0.05 });
+  rafale(b, sortie, t, {
+    type: 'lowpass',
+    frequence: 260 + Math.random() * 220,
+    duree: 0.08,
+    volume: 0.05 + Math.random() * 0.05,
+  });
 }
 
 /** Tambour : sinus grave qui chute en hauteur, plus un souffle ; `lointain` l'assourdit. */
@@ -620,9 +641,10 @@ function jouerApplaudissements(b: Bus, sortie: AudioNode, t: number, ampleur: nu
     source.onended = () => g.disconnect();
     return { g, libre: t };
   });
-  const instants = Array.from({ length: claquements }, () => t + duree * Math.sqrt(Math.random()) * Math.random() ** 0.3).sort(
-    (a, z) => a - z,
-  );
+  const instants = Array.from(
+    { length: claquements },
+    () => t + duree * Math.sqrt(Math.random()) * Math.random() ** 0.3,
+  ).sort((a, z) => a - z);
   instants.forEach((ti, i) => {
     const couche = couches[i % couches.length]!;
     if (ti < couche.libre) return; // la couche claque encore
@@ -676,7 +698,15 @@ function jouerEvenementChant(b: Bus, sortie: AudioNode, e: EvenementChant, t: nu
 }
 
 /** Chœur sans paroles : cinq voix en dents de scie, désaccordées, passées dans deux formants. */
-function jouerVoix(b: Bus, sortie: AudioNode, t: number, note: number, duree: number, voyelle: Voyelle, force: number): void {
+function jouerVoix(
+  b: Bus,
+  sortie: AudioNode,
+  t: number,
+  note: number,
+  duree: number,
+  voyelle: Voyelle,
+  force: number,
+): void {
   const { ctx } = b;
   const melange = ctx.createGain();
   melange.gain.value = 0.2;

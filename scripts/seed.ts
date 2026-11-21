@@ -94,7 +94,13 @@ export async function semerManifDemo(sql: Sql, dossierPublication: string): Prom
 }
 
 function avatar(entree: number): AvatarPreRempli {
-  return { id: identifiant(), manifId: ID_MANIF_DEMO, entree: new Date(entree), apparence: apparenceDeLaFoule(), pancarte: pancarteAuHasard() };
+  return {
+    id: identifiant(),
+    manifId: ID_MANIF_DEMO,
+    entree: new Date(entree),
+    apparence: apparenceDeLaFoule(),
+    pancarte: pancarteAuHasard(),
+  };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {

@@ -120,7 +120,10 @@ function parcoursDeTest(km: number, points: number): Parcours {
   const brut: [number, number][] = [];
   for (let i = 0; i < points; i++) {
     const f = i / (points - 1);
-    brut.push([2.3634 + f * 0.05 + Math.sin(f * 12) * 0.002 + alea() * 1e-5, 48.8673 - f * 0.02 + Math.cos(f * 9) * 0.002]);
+    brut.push([
+      2.3634 + f * 0.05 + Math.sin(f * 12) * 0.002 + alea() * 1e-5,
+      48.8673 - f * 0.02 + Math.cos(f * 9) * 0.002,
+    ]);
   }
   const echelle = (km * 1000) / longueurParcours({ type: 'LineString', coordinates: brut });
   const [lon0, lat0] = brut[0]!;
@@ -177,7 +180,10 @@ const profil = profilParDefaut(O.ouvertureAvantMin, (fermeture - depart) / MINUT
 const instantsEntree = tirerInstants(O.soutiens, profil, alea).map((t) => depart + t);
 const tirerSession = (arrivee: number) => ({
   arrivee,
-  depart: Math.min(fin + 15 * MINUTE, arrivee + (O.sessionMinMin + alea() * (O.sessionMaxMin - O.sessionMinMin)) * MINUTE),
+  depart: Math.min(
+    fin + 15 * MINUTE,
+    arrivee + (O.sessionMinMin + alea() * (O.sessionMaxMin - O.sessionMinMin)) * MINUTE,
+  ),
 });
 // Clients simulés : soutiens (arrivés une minute avant d'entrer) et spectateurs, même affluence.
 const sessions = tirerInstants(O.clientsSimules, profil, alea).map((t, i) =>
@@ -201,7 +207,13 @@ function lancerProcessus(
 ): ChildProcess {
   return spawn(
     process.execPath,
-    [...(memoire ? [`--max-old-space-size=${memoire}`] : []), ...optionsNode, ...TSX, join(RACINE, 'scripts/charge', script), ...args],
+    [
+      ...(memoire ? [`--max-old-space-size=${memoire}`] : []),
+      ...optionsNode,
+      ...TSX,
+      join(RACINE, 'scripts/charge', script),
+      ...args,
+    ],
     { cwd: RACINE, env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'] },
   );
 }
@@ -218,24 +230,30 @@ function ecouter(processus: ChildProcess, nom: string, surMessage: (m: Record<st
 }
 
 const intervalleReelPublication = Math.max(20, Math.round(O.intervallePublicationMs / O.acceleration));
-const serveur = lancerProcessus('serveur-accelere.ts', [], {
-  DATABASE_URL: urlBase,
-  DOSSIER_PUBLICATION: dossierPublication,
-  ALTCHA_CLE_HMAC: randomBytes(32).toString('hex'),
-  PORT: '0',
-  // Même rythme qu'en prod en temps virtuel (5 s) : les passages sont donc `acceleration` fois plus
-  // fréquents en temps réel qu'en prod, ce qui charge plus le verrou partagé avec les entrées.
-  INTERVALLE_PUBLICATION_MS: String(intervalleReelPublication),
-  // Coût PBKDF2 de prod (le serveur dérive une clé par défi) ; compteur réduit pour que le
-  // générateur puisse résoudre 100 000 preuves (un vrai téléphone en fait ≈ 4 000 fois plus).
-  ALTCHA_COMPTEUR_MIN: '1',
-  ALTCHA_COMPTEUR_MAX: '2',
-  // Chaque soutien a sa propre IP, transmise par un proxy de confiance comme le ferait le CDN.
-  PROXYS_DE_CONFIANCE: '127.0.0.1',
-  CHARGE_T0_REEL: String(horloge.t0Reel),
-  CHARGE_T0_VIRTUEL: String(horloge.t0Virtuel),
-  CHARGE_FACTEUR: String(O.acceleration),
-}, undefined, O.profilCpu ? ['--cpu-prof', `--cpu-prof-dir=${dossierRun}`] : []);
+const serveur = lancerProcessus(
+  'serveur-accelere.ts',
+  [],
+  {
+    DATABASE_URL: urlBase,
+    DOSSIER_PUBLICATION: dossierPublication,
+    ALTCHA_CLE_HMAC: randomBytes(32).toString('hex'),
+    PORT: '0',
+    // Même rythme qu'en prod en temps virtuel (5 s) : les passages sont donc `acceleration` fois plus
+    // fréquents en temps réel qu'en prod, ce qui charge plus le verrou partagé avec les entrées.
+    INTERVALLE_PUBLICATION_MS: String(intervalleReelPublication),
+    // Coût PBKDF2 de prod (le serveur dérive une clé par défi) ; compteur réduit pour que le
+    // générateur puisse résoudre 100 000 preuves (un vrai téléphone en fait ≈ 4 000 fois plus).
+    ALTCHA_COMPTEUR_MIN: '1',
+    ALTCHA_COMPTEUR_MAX: '2',
+    // Chaque soutien a sa propre IP, transmise par un proxy de confiance comme le ferait le CDN.
+    PROXYS_DE_CONFIANCE: '127.0.0.1',
+    CHARGE_T0_REEL: String(horloge.t0Reel),
+    CHARGE_T0_VIRTUEL: String(horloge.t0Virtuel),
+    CHARGE_FACTEUR: String(O.acceleration),
+  },
+  undefined,
+  O.profilCpu ? ['--cpu-prof', `--cpu-prof-dir=${dossierRun}`] : [],
+);
 const passages: { debut: number; dureeMs: number; ok: boolean; virtuel: string }[] = [];
 const pret = new Promise<{ url: string; pid: number }>((resolve) =>
   ecouter(serveur, 'serveur', (m) => {
@@ -268,7 +286,8 @@ function ticksCpu(pid: number): number {
   const champs = readFileSync(`/proc/${pid}/stat`, 'utf8').split(') ')[1]!.split(' ');
   return Number(champs[11]) + Number(champs[12]); // utime + stime
 }
-const rssMo = (pid: number) => Number(/VmRSS:\s+(\d+)/.exec(readFileSync(`/proc/${pid}/status`, 'utf8'))?.[1] ?? 0) / 1024;
+const rssMo = (pid: number) =>
+  Number(/VmRSS:\s+(\d+)/.exec(readFileSync(`/proc/${pid}/status`, 'utf8'))?.[1] ?? 0) / 1024;
 function ticksPostgres(): number {
   let total = 0;
   for (const pid of readdirSync('/proc')) {
@@ -295,7 +314,12 @@ const echantillons: {
   cpuMachine: number;
   rssMo: number;
 }[] = [];
-let precedent = { t: performance.now(), serveur: ticksCpu(pidServeur), postgres: ticksPostgres(), machine: ticksMachine() };
+let precedent = {
+  t: performance.now(),
+  serveur: ticksCpu(pidServeur),
+  postgres: ticksPostgres(),
+  machine: ticksMachine(),
+};
 const echantillonneur = setInterval(() => {
   try {
     const t = performance.now();
@@ -346,7 +370,13 @@ async function chronometrer<T>(f: () => Promise<T>): Promise<[T, number]> {
 
 async function soutenir(i: number): Promise<void> {
   const entetes = { 'x-forwarded-for': ipDe(i), 'content-type': 'application/json' };
-  const mesure: Mesure = { reel: Date.now(), virtuel: horloge.maintenant().getTime(), defiMs: 0, entreeMs: 0, statut: 0 };
+  const mesure: Mesure = {
+    reel: Date.now(),
+    virtuel: horloge.maintenant().getTime(),
+    defiMs: 0,
+    entreeMs: 0,
+    statut: 0,
+  };
   enVol++;
   maxEnVol = Math.max(maxEnVol, enVol);
   try {
@@ -432,7 +462,8 @@ let dernierJalon = 0;
 await new Promise<void>((resolve) => {
   const repartiteur = setInterval(() => {
     const maintenantV = horloge.maintenant().getTime();
-    while (suivant < instantsEntree.length && instantsEntree[suivant]! <= maintenantV) enCours.push(soutenir(suivant++));
+    while (suivant < instantsEntree.length && instantsEntree[suivant]! <= maintenantV)
+      enCours.push(soutenir(suivant++));
     if (suivant >= dernierJalon + O.soutiens / 10 || suivant === instantsEntree.length) {
       dernierJalon = suivant;
       emettre(`  ${new Date(maintenantV).toISOString().slice(11, 19)} : ${suivant} soutiens lancés, ${enVol} en vol`);
@@ -469,9 +500,11 @@ const enBase = (await sql<{ n: number }[]>`select count(*)::int as n from avatar
 
 const ok = mesures.filter((m) => m.statut === 201);
 const erreurs: Record<string, number> = {};
-for (const m of mesures) if (m.statut !== 201) erreurs[m.erreur ?? String(m.statut)] = (erreurs[m.erreur ?? String(m.statut)] ?? 0) + 1;
+for (const m of mesures)
+  if (m.statut !== 201) erreurs[m.erreur ?? String(m.statut)] = (erreurs[m.erreur ?? String(m.statut)] ?? 0) + 1;
 const parSeconde = new Map<number, number>();
-for (const m of mesures) parSeconde.set(Math.floor(m.reel / 1000), (parSeconde.get(Math.floor(m.reel / 1000)) ?? 0) + 1);
+for (const m of mesures)
+  parSeconde.set(Math.floor(m.reel / 1000), (parSeconde.get(Math.floor(m.reel / 1000)) ?? 0) + 1);
 const debitMax = Math.max(...parSeconde.values());
 // Pic : le quart d'heure virtuel qui suit le départ.
 const auPic = mesures.filter((m) => m.virtuel >= depart && m.virtuel < depart + 15 * MINUTE);
@@ -480,12 +513,19 @@ const dureePicReelleS = (15 * MINUTE) / O.acceleration / 1000;
 // Bande passante : moyenne par client simulé, extrapolée à tous les clients.
 const categories: Categorie[] = ['liste', 'retraits', 'minute', 'heure', 'absent'];
 const somme = (f: (c: Compte) => number) =>
-  Object.fromEntries(categories.map((cat) => [cat, lus.clients.reduce((s, c) => s + f(c.parCategorie[cat]), 0) / lus.clients.length])) as Record<Categorie, number>;
-const parClient = { octets: somme((c) => c.octets), octetsGzip: somme((c) => c.octetsGzip), requetes: somme((c) => c.requetes) };
+  Object.fromEntries(
+    categories.map((cat) => [cat, lus.clients.reduce((s, c) => s + f(c.parCategorie[cat]), 0) / lus.clients.length]),
+  ) as Record<Categorie, number>;
+const parClient = {
+  octets: somme((c) => c.octets),
+  octetsGzip: somme((c) => c.octetsGzip),
+  requetes: somme((c) => c.requetes),
+};
 const total = (r: Record<Categorie, number>) => categories.reduce((s, c) => s + r[c], 0);
 const appli = tailleAppli();
 const clientsReels = O.soutiens * (1 + O.spectateurs);
-const octetsParClientGzip = total(parClient.octetsGzip) + total(parClient.requetes) * ENTETES_PAR_REPONSE + appli.octetsGzip;
+const octetsParClientGzip =
+  total(parClient.octetsGzip) + total(parClient.requetes) * ENTETES_PAR_REPONSE + appli.octetsGzip;
 const octetsParClientBruts = total(parClient.octets) + total(parClient.requetes) * ENTETES_PAR_REPONSE + appli.octets;
 const totalGzip = octetsParClientGzip * clientsReels;
 const totalBrut = octetsParClientBruts * clientsReels;
@@ -535,7 +575,8 @@ const latenceParTranche = [...parTranche]
     };
   });
 const fichiers = Object.entries(lus.fichiers);
-const tailleDe = (cat: Categorie) => fichiers.filter(([, f]) => f.categorie === cat).map(([chemin, f]) => ({ chemin, ...f }));
+const tailleDe = (cat: Categorie) =>
+  fichiers.filter(([, f]) => f.categorie === cat).map(([chemin, f]) => ({ chemin, ...f }));
 const cpuServeur = centiles(echantillons.map((e) => e.cpuServeur));
 const cpuPostgres = centiles(echantillons.map((e) => e.cpuPostgres));
 const dureesPublication = centiles(passages.map((p) => p.dureeMs));
@@ -561,7 +602,11 @@ const resume = {
     latenceDefiMs: centiles(mesures.map((m) => m.defiMs)),
     latenceEntreeMs: centiles(ok.map((m) => m.entreeMs)),
     latenceEntreeAuPicMs: centiles(auPic.filter((m) => m.statut === 201).map((m) => m.entreeMs)),
-    retraits: { n: mesuresRetrait.length, ok: mesuresRetrait.filter((r) => r.statut === 200).length, latenceMs: centiles(mesuresRetrait.map((r) => r.ms)) },
+    retraits: {
+      n: mesuresRetrait.length,
+      ok: mesuresRetrait.filter((r) => r.statut === 200).length,
+      latenceMs: centiles(mesuresRetrait.map((r) => r.ms)),
+    },
     delaiBoucleGenerateurMs: { p99: delaiBoucle.percentile(99) / 1e6, max: delaiBoucle.max / 1e6 },
   },
   publication: {
@@ -592,7 +637,11 @@ const resume = {
     octetsParClientBruts,
     clientsReels,
     totalGo: { gzip: rond(totalGzip / 1e9, 2), brut: rond(totalBrut / 1e9, 2) },
-    couts: TARIFS.map((t) => ({ tarif: t.nom, gzipDollars: rond(coutCdn(totalGzip, t), 2), brutDollars: rond(coutCdn(totalBrut, t), 2) })),
+    couts: TARIFS.map((t) => ({
+      tarif: t.nom,
+      gzipDollars: rond(coutCdn(totalGzip, t), 2),
+      brutDollars: rond(coutCdn(totalBrut, t), 2),
+    })),
     fichiers: {
       liste: tailleDe('liste'),
       retraits: tailleDe('retraits'),

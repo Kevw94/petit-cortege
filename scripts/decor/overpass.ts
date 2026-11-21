@@ -17,7 +17,18 @@ export const RAYON_EXTRACTION_M = 150;
  */
 export function requeteBande(parcours: Parcours, rayonM: number): string {
   const autour = `(around:${rayonM},${parcours.coordinates.map(([lon, lat]) => `${lat},${lon}`).join(',')})`;
-  const chemins = ['highway', 'building', 'landuse', 'leisure', 'natural', 'waterway', 'place', '"area:highway"', 'man_made', 'bridge'];
+  const chemins = [
+    'highway',
+    'building',
+    'landuse',
+    'leisure',
+    'natural',
+    'waterway',
+    'place',
+    '"area:highway"',
+    'man_made',
+    'bridge',
+  ];
   return [
     '[out:json][timeout:180];',
     '(',

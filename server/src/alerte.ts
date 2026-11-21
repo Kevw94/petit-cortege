@@ -30,7 +30,7 @@ export const alerteJournal: Alerte = {
 export function alerteWebhook(url: string, envoyer: typeof fetch = fetch): Alerte {
   return {
     async plafondGlobalDepasse(a) {
-      alerteJournal.plafondGlobalDepasse(a);
+      await alerteJournal.plafondGlobalDepasse(a);
       try {
         const reponse = await envoyer(url, {
           method: 'POST',

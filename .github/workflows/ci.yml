@@ -47,6 +47,8 @@ jobs:
       - name: Client Postgres
         run: pg_dump --version
 
+      - run: npm run lint
+
       - run: npm run typecheck
 
       - run: npm test

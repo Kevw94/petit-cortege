@@ -127,7 +127,13 @@ export function calculerCortege(entrees: EntreesDuCortege): Cortege {
  */
 export class CortegeMemorise {
   #rangs: RangsDuCortege | null = null;
-  #cle: { manifId: string; depart: string; entrees: readonly unknown[]; propres: readonly unknown[]; retraits: readonly unknown[] } | null = null;
+  #cle: {
+    manifId: string;
+    depart: string;
+    entrees: readonly unknown[];
+    propres: readonly unknown[];
+    retraits: readonly unknown[];
+  } | null = null;
 
   calculer(entrees: EntreesDuCortege): Cortege {
     return positionnerCortege(this.rangs(entrees), entrees.manif, entrees.maintenant);
@@ -152,7 +158,13 @@ export class CortegeMemorise {
       return this.#rangs;
     }
     this.#rangs = rangerCortege(entrees);
-    this.#cle = { manifId: manif.id, depart: manif.depart, entrees: [...entrees.entrees], propres: [...propres], retraits: [...retraits] };
+    this.#cle = {
+      manifId: manif.id,
+      depart: manif.depart,
+      entrees: [...entrees.entrees],
+      propres: [...propres],
+      retraits: [...retraits],
+    };
     return this.#rangs;
   }
 }
@@ -204,7 +216,9 @@ function rangerCortege({ manif, entrees, propres = [], retraits = [], maintenant
   const grille = new PlacesDuCortege();
   const avatars: RangDAvatar[] = [];
   for (const entreeMs of [...groupes.keys()].sort((a, b) => a - b)) {
-    const groupe = groupes.get(entreeMs)!.sort((a, b) => a.hachage - b.hachage || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    const groupe = groupes
+      .get(entreeMs)!
+      .sort((a, b) => a.hachage - b.hachage || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     for (const marcheur of groupe) {
       const { rang, colonne, case_ } = grille.prendre(marcheur.hachage);
       avatars.push({
@@ -276,7 +290,7 @@ export function placeSurLaPlace(numero: number): { avantM: number; coteM: number
   // Au-delà de la contenance, une nouvelle couche, décalée d'une demi-place.
   const indice = (numero % CONTENANCE_RASSEMBLEMENT) + 0.5 * Math.floor(numero / CONTENANCE_RASSEMBLEMENT);
   const rayon = Math.sqrt(((indice + 0.5) * 2 * AIRE_PLACE_RASSEMBLEMENT_M2) / Math.PI);
-  const angle = (((indice * ANGLE_D_OR) % (2 * Math.PI)) / 2) - Math.PI / 2;
+  const angle = ((indice * ANGLE_D_OR) % (2 * Math.PI)) / 2 - Math.PI / 2;
   return { avantM: rayon * Math.cos(angle), coteM: rayon * Math.sin(angle) };
 }
 

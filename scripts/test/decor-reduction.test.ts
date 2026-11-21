@@ -45,7 +45,13 @@ describe('Extrait OSM réduit', () => {
     });
 
     expect(extrait.elements).toEqual([
-      { type: 'way', id: 1, nodes: [10, 11], geometry: geometrie, tags: { highway: 'residential', name: 'Rue Haute', lanes: '2' } },
+      {
+        type: 'way',
+        id: 1,
+        nodes: [10, 11],
+        geometry: geometrie,
+        tags: { highway: 'residential', name: 'Rue Haute', lanes: '2' },
+      },
     ]);
   });
 
@@ -53,12 +59,28 @@ describe('Extrait OSM réduit', () => {
     const anneau = [...geometrie, { lat: 48.871, lon: 2.36 }, geometrie[0]!];
     const extrait = reduireExtrait({
       elements: [
-        { type: 'node', id: 1, lat: 48.87, lon: 2.36, tags: { place: 'square', name: 'Place Carnot', 'name:en': 'Carnot Square' } },
+        {
+          type: 'node',
+          id: 1,
+          lat: 48.87,
+          lon: 2.36,
+          tags: { place: 'square', name: 'Place Carnot', 'name:en': 'Carnot Square' },
+        },
         { type: 'way', id: 2, geometry: anneau, tags: { leisure: 'park', name: 'Jardin des Plantes' } },
-        { type: 'way', id: 3, geometry: anneau, tags: { building: 'train_station', name: 'Gare Centrale', shop: 'bakery' } },
+        {
+          type: 'way',
+          id: 3,
+          geometry: anneau,
+          tags: { building: 'train_station', name: 'Gare Centrale', shop: 'bakery' },
+        },
         { type: 'way', id: 5, geometry: geometrie, tags: { building: 'yes', name: 'Auvent Dupont' } },
         { type: 'relation', id: 6, tags: { type: 'multipolygon' }, members: [] },
-        { type: 'relation', id: 4, tags: { type: 'multipolygon', 'area:highway': 'pedestrian', name: 'Parvis Notre-Dame' }, members: [] },
+        {
+          type: 'relation',
+          id: 4,
+          tags: { type: 'multipolygon', 'area:highway': 'pedestrian', name: 'Parvis Notre-Dame' },
+          members: [],
+        },
       ],
     });
 
@@ -75,7 +97,14 @@ describe('Extrait OSM réduit', () => {
     const extrait = reduireExtrait({
       elements: [
         { type: 'way', id: 1, nodes: [1, 2], geometry: geometrie, tags: { man_made: 'pier', name: 'Jetée' } },
-        { type: 'way', id: 2, nodes: [1, 2], geometry: geometrie, tags: { waterway: 'canal' }, bounds: { minlat: 1 } } as never,
+        {
+          type: 'way',
+          id: 2,
+          nodes: [1, 2],
+          geometry: geometrie,
+          tags: { waterway: 'canal' },
+          bounds: { minlat: 1 },
+        } as never,
       ],
     });
 
@@ -86,7 +115,11 @@ describe('Extrait OSM réduit', () => {
     const brut = {
       version: 0.6,
       generator: 'Overpass API',
-      osm3s: { timestamp_osm_base: '2026-11-14T14:26:06Z', copyright: 'The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.' },
+      osm3s: {
+        timestamp_osm_base: '2026-11-14T14:26:06Z',
+        copyright:
+          'The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.',
+      },
       elements: [
         { type: 'way' as const, id: 1, geometry: geometrie, tags: { highway: 'primary' } },
         { type: 'way' as const, id: 2, geometry: geometrie, tags: { highway: 'service' } },
@@ -107,7 +140,9 @@ describe('Extrait OSM réduit', () => {
     const parcours: Parcours = (await lireJson(join(FIXTURES, 'parcours-mini.geojson'))).geometry;
     const reduit = reduireExtrait(brut);
 
-    expect(genererDecor({ osm: reduit, parcours, demiLargeurM: 100 })).toEqual(genererDecor({ osm: brut, parcours, demiLargeurM: 100 }));
+    expect(genererDecor({ osm: reduit, parcours, demiLargeurM: 100 })).toEqual(
+      genererDecor({ osm: brut, parcours, demiLargeurM: 100 }),
+    );
   });
 
   it('garde toutes les surfaces nommées, que le contrôle des zones à éviter compare', async () => {
@@ -132,7 +167,11 @@ describe('Extrait OSM réduit', () => {
 describe('Itinéraire sur un extrait réduit', () => {
   it('suit les mêmes chemins que sur l’extrait brut', async () => {
     const brut: ExtraitOverpass = await lireJson(join(FIXTURES, 'extrait-mini.json'));
-    const options = { rues: ['Boulevard Test', 'Place Test'], depart: [2.359, 48.87] as [number, number], arrivee: [2.367, 48.87] as [number, number] };
+    const options = {
+      rues: ['Boulevard Test', 'Place Test'],
+      depart: [2.359, 48.87] as [number, number],
+      arrivee: [2.367, 48.87] as [number, number],
+    };
 
     expect(itineraireLeLongDe(reduireExtrait(brut), options)).toEqual(itineraireLeLongDe(brut, options));
   });

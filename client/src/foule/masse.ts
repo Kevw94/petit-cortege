@@ -47,7 +47,8 @@ export class MasseDeFoule {
     texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
     const couches = scene.textures.get(CLE_COUCHES).getSourceImage() as CanvasImageSource;
     dessinerPaquets(texture.context, couches);
-    for (let v = 0; v < VARIANTES_PAQUET; v++) texture.add(String(v), 0, v * PAQUET.largeur, 0, PAQUET.largeur, PAQUET.hauteur);
+    for (let v = 0; v < VARIANTES_PAQUET; v++)
+      texture.add(String(v), 0, v * PAQUET.largeur, 0, PAQUET.largeur, PAQUET.hauteur);
     texture.refresh();
   }
 

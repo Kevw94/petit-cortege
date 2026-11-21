@@ -77,7 +77,15 @@ export function dessinerPancarteCanvas(
 }
 
 /** Écrit le texte centré, sur une à trois lignes, à la plus grande taille qui tient dans la zone. */
-function ecrire(ctx: CanvasRenderingContext2D, texte: string, cx: number, cy: number, largeur: number, hauteur: number, couleur: string): void {
+function ecrire(
+  ctx: CanvasRenderingContext2D,
+  texte: string,
+  cx: number,
+  cy: number,
+  largeur: number,
+  hauteur: number,
+  couleur: string,
+): void {
   const mots = texte.split(' ');
   const police = (px: number) => `bold ${px}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
   let meilleur: { lignes: string[]; taille: number } | null = null;
@@ -87,7 +95,7 @@ function ecrire(ctx: CanvasRenderingContext2D, texte: string, cx: number, cy: nu
     const parLigne = Math.ceil(texte.length / n);
     let courante = '';
     for (const mot of mots) {
-      if (courante && (courante + ' ' + mot).length > parLigne && lignes.length < n - 1) {
+      if (courante && `${courante} ${mot}`.length > parLigne && lignes.length < n - 1) {
         lignes.push(courante);
         courante = mot;
       } else courante = courante ? `${courante} ${mot}` : mot;

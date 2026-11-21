@@ -8,7 +8,14 @@
  * chargé que pour la vue d'une manif en 3D.
  */
 import * as THREE from 'three';
-import { decoderPancarte, MARGE_RAYON_VUE_DE_HAUT_M, METRES_PAR_TUILE, versTuiles, type Georeference, type Position } from '@petit-cortege/shared';
+import {
+  decoderPancarte,
+  MARGE_RAYON_VUE_DE_HAUT_M,
+  METRES_PAR_TUILE,
+  versTuiles,
+  type Georeference,
+  type Position,
+} from '@petit-cortege/shared';
 import { BUDGET_AVATARS_DESSINES } from '../apparence/affichage';
 import type { PointM } from '../cadrage';
 import { cibleDeSuivi } from '../camera';
@@ -124,7 +131,8 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
   const centreParcours = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
   // Même rayon que celui dont le générateur déduit l'emprise du plan de la ville (`empriseDuPlan`).
   const rayonParcours =
-    Math.max(...pointsParcours.map((p) => Math.hypot(p.x - centreParcours.x, p.y - centreParcours.y))) + MARGE_RAYON_VUE_DE_HAUT_M;
+    Math.max(...pointsParcours.map((p) => Math.hypot(p.x - centreParcours.x, p.y - centreParcours.y))) +
+    MARGE_RAYON_VUE_DE_HAUT_M;
 
   // Sol lointain, sous tout le reste : au-delà des alentours, la ville continue dans la brume
   // au lieu de s'arrêter sur le vide.
@@ -156,7 +164,12 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
   const panneauxLoin = new Billboards({ texture: pancartesLoin.texture, capacite: BUDGET_AVATARS_DESSINES });
   // Les siens, comme en 2D : toujours visibles, par-dessus la foule et les bâtiments.
   const avatarsPropres = new Billboards({ texture: apparences.texture, capacite: PROPRES_MAX, ordre: 1, devant: true });
-  const panneauxPropres = new Billboards({ texture: pancartesPropres.texture, capacite: PROPRES_MAX, ordre: 2, devant: true });
+  const panneauxPropres = new Billboards({
+    texture: pancartesPropres.texture,
+    capacite: PROPRES_MAX,
+    ordre: 2,
+    devant: true,
+  });
   const billboards = [masse, avatars, panneaux, panneauxLoin, avatarsPropres, panneauxPropres];
   for (const b of billboards) scene.add(b.mesh);
   const halos = Array.from({ length: PROPRES_MAX }, () => {
@@ -268,7 +281,8 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
       glisser({ x: apres.x - p.x, y: apres.y - p.y }, false);
     } else if (doigts.size === 2 && deuxDoigts) {
       const m = mesureDeuxDoigts();
-      if (deuxDoigts.ecart > 0 && m.ecart > 0) zoom = zoomCible = zoomApresPincement(zoomCible, m.ecart / deuxDoigts.ecart, distanceLoin);
+      if (deuxDoigts.ecart > 0 && m.ecart > 0)
+        zoom = zoomCible = zoomApresPincement(zoomCible, m.ecart / deuxDoigts.ecart, distanceLoin);
       let dAngle = m.angle - deuxDoigts.angle;
       dAngle = Math.atan2(Math.sin(dAngle), Math.cos(dAngle));
       const torsion = deuxDoigts.torsion + dAngle;
@@ -385,11 +399,18 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
     const pointCible = placeur.placer(cible.distanceM, cible.decalageM);
     const capCible = capDeSuivi(placeur, cible.distanceM);
     const kPosition = premiereImage ? 1 : lisser(LISSAGE.position, dt);
-    pointSuivi = { x: pointSuivi.x + (pointCible.x - pointSuivi.x) * kPosition, y: pointSuivi.y + (pointCible.y - pointSuivi.y) * kPosition };
+    pointSuivi = {
+      x: pointSuivi.x + (pointCible.x - pointSuivi.x) * kPosition,
+      y: pointSuivi.y + (pointCible.y - pointSuivi.y) * kPosition,
+    };
     if (suivi) cap = premiereImage ? capCible : rapprocherAngle(cap, capCible, lisser(LISSAGE.cap, dt));
     else cap = rapprocherAngle(cap, capLibre, lisser(LISSAGE.zoom, dt));
     zoom += (zoomCible - zoom) * (premiereImage ? 1 : lisser(LISSAGE.zoom, dt));
-    if (!suivi) libre = { x: libre.x + (libreCible.x - libre.x) * lisser(LISSAGE.position, dt), y: libre.y + (libreCible.y - libre.y) * lisser(LISSAGE.position, dt) };
+    if (!suivi)
+      libre = {
+        x: libre.x + (libreCible.x - libre.x) * lisser(LISSAGE.position, dt),
+        y: libre.y + (libreCible.y - libre.y) * lisser(LISSAGE.position, dt),
+      };
     const voulu = suivi ? cibleDeVue(pointSuivi, centreParcours, zoom) : libre;
     const kRegard = premiereImage ? 1 : lisser(LISSAGE.position * 1.5, dt);
     regard = { x: regard.x + (voulu.x - regard.x) * kRegard, y: regard.y + (voulu.y - regard.y) * kRegard };
@@ -447,7 +468,8 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
       if (!aLEcran(p, 80)) continue;
       // Ondulation légère par paquet, là où la foule avance.
       const enMarche = tronconsEnMarche.size > 0 && tronconEnMarche(tronconsEnMarche, t.distanceM, cortege.avanceeM);
-      const saut = sautDeMasse(tempsS, phaseDeTampon(t.distanceM - cortege.avanceeM, t.decalageM), enMarche) * METRES_PAR_PX_ATLAS;
+      const saut =
+        sautDeMasse(tempsS, phaseDeTampon(t.distanceM - cortege.avanceeM, t.decalageM), enMarche) * METRES_PAR_PX_ATLAS;
       masse.ajouter(versScene(p), PAQUET_M.largeur, PAQUET_M.hauteur, paquets.cadres[t.variante]!, saut);
     }
     for (const b of [avatars, panneaux, panneauxLoin, avatarsPropres, panneauxPropres]) b.vider();
@@ -461,8 +483,16 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
       const leverPancarte = HAUTEUR_TETE_M + sautM;
       if (a.propre) {
         propres.push(a.sol);
-        avatarsPropres.ajouter(pied, AVATAR_M.largeur, AVATAR_M.hauteur, apparences.cadre(a.apparence), sautM, inclinaisonRad);
-      } else avatars.ajouter(pied, AVATAR_M.largeur, AVATAR_M.hauteur, apparences.cadre(a.apparence), sautM, inclinaisonRad);
+        avatarsPropres.ajouter(
+          pied,
+          AVATAR_M.largeur,
+          AVATAR_M.hauteur,
+          apparences.cadre(a.apparence),
+          sautM,
+          inclinaisonRad,
+        );
+      } else
+        avatars.ajouter(pied, AVATAR_M.largeur, AVATAR_M.hauteur, apparences.cadre(a.apparence), sautM, inclinaisonRad);
       if (decoderPancarte(a.pancarte) === null) continue;
       if (a.propre) {
         const k = AGRANDISSEMENT_PANCARTE_PROPRE;
@@ -479,10 +509,24 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
         const ecran = versEcran(pied.x, pied.y, pied.z);
         const pxParM = ecran ? (camera.projectionMatrix.elements[5]! * hauteur * 0.5) / ecran.w : 0;
         if (pxParM >= SEUIL_SLOGAN_PX_PAR_M) {
-          panneaux.ajouter(pied, CADRE_PANCARTE_M.largeur, CADRE_PANCARTE_M.hauteur, pancartes.cadre(a.pancarte), leverPancarte, inclinaisonPancarteRad);
+          panneaux.ajouter(
+            pied,
+            CADRE_PANCARTE_M.largeur,
+            CADRE_PANCARTE_M.hauteur,
+            pancartes.cadre(a.pancarte),
+            leverPancarte,
+            inclinaisonPancarteRad,
+          );
         } else {
           const cadre = pancartesLoin.cadre(cleSansSlogan(a.pancarte));
-          panneauxLoin.ajouter(pied, CADRE_PANCARTE_M.largeur, CADRE_PANCARTE_M.hauteur, cadre, leverPancarte, inclinaisonPancarteRad);
+          panneauxLoin.ajouter(
+            pied,
+            CADRE_PANCARTE_M.largeur,
+            CADRE_PANCARTE_M.hauteur,
+            cadre,
+            leverPancarte,
+            inclinaisonPancarteRad,
+          );
         }
       }
     }
@@ -546,7 +590,14 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
       trace.detruire();
       if (batiments) detruireGroupe(batiments);
       for (const b of billboards) b.detruire();
-      for (const t of [apparences.texture, pancartes.texture, pancartesLoin.texture, pancartesPropres.texture, paquets.texture]) t.dispose();
+      for (const t of [
+        apparences.texture,
+        pancartes.texture,
+        pancartesLoin.texture,
+        pancartesPropres.texture,
+        paquets.texture,
+      ])
+        t.dispose();
       for (const h of halos) {
         h.geometry.dispose();
         (h.material as THREE.Material).dispose();

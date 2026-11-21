@@ -37,14 +37,29 @@ describe('projection du décor (tuile de 16 px ≈ 2 m)', () => {
 
 describe('tracé du parcours au sol', () => {
   it('pose le départ au premier point et l’arrivée au dernier, orientés dans le sens de marche', () => {
-    const trace = tracerParcours([{ x: 10, y: 5 }, { x: 110, y: 5 }], { espacementFleches: 25 });
-    expect(trace.ligne).toEqual([{ x: 10, y: 5 }, { x: 110, y: 5 }]);
+    const trace = tracerParcours(
+      [
+        { x: 10, y: 5 },
+        { x: 110, y: 5 },
+      ],
+      { espacementFleches: 25 },
+    );
+    expect(trace.ligne).toEqual([
+      { x: 10, y: 5 },
+      { x: 110, y: 5 },
+    ]);
     expect(trace.depart).toEqual({ x: 10, y: 5, angle: 0 });
     expect(trace.arrivee).toEqual({ x: 110, y: 5, angle: 0 });
   });
 
   it('pose une flèche à intervalles réguliers, ni sur le départ ni sur l’arrivée', () => {
-    const trace = tracerParcours([{ x: 0, y: 0 }, { x: 100, y: 0 }], { espacementFleches: 25 });
+    const trace = tracerParcours(
+      [
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+      ],
+      { espacementFleches: 25 },
+    );
     expect(trace.fleches).toEqual([
       { x: 25, y: 0, angle: 0 },
       { x: 50, y: 0, angle: 0 },
@@ -54,7 +69,14 @@ describe('tracé du parcours au sol', () => {
 
   it('oriente les flèches selon le tronçon où elles tombent (angle en degrés, sens horaire, y vers le bas)', () => {
     // 30 tuiles vers l'est puis 30 vers le sud.
-    const trace = tracerParcours([{ x: 0, y: 0 }, { x: 30, y: 0 }, { x: 30, y: 30 }], { espacementFleches: 20 });
+    const trace = tracerParcours(
+      [
+        { x: 0, y: 0 },
+        { x: 30, y: 0 },
+        { x: 30, y: 30 },
+      ],
+      { espacementFleches: 20 },
+    );
     expect(trace.fleches).toEqual([
       { x: 20, y: 0, angle: 0 },
       { x: 30, y: 10, angle: 90 },
@@ -97,8 +119,15 @@ describe('choix du décor qui couvre le parcours', () => {
 
   it('se rabat sur un décor d’index ancien (sans tracé) faute de mieux, sinon aucun', () => {
     const ancien: EntreeIndexDecors = { fichier: 'ancien.json', emprise: [2.363, 48.847, 2.397, 48.868] };
-    expect(decorDuParcours({ v: 1, decors: [voltaire, ancien] }, [republique, bastille, nation])?.fichier).toBe('ancien.json');
+    expect(decorDuParcours({ v: 1, decors: [voltaire, ancien] }, [republique, bastille, nation])?.fichier).toBe(
+      'ancien.json',
+    );
     expect(decorDuParcours({ v: 1, decors: [voltaire] }, [republique, bastille, nation])).toBeUndefined();
-    expect(decorDuParcours(index, [[5.37, 43.29], [5.38, 43.3]])).toBeUndefined();
+    expect(
+      decorDuParcours(index, [
+        [5.37, 43.29],
+        [5.38, 43.3],
+      ]),
+    ).toBeUndefined();
   });
 });

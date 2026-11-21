@@ -78,10 +78,12 @@ export interface Rectangle {
 
 /** Emprise du plan d'un parcours, en mètres depuis l'origine `georef` (cf. `empriseDuPlan`). */
 export function empriseDuParcours(parcours: Parcours, georef: Georeference): EmpriseDuPlan {
-  return empriseDuPlan(parcours.coordinates.map((p) => {
-    const t = versTuiles(georef, p);
-    return { x: t.x * METRES_PAR_TUILE, y: t.y * METRES_PAR_TUILE };
-  }));
+  return empriseDuPlan(
+    parcours.coordinates.map((p) => {
+      const t = versTuiles(georef, p);
+      return { x: t.x * METRES_PAR_TUILE, y: t.y * METRES_PAR_TUILE };
+    }),
+  );
 }
 
 /** Rectangle géographique couvert par l'emprise du plan (demi-côté imposé ou non), marge d'extraction comprise. */
@@ -90,8 +92,14 @@ export function rectangleDuPlan(parcours: Parcours, demiCoteM?: number): Rectang
   const emprise = empriseDuParcours(parcours, georef);
   const d = (demiCoteM ?? emprise.demiCote) + MARGE_EXTRACTION_M;
   const { centre } = emprise;
-  const [ouest, nord] = versPosition(georef, { x: (centre.x - d) / METRES_PAR_TUILE, y: (centre.y - d) / METRES_PAR_TUILE });
-  const [est, sud] = versPosition(georef, { x: (centre.x + d) / METRES_PAR_TUILE, y: (centre.y + d) / METRES_PAR_TUILE });
+  const [ouest, nord] = versPosition(georef, {
+    x: (centre.x - d) / METRES_PAR_TUILE,
+    y: (centre.y - d) / METRES_PAR_TUILE,
+  });
+  const [est, sud] = versPosition(georef, {
+    x: (centre.x + d) / METRES_PAR_TUILE,
+    y: (centre.y + d) / METRES_PAR_TUILE,
+  });
   return { sud, ouest, nord, est };
 }
 
@@ -183,7 +191,9 @@ export async function telechargerPlan(
       return;
     }
     const simplifie = simplifierExtraitAlentours(reponse.extrait);
-    journal(`  plan, pavé ${nom} (${new URL(reponse.url).host}) : ${reponse.extrait.elements.length} éléments OSM, ${simplifie.elements.length} gardés.`);
+    journal(
+      `  plan, pavé ${nom} (${new URL(reponse.url).host}) : ${reponse.extrait.elements.length} éléments OSM, ${simplifie.elements.length} gardés.`,
+    );
     await options.cache?.ecrire(requete, simplifie);
     morceaux.push(simplifie);
   };
@@ -199,7 +209,8 @@ export interface CachePaves {
 /** Cache des pavés à côté de l'extrait du plan : `<dossier>/.paves-plan/<empreinte de la requête>.json` (ignoré par git). */
 export function cacheDePaves(fichierPlan: string): CachePaves {
   const dossier = join(dirname(fichierPlan), '.paves-plan');
-  const fichier = (requete: string) => join(dossier, `${createHash('sha1').update(requete).digest('hex').slice(0, 16)}.json`);
+  const fichier = (requete: string) =>
+    join(dossier, `${createHash('sha1').update(requete).digest('hex').slice(0, 16)}.json`);
   return {
     lire: async (requete) => {
       try {
@@ -252,7 +263,9 @@ export function simplifierExtraitAlentours(extrait: ExtraitOverpass): ExtraitOve
     if (e.type === 'node') continue;
     const [objet] = lireExtrait({ elements: [e] });
     if (!objet || !classerAuxAlentours(objet)) continue;
-    const tags = Object.fromEntries(Object.entries(e.tags ?? {}).filter(([cle]) => (TAGS_DU_CLASSEMENT as readonly string[]).includes(cle))); // sans les noms
+    const tags = Object.fromEntries(
+      Object.entries(e.tags ?? {}).filter(([cle]) => (TAGS_DU_CLASSEMENT as readonly string[]).includes(cle)),
+    ); // sans les noms
     if (e.type === 'way') {
       elements.push({ type: 'way', id: e.id, tags, geometry: geometrie(objet.ligne) });
     } else {
@@ -331,17 +344,19 @@ export function genererAlentours(options: OptionsAlentours): CoucheTuilesTiled {
   const oy = aligner(centre.y - demi);
   const largeur = Math.ceil(centre.x + demi) - ox;
   const hauteur = Math.ceil(centre.y + demi) - oy;
-  const projeter = (l: Position[]) => l.map((p) => {
-    const c = enCases(p);
-    return { x: c.x - ox, y: c.y - oy };
-  });
+  const projeter = (l: Position[]) =>
+    l.map((p) => {
+      const c = enCases(p);
+      return { x: c.x - ox, y: c.y - oy };
+    });
   const rayonDe = (largeurM: number) => Math.max(largeurM / 2 / metresParCase, RAYON_MIN_TUILES);
 
   const grille = new Grille(largeur, hauteur);
   // Tout le carré (centres de cases dedans) en îlots, puis les rues, verts et eau par-dessus.
   for (let y = 0; y < hauteur; y++) {
     for (let x = 0; x < largeur; x++) {
-      if (Math.abs(ox + x + 0.5 - centre.x) <= demi && Math.abs(oy + y + 0.5 - centre.y) <= demi) grille.cases[y * largeur + x] = Terrain.ilot;
+      if (Math.abs(ox + x + 0.5 - centre.x) <= demi && Math.abs(oy + y + 0.5 - centre.y) <= demi)
+        grille.cases[y * largeur + x] = Terrain.ilot;
     }
   }
   const classes = lireExtrait(options.osm)
@@ -349,7 +364,8 @@ export function genererAlentours(options: OptionsAlentours): CoucheTuilesTiled {
     .filter((c): c is { objet: ObjetOsm; classe: Classement } => c.classe !== null);
   const surfaces = (terrain: Terrain) => {
     for (const { objet, classe } of classes) {
-      if (classe.sorte === 'surface' && classe.terrain === terrain) grille.peindrePolygone(objet.anneaux.map(projeter), terrain);
+      if (classe.sorte === 'surface' && classe.terrain === terrain)
+        grille.peindrePolygone(objet.anneaux.map(projeter), terrain);
     }
   };
   const rues = (terrain: Terrain, avecTrottoirs: boolean) => {
@@ -366,7 +382,8 @@ export function genererAlentours(options: OptionsAlentours): CoucheTuilesTiled {
   surfaces(Terrain.vert);
   surfaces(Terrain.eau);
   for (const { objet, classe } of classes) {
-    if (classe.sorte === 'cours-d-eau') grille.peindreLigne(projeter(objet.ligne), rayonDe(classe.largeurM), Terrain.eau);
+    if (classe.sorte === 'cours-d-eau')
+      grille.peindreLigne(projeter(objet.ligne), rayonDe(classe.largeurM), Terrain.eau);
   }
   rues(Terrain.chaussee, true);
   surfaces(Terrain.pieton);

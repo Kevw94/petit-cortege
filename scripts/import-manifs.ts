@@ -77,12 +77,13 @@ export async function executerImport(argv: string[], deps: DependancesImportMani
     return 1;
   }
   try {
-    let options;
-    try {
-      options = parseArgs({ args: reste, options: OPTIONS, strict: true }).values;
-    } catch (e) {
-      throw new ErreurImport(`${(e as Error).message}\n\n${AIDE}`);
-    }
+    const options = (() => {
+      try {
+        return parseArgs({ args: reste, options: OPTIONS, strict: true }).values;
+      } catch (e) {
+        throw new ErreurImport(`${(e as Error).message}\n\n${AIDE}`);
+      }
+    })();
     if (!options.fichier) throw new ErreurImport(`option --fichier obligatoire.\n\n${AIDE}`);
     const fichier = resolve(deps.dossierCourant, options.fichier);
     const journee = await lireFichierDuJour(fichier);
@@ -97,7 +98,9 @@ export async function executerImport(argv: string[], deps: DependancesImportMani
     switch (commande) {
       case 'verifier': {
         for (const m of journee.manifs) {
-          const etat = m.aVerifier ? `à vérifier : ${m.aVerifier}` : (verificationIncomplete(m) ?? 'vérification humaine remplie');
+          const etat = m.aVerifier
+            ? `à vérifier : ${m.aVerifier}`
+            : (verificationIncomplete(m) ?? 'vérification humaine remplie');
           deps.ecrire(`${m.id} : ${m.etapes.length} étapes, départ ${m.depart} ; ${etat}`);
         }
         deps.ecrire(`${basename(fichier)} : fichier valide (${journee.manifs.length} manifs).`);
@@ -122,7 +125,9 @@ export async function executerImport(argv: string[], deps: DependancesImportMani
             });
             await ecrireFichier(cheminTrace(manif.id), `${JSON.stringify(trace, null, 1)}\n`);
             const p = trace.properties;
-            deps.ecrire(`${manif.id} : ${(p.longueurM / 1000).toFixed(2)} km par ${p.itineraire.service} → ${chemin(cheminTrace(manif.id))}`);
+            deps.ecrire(
+              `${manif.id} : ${(p.longueurM / 1000).toFixed(2)} km par ${p.itineraire.service} → ${chemin(cheminTrace(manif.id))}`,
+            );
             const nommees = p.rues.filter((r) => r.nom !== '(sans nom)' && r.m >= 20).map((r) => r.nom);
             if (nommees.length) deps.ecrire(`  voies empruntées : ${nommees.join(', ')}`);
             for (const a of p.avertissements) deps.ecrire(`  Avertissement : ${a}`);
@@ -164,7 +169,9 @@ export async function executerImport(argv: string[], deps: DependancesImportMani
             );
             if (decor.zonesTraversees.length) {
               echecs++;
-              deps.ecrire(`Erreur : ${manif.id} : le parcours traverse une zone à éviter (place OSM) : ${decor.zonesTraversees.join(', ')}.`);
+              deps.ecrire(
+                `Erreur : ${manif.id} : le parcours traverse une zone à éviter (place OSM) : ${decor.zonesTraversees.join(', ')}.`,
+              );
             }
           } catch (e) {
             if (!(e instanceof ErreurImport || e instanceof ErreurService)) throw e;

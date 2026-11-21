@@ -345,7 +345,10 @@ describe('alerte par webhook configurée par variable d’environnement', () => 
       PLAFOND_ENTREES_GLOBAL: '1',
       ALERTE_WEBHOOK_URL: `http://127.0.0.1:${port}/alerte`,
     });
-    banc = await demarrerBanc('2026-06-01T09:10:00Z', { ...(alerte && { alerte }), ...(plafondGlobal && { plafondGlobal }) });
+    banc = await demarrerBanc('2026-06-01T09:10:00Z', {
+      ...(alerte && { alerte }),
+      ...(plafondGlobal && { plafondGlobal }),
+    });
     await creerManifParis(banc);
   });
   afterAll(async () => {

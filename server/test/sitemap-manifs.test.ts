@@ -73,7 +73,9 @@ describe('page et sitemap servis', () => {
     expect(entetes.get('content-type')).toContain('text/html');
     expect(entetes.get('cache-control')).toBe('public, max-age=60');
     expect(html).toContain('<title>Manif Paris 17 novembre 2026 : parcours Nation → Italie | Petit Cortège</title>');
-    expect(html).toContain('content="Cortège virtuel à Paris le 17 novembre 2026, départ à 14 h 00, parcours Nation → Italie. Rejoins la manif en ligne, sans compte ni publicité."');
+    expect(html).toContain(
+      'content="Cortège virtuel à Paris le 17 novembre 2026, départ à 14 h 00, parcours Nation → Italie. Rejoins la manif en ligne, sans compte ni publicité."',
+    );
     expect(html).toContain('<h1>Manif Paris 17 novembre 2026 : parcours Nation → Italie</h1>');
     expect(html).toContain('href="https://petit-cortege.fr/manif/paris-2026-11-17"');
     expect(html).toContain('"@type":"Event"');

@@ -74,7 +74,7 @@ describe("publication : un incident sur un fichier n'arrête pas le reste du pas
     expect((await banc.poster('/api/retrait', avatar)).statut).toBe(403);
   });
 
-  it("une écriture de la liste en échec : le passage échoue, mais les retraits sont publiés et les hachages effacés quand même", async () => {
+  it('une écriture de la liste en échec : le passage échoue, mais les retraits sont publiés et les hachages effacés quand même', async () => {
     await creerManif(banc.sql, {
       id: 'manif-soir',
       intitule: 'Soir',

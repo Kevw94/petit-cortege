@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { arriveeDeLaTete, calculerFin, debutDeLaDanse, DUREE_DANSE_MS, RETARD_MAX_QUEUE_MS, retardDeLaQueueMs } from './horaire';
+import {
+  arriveeDeLaTete,
+  calculerFin,
+  debutDeLaDanse,
+  DUREE_DANSE_MS,
+  RETARD_MAX_QUEUE_MS,
+  retardDeLaQueueMs,
+} from './horaire';
 
 const depart = new Date('2026-05-01T14:00:00Z');
 // 1000 m à 2 km/h : 30 min.

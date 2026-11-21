@@ -3,11 +3,21 @@ import type { Parcours } from '@petit-cortege/shared';
 import { creerPlacement } from './placement';
 
 // ≈ 1000 m plein est à Paris (1° de longitude ≈ 73 230 m à 48,86° N).
-const versEst: Parcours = { type: 'LineString', coordinates: [[2.35, 48.86], [2.35 + 1000 / 73_230, 48.86]] };
+const versEst: Parcours = {
+  type: 'LineString',
+  coordinates: [
+    [2.35, 48.86],
+    [2.35 + 1000 / 73_230, 48.86],
+  ],
+};
 // ≈ 500 m plein nord puis ≈ 500 m plein est.
 const enEquerre: Parcours = {
   type: 'LineString',
-  coordinates: [[2.35, 48.86], [2.35, 48.86 + 500 / 110_540], [2.35 + 500 / 73_230, 48.86 + 500 / 110_540]],
+  coordinates: [
+    [2.35, 48.86],
+    [2.35, 48.86 + 500 / 110_540],
+    [2.35 + 500 / 73_230, 48.86 + 500 / 110_540],
+  ],
 };
 
 describe('Placement des avatars du Cortège à l’écran (16 px = 2 m)', () => {

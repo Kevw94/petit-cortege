@@ -88,7 +88,9 @@ export async function decalerDepart(
 ): Promise<{ depart: Date; fin: Date }> {
   return sql.begin(async (tx) => {
     const maintenant = horloge.maintenant();
-    const [manif] = await tx<{ ouverture: Date; depart: Date; parcours: Parcours; retiree: Date | null; entres: number }[]>`
+    const [manif] = await tx<
+      { ouverture: Date; depart: Date; parcours: Parcours; retiree: Date | null; entres: number }[]
+    >`
       select ouverture, depart, parcours, retiree, (select count(*)::int from avatar a where a.manif_id = m.id) as entres
       from manif m where id = ${id} for update`;
     if (!manif) throw new ErreurModeration(`manif « ${id} » inconnue.`);
@@ -100,7 +102,9 @@ export async function decalerDepart(
     const depart = 'a' in nouveau ? nouveau.a : new Date(manif.depart.getTime() + nouveau.deMinutes * 60_000);
     const fin = calculerFin(depart, longueurM, manif.entres);
     if (depart < manif.ouverture) {
-      throw new ErreurModeration(`le départ ne peut pas précéder l'ouverture des entrées (${manif.ouverture.toISOString()}).`);
+      throw new ErreurModeration(
+        `le départ ne peut pas précéder l'ouverture des entrées (${manif.ouverture.toISOString()}).`,
+      );
     }
     if (fin <= maintenant) throw new ErreurModeration('avec ce départ, la manif serait déjà terminée.');
     await tx`update manif set depart = ${depart}, modifiee = ${maintenant} where id = ${id}`;
@@ -151,7 +155,17 @@ export interface ManifModeree {
 export async function listerManifs(sql: Sql, horloge: Horloge): Promise<ManifModeree[]> {
   const maintenant = horloge.maintenant();
   const lignes = await sql<
-    { id: string; intitule: string; ville: string; ouverture: Date; depart: Date; parcours: Parcours; retiree: Date | null; soutiens: number; entres: number }[]
+    {
+      id: string;
+      intitule: string;
+      ville: string;
+      ouverture: Date;
+      depart: Date;
+      parcours: Parcours;
+      retiree: Date | null;
+      soutiens: number;
+      entres: number;
+    }[]
   >`
     select m.id, m.intitule, m.ville, m.ouverture, m.depart, m.parcours, m.retiree,
       (select count(*)::int from avatar a
@@ -167,6 +181,15 @@ export async function listerManifs(sql: Sql, horloge: Horloge): Promise<ManifMod
         : l.ouverture > maintenant
           ? 'à venir'
           : 'ouverte';
-    return { id: l.id, intitule: l.intitule, ville: l.ville, etat, ouverture: l.ouverture, depart: l.depart, fin, soutiens: l.soutiens };
+    return {
+      id: l.id,
+      intitule: l.intitule,
+      ville: l.ville,
+      etat,
+      ouverture: l.ouverture,
+      depart: l.depart,
+      fin,
+      soutiens: l.soutiens,
+    };
   });
 }

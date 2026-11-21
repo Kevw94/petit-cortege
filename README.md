@@ -35,8 +35,12 @@ npm run dev        # base de dev + manif pré-remplie + serveur (8787) + client 
 npm run seed       # resème seulement la manif de démo
 npm test           # Vitest : serveur (vrai Postgres) + Cortège
 npm run typecheck  # tsc strict dans chaque workspace
+npm run lint       # Biome : lint et vérification du formatage (biome.json)
+npm run format     # Biome : formate le code
 npm run build      # build du client
 ```
+
+Le lint signale les imports et variables inutilisés et les promesses non attendues (`noFloatingPromises`, règle encore expérimentale de Biome : elle voit les fonctions `async` du dépôt, `fetch` ou `.then()`, mais pas toujours celles des bibliothèques importées, comme `readFile` de `node:fs/promises`).
 
 Puis ouvrir http://localhost:5173/manif/demo-republique-nation (départ 2 min après le lancement).
 
@@ -57,4 +61,4 @@ Deux seams seulement (voir la spec) :
 
 Si un test serveur change le format publié, les fixtures changent aussi : les committer avec.
 
-La CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) lance typecheck, tests (contre un Postgres 16 de service) et build sur chaque PR et chaque push sur `main`, et échoue si des fixtures ne sont pas commitées.
+La CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) lance lint, typecheck, tests (contre un Postgres 16 de service) et build sur chaque PR et chaque push sur `main`, et échoue si des fixtures ne sont pas commitées.

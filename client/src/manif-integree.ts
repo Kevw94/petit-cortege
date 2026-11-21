@@ -29,7 +29,7 @@ export function lireManifIntegree(texte: string | null | undefined, idAttendu: s
   if (typeof m.longueurM !== 'number' || typeof m.compteur !== 'number') return;
   if (!Array.isArray(m.sources)) return;
   const parcours = m.parcours as { type?: unknown; coordinates?: unknown } | null;
-  if (!parcours || parcours.type !== 'LineString' || !Array.isArray(parcours.coordinates) || parcours.coordinates.length < 2) {
+  if (parcours?.type !== 'LineString' || !Array.isArray(parcours.coordinates) || parcours.coordinates.length < 2) {
     return;
   }
   if (!parcours.coordinates.every(estPosition)) return;

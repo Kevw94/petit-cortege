@@ -21,7 +21,10 @@ export interface DemandeRappel {
 
 /** Date-heure UTC au format RFC 5545 (`20260308T173000Z`). */
 function dateUtc(date: Date): string {
-  return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  return date
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\.\d{3}/, '');
 }
 
 /** Échappement d'une valeur TEXT (RFC 5545 §3.3.11). */
@@ -69,5 +72,5 @@ export function rappelIcs({ fin, url, maintenant }: DemandeRappel): string {
     'END:VEVENT',
     'END:VCALENDAR',
   ];
-  return lignes.map(replier).join('\r\n') + '\r\n';
+  return `${lignes.map(replier).join('\r\n')}\r\n`;
 }

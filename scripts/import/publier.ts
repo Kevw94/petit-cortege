@@ -40,7 +40,11 @@ export function verificationIncomplete(manif: ManifDeclaree): string | null {
   return manque.length ? `vérification humaine à faire : ${manque.join(', ')} (ADR 0003).` : null;
 }
 
-export async function publierJournee(journee: JourneeDeclaree, deps: DependancesPublier, seulement?: string[]): Promise<BilanPublication> {
+export async function publierJournee(
+  journee: JourneeDeclaree,
+  deps: DependancesPublier,
+  seulement?: string[],
+): Promise<BilanPublication> {
   const bilan: BilanPublication = { creees: [], dejaCreees: [], refusees: [] };
   const refuser = (id: string, motif: string) => {
     bilan.refusees.push({ id, motif });
@@ -69,7 +73,10 @@ export async function publierJournee(journee: JourneeDeclaree, deps: Dependances
       continue;
     }
     if (trace.properties?.empreinte !== empreinteTrace(manif)) {
-      refuser(manif.id, `le tracé ne correspond plus aux étapes du fichier du jour : relancer « tracer » et le relire.`);
+      refuser(
+        manif.id,
+        `le tracé ne correspond plus aux étapes du fichier du jour : relancer « tracer » et le relire.`,
+      );
       continue;
     }
     try {
@@ -93,7 +100,9 @@ export async function publierJournee(journee: JourneeDeclaree, deps: Dependances
   }
   if (bilan.creees.length > 0) {
     await publier(deps);
-    deps.journal(`Publié (${bilan.creees.length} manif${bilan.creees.length > 1 ? 's' : ''} ajoutée${bilan.creees.length > 1 ? 's' : ''}).`);
+    deps.journal(
+      `Publié (${bilan.creees.length} manif${bilan.creees.length > 1 ? 's' : ''} ajoutée${bilan.creees.length > 1 ? 's' : ''}).`,
+    );
   }
   return bilan;
 }

@@ -52,7 +52,7 @@ export function brancherChant(options: {
     if (composition) {
       const couleur = COULEURS_PANCARTE[composition.couleur]!;
       pulsant.className = 'pancarte chant-pancarte';
-      pulsant.dataset['forme'] = FORMES_PANCARTE[composition.forme]!;
+      pulsant.dataset.forme = FORMES_PANCARTE[composition.forme]!;
       pulsant.style.setProperty('--fond', enCss(couleur.fond));
       pulsant.style.setProperty('--texte', enCss(couleur.texte));
       const texte = document.createElement('span');
@@ -77,10 +77,10 @@ export function brancherChant(options: {
         setTimeout(
           () => {
             if (mouvementReduit) return; // affichage fixe, sans animation
-            pulsant.animate(
-              [{ transform: `scale(${p.fort ? 1.16 : 1.08})` }, { transform: 'scale(1)' }],
-              { duration: p.fort ? 260 : 180, easing: 'ease-out' },
-            );
+            pulsant.animate([{ transform: `scale(${p.fort ? 1.16 : 1.08})` }, { transform: 'scale(1)' }], {
+              duration: p.fort ? 260 : 180,
+              easing: 'ease-out',
+            });
           },
           (delai + p.t) * 1000,
         ),

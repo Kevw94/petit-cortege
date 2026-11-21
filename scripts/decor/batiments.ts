@@ -109,7 +109,8 @@ export function autotilerBatiments({ largeur, hauteur, emprises, constructible }
         const colonne = debut === fin ? 'seule' : cx === debut ? 'gauche' : cx === fin ? 'droite' : 'milieu';
         for (let j = 0; j < rangees; j++) {
           const i = (y - j) * largeur + cx;
-          const rangee = rangees === 1 ? m.mur.unique : j === 0 ? m.mur.bas : j === rangees - 1 ? m.mur.haut : m.mur.milieu;
+          const rangee =
+            rangees === 1 ? m.mur.unique : j === 0 ? m.mur.bas : j === rangees - 1 ? m.mur.haut : m.mur.milieu;
           batiments[i] = rangee[colonne];
           estFacade[i] = 1;
           if (j === 0 && cx === porte) facades[i] = m.porte;

@@ -124,7 +124,9 @@ describe('musique d’accueil', () => {
 describe('chants', () => {
   it('au moins trois motifs, tous de rythmes différents', () => {
     expect(MOTIFS_CHANT.length).toBeGreaterThanOrEqual(3);
-    const rythmes = MOTIFS_CHANT.map((m) => JSON.stringify([m.appel.map((x) => x.croche), m.reponse.map((x) => x.croche)]));
+    const rythmes = MOTIFS_CHANT.map((m) =>
+      JSON.stringify([m.appel.map((x) => x.croche), m.reponse.map((x) => x.croche)]),
+    );
     expect(new Set(rythmes).size).toBe(MOTIFS_CHANT.length);
   });
 
@@ -149,7 +151,9 @@ describe('chants', () => {
     const { evenements } = programmeChant(2);
     const types = new Set(evenements.map((e) => e.type));
     expect([...types].sort()).toEqual(['mains', 'tambour', 'voix']);
-    const voyelles = evenements.flatMap((e) => (e.type === 'voix' ? [{ v: e.voyelle, mesure: Math.floor(e.t / MESURE_CHANT_S) }] : []));
+    const voyelles = evenements.flatMap((e) =>
+      e.type === 'voix' ? [{ v: e.voyelle, mesure: Math.floor(e.t / MESURE_CHANT_S) }] : [],
+    );
     expect(voyelles.length).toBeGreaterThan(0);
     for (const { v, mesure } of voyelles) expect(v).toBe(mesure % 2 === 1 ? 'he' : 'ho');
     // Rien avant la fin de l'introduction au tambour.

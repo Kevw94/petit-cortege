@@ -31,7 +31,9 @@ function lirePosition(p: unknown, rang: number): Position {
     Math.abs(lon) > 180 ||
     Math.abs(lat) > 90
   ) {
-    throw new ErreurModeration(`GeoJSON : coordonnées invalides au point n° ${rang + 1} (attendu [longitude, latitude]).`);
+    throw new ErreurModeration(
+      `GeoJSON : coordonnées invalides au point n° ${rang + 1} (attendu [longitude, latitude]).`,
+    );
   }
   // L'altitude éventuelle est ignorée ; 6 décimales ≈ 10 cm, bien assez pour un cortège,
   // et deux fois moins d'octets dans la liste des manifs que la pleine précision d'uMap (#19).
@@ -51,7 +53,9 @@ export function lireParcoursGeoJson(geojson: unknown): Parcours {
     throw new ErreurModeration('GeoJSON : aucune LineString (le parcours doit être tracé comme une ligne dans uMap).');
   }
   if (trouvees.length > 1) {
-    throw new ErreurModeration(`GeoJSON : plusieurs LineString (${trouvees.length}) ; garder un seul tracé, du départ à l'arrivée.`);
+    throw new ErreurModeration(
+      `GeoJSON : plusieurs LineString (${trouvees.length}) ; garder un seul tracé, du départ à l'arrivée.`,
+    );
   }
   const coordonnees = trouvees[0];
   if (!Array.isArray(coordonnees) || coordonnees.length < 2) {

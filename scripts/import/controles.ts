@@ -48,7 +48,8 @@ export function echantillonner(parcours: Parcours, pasM = 10): Position[] {
 }
 
 /** Distance minimale (m) entre `p` et le tracé échantillonné. */
-export const distanceAuTrace = (echantillons: Position[], p: Position) => Math.min(...echantillons.map((q) => distanceM(p, q)));
+export const distanceAuTrace = (echantillons: Position[], p: Position) =>
+  Math.min(...echantillons.map((q) => distanceM(p, q)));
 
 const ABREVIATIONS: Record<string, string> = {
   pl: 'place',
@@ -96,11 +97,14 @@ export function controlerTrace({ parcours, points, rues, zones }: ATracer): Cons
   const vol = volDOiseau(points);
   const km = (m: number) => `${(m / 1000).toFixed(2)} km`;
 
-  if (longueur < LONGUEUR_MIN_M) erreurs.push(`tracé de ${Math.round(longueur)} m : trop court (minimum ${LONGUEUR_MIN_M} m).`);
+  if (longueur < LONGUEUR_MIN_M)
+    erreurs.push(`tracé de ${Math.round(longueur)} m : trop court (minimum ${LONGUEUR_MIN_M} m).`);
   if (longueur > LONGUEUR_MAX_M) erreurs.push(`tracé de ${km(longueur)} : trop long (maximum ${km(LONGUEUR_MAX_M)}).`);
   // Arrondis et accroche au graphe : quelques mètres de moins que le vol d'oiseau sont normaux.
   if (longueur < vol * 0.97 - 20) {
-    erreurs.push(`tracé de ${km(longueur)}, plus court que les ${km(vol)} à vol d'oiseau entre étapes : étapes sautées ?`);
+    erreurs.push(
+      `tracé de ${km(longueur)}, plus court que les ${km(vol)} à vol d'oiseau entre étapes : étapes sautées ?`,
+    );
   }
   if (longueur > vol * DETOUR_MAX) {
     erreurs.push(
@@ -111,23 +115,32 @@ export function controlerTrace({ parcours, points, rues, zones }: ATracer): Cons
   const echantillons = echantillonner(parcours);
   points.forEach((p, i) => {
     const ecart = distanceAuTrace(echantillons, p);
-    if (ecart > ECART_ETAPE_MAX_M) erreurs.push(`le tracé passe à ${Math.round(ecart)} m du point n° ${i + 1} [${p.join(', ')}] (maximum ${ECART_ETAPE_MAX_M} m).`);
+    if (ecart > ECART_ETAPE_MAX_M)
+      erreurs.push(
+        `le tracé passe à ${Math.round(ecart)} m du point n° ${i + 1} [${p.join(', ')}] (maximum ${ECART_ETAPE_MAX_M} m).`,
+      );
   });
   const [depart, arrivee] = [parcours.coordinates[0]!, parcours.coordinates.at(-1)!];
   if (distanceM(depart, points[0]!) > ECART_ETAPE_MAX_M) erreurs.push(`le tracé ne part pas du départ annoncé.`);
-  if (distanceM(arrivee, points.at(-1)!) > ECART_ETAPE_MAX_M) erreurs.push(`le tracé n'arrive pas à l'arrivée annoncée.`);
+  if (distanceM(arrivee, points.at(-1)!) > ECART_ETAPE_MAX_M)
+    erreurs.push(`le tracé n'arrive pas à l'arrivée annoncée.`);
 
   for (const zone of zones) {
     const ecart = distanceAuTrace(echantillons, zone.position);
     if (ecart < zone.rayonM) {
-      erreurs.push(`le tracé passe à ${Math.round(ecart)} m de ${zone.libelle} (zone à éviter, rayon ${zone.rayonM} m).`);
+      erreurs.push(
+        `le tracé passe à ${Math.round(ecart)} m de ${zone.libelle} (zone à éviter, rayon ${zone.rayonM} m).`,
+      );
     }
     const traversee = rues.find((r) => r.nom && nomDeVoie(r.nom) === nomDeVoie(zone.nom));
-    if (traversee) erreurs.push(`le tracé emprunte « ${traversee.nom} » (${traversee.m} m) : zone à éviter (${zone.libelle}).`);
+    if (traversee)
+      erreurs.push(`le tracé emprunte « ${traversee.nom} » (${traversee.m} m) : zone à éviter (${zone.libelle}).`);
   }
 
   for (const d of demiTours(parcours.coordinates)) {
-    avertissements.push(`demi-tour vers [${d.join(', ')}] : le tracé revient sur ses pas (aller-retour vers une étape ?).`);
+    avertissements.push(
+      `demi-tour vers [${d.join(', ')}] : le tracé revient sur ses pas (aller-retour vers une étape ?).`,
+    );
   }
   return { erreurs, avertissements };
 }

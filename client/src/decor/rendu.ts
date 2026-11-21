@@ -58,7 +58,13 @@ export class DecorAffiche {
   readonly #scene: Phaser.Scene;
   readonly #decor: Decor;
   readonly #ensemble: Phaser.GameObjects.Image;
-  readonly #alentours: { image: Phaser.GameObjects.Image; x: number; y: number; largeur: number; hauteur: number } | null = null;
+  readonly #alentours: {
+    image: Phaser.GameObjects.Image;
+    x: number;
+    y: number;
+    largeur: number;
+    hauteur: number;
+  } | null = null;
   readonly #blocs = new Map<BlocDecor, BlocAffiche>();
   readonly #couchesSol: string[];
   readonly #couchesBatiments: string[];
@@ -73,17 +79,30 @@ export class DecorAffiche {
     this.#couchesSol = decor.nomsCouches.filter((c) => !COUCHES_BATIMENTS.includes(c));
     this.#couchesBatiments = decor.nomsCouches.filter((c) => COUCHES_BATIMENTS.includes(c));
     this.#images = (nom) =>
-      scene.textures.exists(cleTexture(nom)) ? (scene.textures.get(cleTexture(nom)).getSourceImage() as CanvasImageSource) : undefined;
+      scene.textures.exists(cleTexture(nom))
+        ? (scene.textures.get(cleTexture(nom)).getSourceImage() as CanvasImageSource)
+        : undefined;
     this.#places = new NomsDesPlaces(scene, decor);
     const alentours = cuireAlentours(decor, this.#images);
     if (alentours) {
       const cleAlentours = `decor-alentours-${Phaser.Math.RND.uuid()}`;
       scene.textures.addCanvas(cleAlentours, alentours.canvas)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
-      const image = scene.add.image(0, 0, cleAlentours).setOrigin(0, 0).setDepth(PROFONDEUR_DECOR - 1);
-      this.#alentours = { image, x: alentours.x, y: alentours.y, largeur: alentours.largeur, hauteur: alentours.hauteur };
+      const image = scene.add
+        .image(0, 0, cleAlentours)
+        .setOrigin(0, 0)
+        .setDepth(PROFONDEUR_DECOR - 1);
+      this.#alentours = {
+        image,
+        x: alentours.x,
+        y: alentours.y,
+        largeur: alentours.largeur,
+        hauteur: alentours.hauteur,
+      };
     }
     const cle = `decor-ensemble-${Phaser.Math.RND.uuid()}`;
-    scene.textures.addCanvas(cle, dessinerVueDEnsemble(decor, this.#images))!.setFilter(Phaser.Textures.FilterMode.NEAREST);
+    scene.textures
+      .addCanvas(cle, dessinerVueDEnsemble(decor, this.#images))!
+      .setFilter(Phaser.Textures.FilterMode.NEAREST);
     this.#ensemble = scene.add.image(0, 0, cle).setOrigin(0, 0).setDepth(PROFONDEUR_DECOR);
   }
 
@@ -100,7 +119,11 @@ export class DecorAffiche {
     this.#image++;
     const a = this.#alentours;
     if (a) placer(a.image, vers({ x: a.x, y: a.y }), vers({ x: a.x + a.largeur, y: a.y + a.hauteur }));
-    placer(this.#ensemble, vers({ x: 0, y: 0 }), vers({ x: this.#decor.largeur * METRES_PAR_TUILE, y: this.#decor.hauteur * METRES_PAR_TUILE }));
+    placer(
+      this.#ensemble,
+      vers({ x: 0, y: 0 }),
+      vers({ x: this.#decor.largeur * METRES_PAR_TUILE, y: this.#decor.hauteur * METRES_PAR_TUILE }),
+    );
 
     const visibles = cadrage.echelle >= ECHELLE_MIN_BLOCS ? blocsVisibles(this.#decor, cadrage, ecran) : [];
     let aDessiner = BLOCS_DESSINES_PAR_IMAGE;
@@ -143,7 +166,10 @@ export class DecorAffiche {
 
   #dessinerBloc(bloc: BlocDecor): BlocAffiche {
     const sol = this.#cuire(bloc, this.#couchesSol);
-    const image = this.#scene.add.image(0, 0, sol.cle).setOrigin(0, 0).setDepth(PROFONDEUR_DECOR + 1);
+    const image = this.#scene.add
+      .image(0, 0, sol.cle)
+      .setOrigin(0, 0)
+      .setDepth(PROFONDEUR_DECOR + 1);
     const affiche: BlocAffiche = { image, cle: sol.cle, vu: 0, rangees: [], cleBatiments: null };
     if (!this.#couchesBatiments.some((nom) => bloc.couches[nom]?.some((gid) => gid !== 0))) return affiche;
     const batiments = this.#cuire(bloc, this.#couchesBatiments);

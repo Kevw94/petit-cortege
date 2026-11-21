@@ -97,10 +97,19 @@ export async function geocoder(
   throw new ErreurImport(`${quoi} : géocodage impossible, services indisponibles (${pannes.join(' ; ')}).`);
 }
 
-function choisir(reponse: ReponseGeocodage, requete: string, ville: string, quoi: string, service: string): LieuGeocode {
+function choisir(
+  reponse: ReponseGeocodage,
+  requete: string,
+  ville: string,
+  quoi: string,
+  service: string,
+): LieuGeocode {
   const resultats = [...(reponse.features ?? [])].sort((a, b) => b.properties.score - a.properties.score);
   const premier = resultats[0];
-  if (!premier) throw new ErreurImport(`${quoi} : « ${requete} » introuvable (${service}). Corriger l'adresse ou donner une « position ».`);
+  if (!premier)
+    throw new ErreurImport(
+      `${quoi} : « ${requete} » introuvable (${service}). Corriger l'adresse ou donner une « position ».`,
+    );
   const dansLaVille = resultats.filter((r) => memeVille(r.properties.city, ville));
   const meilleur = dansLaVille[0];
   if (!meilleur) {

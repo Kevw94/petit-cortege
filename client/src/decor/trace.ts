@@ -27,7 +27,12 @@ export class TraceAuSol {
     this.#graphics = scene.add.graphics().setDepth(PROFONDEUR.ligne);
     const libelle = (texte: string) =>
       scene.add
-        .text(0, 0, texte, { fontFamily: 'system-ui, sans-serif', fontSize: '12px', fontStyle: 'bold', color: '#ffffff' })
+        .text(0, 0, texte, {
+          fontFamily: 'system-ui, sans-serif',
+          fontSize: '12px',
+          fontStyle: 'bold',
+          color: '#ffffff',
+        })
         .setBackgroundColor('#2b2b2b')
         .setPadding(4, 1, 4, 1)
         .setOrigin(0.5, 1)
@@ -61,7 +66,10 @@ export class TraceAuSol {
       g.fillStyle(COULEUR_DEPART, 1).fillCircle(d.x, d.y, 6);
       g.fillStyle(COULEUR_SOMBRE, 1).fillCircle(a.x, a.y, 6).fillStyle(0xffffff, 1).fillCircle(a.x, a.y, 3);
     }
-    for (const [cle, point] of [['depart', depart], ['arrivee', arrivee]] as const) {
+    for (const [cle, point] of [
+      ['depart', depart],
+      ['arrivee', arrivee],
+    ] as const) {
       const p = vers(point);
       this.#libelles[cle].setPosition(Math.round(p.x), Math.round(p.y - Math.max(8, 4 * echelle)));
     }
@@ -98,11 +106,16 @@ function bande(
   const n = { x: -u.y, y: u.x }; // en travers
   const cases = LARGEUR_BANDE_M / 2;
   const point = (i: number, j: number) =>
-    vers({ x: p.x + n.x * (i * 2 - LARGEUR_BANDE_M / 2) + u.x * (j * 2 - 2), y: p.y + n.y * (i * 2 - LARGEUR_BANDE_M / 2) + u.y * (j * 2 - 2) });
+    vers({
+      x: p.x + n.x * (i * 2 - LARGEUR_BANDE_M / 2) + u.x * (j * 2 - 2),
+      y: p.y + n.y * (i * 2 - LARGEUR_BANDE_M / 2) + u.y * (j * 2 - 2),
+    });
   for (let i = 0; i < cases; i++) {
     for (let j = 0; j < 2; j++) {
       const [a, b, c, d] = [point(i, j), point(i + 1, j), point(i + 1, j + 1), point(i, j + 1)];
-      g.fillStyle(couleur(i, j), 1).fillTriangle(a.x, a.y, b.x, b.y, c.x, c.y).fillTriangle(a.x, a.y, c.x, c.y, d.x, d.y);
+      g.fillStyle(couleur(i, j), 1)
+        .fillTriangle(a.x, a.y, b.x, b.y, c.x, c.y)
+        .fillTriangle(a.x, a.y, c.x, c.y, d.x, d.y);
     }
   }
 }

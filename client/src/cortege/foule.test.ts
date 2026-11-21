@@ -139,7 +139,11 @@ describe('Cortège : masse de foule', () => {
 describe('Cortège : budget d’avatars dessinés', () => {
   /** 5 000 avatars clairsemés (un par tuile, rangées de 5 tous les 2 m) : aucune masse due à la densité. */
   const etendue = (n: number, prefixe = 'e', departM = 0) =>
-    Array.from({ length: n }, (_, i) => ({ id: `${prefixe}-${i}`, distanceM: departM - Math.floor(i / 5) * 2, propre: false }));
+    Array.from({ length: n }, (_, i) => ({
+      id: `${prefixe}-${i}`,
+      distanceM: departM - Math.floor(i / 5) * 2,
+      propre: false,
+    }));
 
   it('au-delà du budget, seuls les avatars tirés sont dessinés et tout le reste passe en masse', () => {
     const foule = composerFoule(etendue(5000), { budget: 2000 });
@@ -173,7 +177,10 @@ describe('Cortège : budget d’avatars dessinés', () => {
 
   it('ses propres avatars sont dessinés en plus du budget', () => {
     const tous = etendue(5000);
-    const foule = composerFoule(tous.map((a, i) => ({ ...a, propre: i < 3 })), { budget: 2000 });
+    const foule = composerFoule(
+      tous.map((a, i) => ({ ...a, propre: i < 3 })),
+      { budget: 2000 },
+    );
 
     expect(foule.dessines.filter((a) => a.propre)).toHaveLength(3);
   });

@@ -115,7 +115,15 @@ describe("atlas d'apparence généré depuis la planche Kenney", () => {
     for (let a = 0; a < ACCESSOIRES.length; a++)
       for (let coupe = 0; coupe < COUPES.length; coupe++)
         for (let haut = 0; haut < HAUTS.length; haut++) {
-          const apparence = { teint: 5, couleurCheveux: 6, coupe, haut, couleurHaut: 12, couleurBas: 12, accessoire: a };
+          const apparence = {
+            teint: 5,
+            couleurCheveux: 6,
+            coupe,
+            haut,
+            couleurHaut: 12,
+            couleurBas: 12,
+            accessoire: a,
+          };
           for (const nom of couchesApparence(apparence)) expect(atlas.description.cadres, nom).toHaveProperty([nom]);
         }
     expect(decoderApparence(0)).not.toBeNull();
