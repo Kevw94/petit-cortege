@@ -46,59 +46,59 @@ describe('Cortège mémorisé', () => {
     }
   });
 
-  it("ne refait pas le placement quand seule l'heure change", () => {
+  it("ne refait pas les rangs quand seule l'heure change", () => {
     const memorise = new CortegeMemorise();
     // tard-2 entre à départ + 74 s, tard-3 à départ + 81 s : rien n'entre entre les deux.
-    const placement = memorise.placement({ ...base, maintenant: new Date(DEPART + 74_000) });
+    const rangs = memorise.rangs({ ...base, maintenant: new Date(DEPART + 74_000) });
 
-    expect(memorise.placement({ ...base, maintenant: new Date(DEPART + 75_500) })).toBe(placement);
-    expect(memorise.placement({ ...base, maintenant: new Date(DEPART + 80_999) })).toBe(placement);
+    expect(memorise.rangs({ ...base, maintenant: new Date(DEPART + 75_500) })).toBe(rangs);
+    expect(memorise.rangs({ ...base, maintenant: new Date(DEPART + 80_999) })).toBe(rangs);
   });
 
-  it('refait le placement quand un nouvel avatar entre', () => {
+  it('refait les rangs quand un nouvel avatar entre', () => {
     const memorise = new CortegeMemorise();
-    const placement = memorise.placement({ ...base, maintenant: new Date(DEPART + 80_000) });
+    const rangs = memorise.rangs({ ...base, maintenant: new Date(DEPART + 80_000) });
 
-    expect(memorise.placement({ ...base, maintenant: new Date(DEPART + 81_000) })).not.toBe(placement);
+    expect(memorise.rangs({ ...base, maintenant: new Date(DEPART + 81_000) })).not.toBe(rangs);
   });
 
-  it('après la dernière entrée, le placement ne bouge plus jusqu’à la fin', () => {
+  it('après la dernière entrée, les rangs ne bougent plus jusqu’à la fin', () => {
     const memorise = new CortegeMemorise();
-    const placement = memorise.placement({ ...base, maintenant: new Date(DEPART + 3_000_000) });
+    const rangs = memorise.rangs({ ...base, maintenant: new Date(DEPART + 3_000_000) });
 
-    expect(memorise.placement({ ...base, maintenant: new Date(Date.parse(manif.fin) + 3_600_000) })).toBe(placement);
+    expect(memorise.rangs({ ...base, maintenant: new Date(Date.parse(manif.fin) + 3_600_000) })).toBe(rangs);
   });
 
-  it('refait le placement quand les entrées, les propres ou les retraits changent', () => {
+  it('refait les rangs quand les entrées, les propres ou les retraits changent', () => {
     const memorise = new CortegeMemorise();
     const maintenant = new Date(DEPART + 75_000);
-    const placement = memorise.placement({ ...base, maintenant });
+    const rangs = memorise.rangs({ ...base, maintenant });
 
-    const autresEntrees = memorise.placement({ ...base, entrees: [...entrees, fichier([entree('x', DEPART)])], maintenant });
-    expect(autresEntrees).not.toBe(placement);
-    const autresPropres = memorise.placement({ ...base, propres: [], maintenant });
+    const autresEntrees = memorise.rangs({ ...base, entrees: [...entrees, fichier([entree('x', DEPART)])], maintenant });
+    expect(autresEntrees).not.toBe(rangs);
+    const autresPropres = memorise.rangs({ ...base, propres: [], maintenant });
     expect(autresPropres).not.toBe(autresEntrees);
-    const autresRetraits = memorise.placement({ ...base, propres: [], retraits: ['tard-1'], maintenant });
+    const autresRetraits = memorise.rangs({ ...base, propres: [], retraits: ['tard-1'], maintenant });
     expect(autresRetraits).not.toBe(autresPropres);
   });
 
-  it('garde le placement pour des listes recréées au même contenu (ex. retraits recomposés à chaque image)', () => {
+  it('garde les rangs pour des listes recréées au même contenu (ex. retraits recomposés à chaque image)', () => {
     const memorise = new CortegeMemorise();
     const maintenant = new Date(DEPART + 75_000);
-    const placement = memorise.placement({ ...base, maintenant });
+    const rangs = memorise.rangs({ ...base, maintenant });
 
     expect(
-      memorise.placement({ manif: { ...manif }, entrees: [...entrees], propres: [...propres], retraits: [...retraits], maintenant }),
-    ).toBe(placement);
+      memorise.rangs({ manif: { ...manif }, entrees: [...entrees], propres: [...propres], retraits: [...retraits], maintenant }),
+    ).toBe(rangs);
   });
 
-  it('refait le placement si le départ de la manif est décalé', () => {
+  it('refait les rangs si le départ de la manif est décalé', () => {
     const memorise = new CortegeMemorise();
     const maintenant = new Date(DEPART + 75_000);
-    const placement = memorise.placement({ ...base, maintenant });
+    const rangs = memorise.rangs({ ...base, maintenant });
     const decalee = { ...manif, depart: new Date(DEPART + 60_000).toISOString() };
 
-    expect(memorise.placement({ ...base, manif: decalee, maintenant })).not.toBe(placement);
+    expect(memorise.rangs({ ...base, manif: decalee, maintenant })).not.toBe(rangs);
     expect(memorise.calculer({ ...base, manif: decalee, maintenant })).toEqual(
       calculerCortege({ ...base, manif: decalee, maintenant }),
     );

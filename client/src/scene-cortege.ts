@@ -93,7 +93,7 @@ function projeteur(georef: Georeference) {
 
 export class SceneCortege extends Phaser.Scene {
   #donnees!: DonneesScene;
-  /** Placement gardé d'une image à l'autre : seules les positions sont recalculées. */
+  /** Rangs gardés d'une image à l'autre : seules les positions sont recalculées. */
   readonly #cortege = new CortegeMemorise();
   #decor: DecorAffiche | null = null;
   /** Partie nette du plan de la ville (hors fondu) : le dézoom maximal n'en sort pas. */

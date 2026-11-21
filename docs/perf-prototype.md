@@ -114,13 +114,14 @@ Sans ralentissement, la vue `tout` tombe déjà à 23–28 images/s à 5 000 ava
 principal ne travaille que 1,5 à 4 ms : c'est la limite de **SwiftShader**, pas de Phaser. À ×6, le coût du
 fil principal par avatar dessiné est d'environ **3 µs en sprites** et **1,7 µs en Blitter**.
 
-### Placement mémorisé (ticket #36)
+### Rangs mémorisés (ticket #36)
 
-Depuis #36, le Cortège se calcule en deux temps (`client/src/cortege/cortege.ts`) : le **placement**
-(hachage, tri des groupes d'entrée, grille, place sur la place d'arrivée) est gardé par `CortegeMemorise`
-et refait seulement quand un avatar entre ou que les entrées, les propres, les retraits ou le départ changent ;
+Depuis #36, le Cortège se calcule en deux temps (`client/src/cortege/cortege.ts`) : les **rangs**
+(hachage, tri des groupes d'entrée, grille, place sur la place d'arrivée) sont gardés par `CortegeMemorise`
+et refaits seulement quand un avatar entre ou que les entrées, les propres, les retraits ou le départ changent ;
 à chaque image, seules les **positions** à l'heure courante sont recalculées. Le prototype, la vue 2D et la
-vue 3D l'utilisent. Même machine, même passage, `npm run mesure-perf -- --n=10000,20000
+vue 3D l'utilisent (dans le prototype, `maj` ne règle donc plus que l'intervalle de recalcul des positions et
+de leur conversion en pixels). Même machine, même passage, `npm run mesure-perf -- --n=10000,20000
 --techniques=sprites,blitter --vues=rue --ralentis=4,6 --majs=0,250 --duree=4000`, vue `rue`, 20 000 avatars
 (images/s · MAJ en ms par image) :
 
@@ -135,11 +136,14 @@ vue 3D l'utilisent. Même machine, même passage, `npm run mesure-perf -- --n=10
 | ×6 | 250 ms | sprites | 39,9 · 9,2 (p95 100 ms) | **54,8 · 2,3 (p95 33 ms)** |
 | ×6 | 250 ms | blitter | 39,5 · 9,8 (p95 109 ms) | **58,7 · 1,4 (p95 17 ms)** |
 
-Sans ralentissement (Node, `scenarioPerf(20000)`), une image coûte ≈ 22 ms avec `calculerCortege` et
-≈ 3,6 ms avec `CortegeMemorise`. Ce qui reste à chaque image, c'est la position de chaque avatar et, dans le
-prototype, sa conversion en pixels pour les 20 000 : l'à-coup de l'image du recalcul (point 1 ci-dessous)
-disparaît presque (p95 de 67–109 ms à 17–33 ms). Pendant une vraie manif, le placement est refait à chaque
-seconde où quelqu'un entre (heures d'entrée à la seconde), au plus une fois par seconde.
+**C'est le meilleur cas** : le scénario du prototype se place après la dernière entrée, les rangs ne sont
+donc jamais refaits pendant la mesure. Pendant une vraie manif, ils le sont à chaque seconde où quelqu'un
+entre (heures d'entrée à la seconde). Mesure sans ralentissement (Node, `scenarioPerf(20000)`, 1 h après le
+départ, soit ≈ 10 000 avatars entrés et une entrée toutes les 0,36 s, 600 images de 16 ms) : `calculerCortege`
+coûte 10,8 ms par image en moyenne (p95 16,7 ms), `CortegeMemorise` 1,3 ms (p95 1,8 ms), avec une image
+sur ≈ 22 à 12,5 ms, celle où les rangs sont refaits. Après la dernière entrée, une image coûte ≈ 22 ms avec
+`calculerCortege` et ≈ 3,6 ms avec `CortegeMemorise`. Ce qui reste à chaque image, c'est la position de chaque
+avatar et, dans le prototype, sa conversion en pixels pour les 20 000.
 
 ## Analyse
 

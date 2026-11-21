@@ -358,7 +358,7 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
 
   // Animation de marche : allure réutilisée d'un avatar à l'autre, tronçons où la foule avance.
   const allure = allureImmobile();
-  // Placement gardé d'une image à l'autre : seules les positions sont recalculées.
+  // Rangs gardés d'une image à l'autre : seules les positions sont recalculées.
   const memorise = new CortegeMemorise();
   const tronconsEnMarche = new Set<number>();
   const mouvementReduit = requeteMouvementReduit();

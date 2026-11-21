@@ -1,5 +1,6 @@
 /**
- * Le Cortège : fonction pure, sans Phaser ni réseau (ADR 0004).
+ * Le Cortège : fonction pure, sans Phaser ni réseau (ADR 0004). `CortegeMemorise` donne le
+ * même résultat en gardant les rangs d'une image à l'autre (seules les positions changent).
  * Manif + entrées publiées + heure courante → état de la manif et position de
  * chaque avatar le long du parcours. Tous les clients calculent la même foule.
  *
@@ -91,67 +92,68 @@ interface Marcheur {
 }
 
 /** Place fixe d'un avatar : son rang dans le cortège et sa place sur la place d'arrivée. */
-interface PlaceDAvatar {
+interface RangDAvatar {
   id: string;
   apparence: number;
   pancarte: number;
   propre: boolean;
   rang: number;
   decalageRueM: number;
-  place: { avantM: number; coteM: number };
+  placeDArrivee: { avantM: number; coteM: number };
 }
 
 /**
- * Placement du cortège : la place de chaque avatar entré, dans l'ordre d'entrée. C'est la partie
+ * Rangs du cortège : la place fixe de chaque avatar entré, dans l'ordre d'entrée. C'est la partie
  * coûteuse du calcul (hachage, tri, grille). Elle ne dépend de l'heure que par les avatars déjà
  * entrés : elle vaut telle quelle pour toute heure de `[valableDesMs, valableJusquAMs[`, où
  * personne n'entre.
  */
-export interface PlacementDuCortege {
-  readonly places: readonly PlaceDAvatar[];
+export interface RangsDuCortege {
+  readonly avatars: readonly RangDAvatar[];
   readonly valableDesMs: number;
   readonly valableJusquAMs: number;
 }
 
 /** Le Cortège à l'heure `maintenant`. Fonction pure : à chaque appel, tout est recalculé. */
 export function calculerCortege(entrees: EntreesDuCortege): Cortege {
-  return positionnerCortege(placerCortege(entrees), entrees.manif, entrees.maintenant);
+  return positionnerCortege(rangerCortege(entrees), entrees.manif, entrees.maintenant);
 }
 
 /**
- * Calcule le même Cortège que `calculerCortege`, mais garde le placement d'un appel à l'autre :
- * à chaque image, seules les positions à l'heure courante sont recalculées. Le placement est
- * refait quand un avatar entre, ou quand les entrées, les propres, les retraits ou le départ
+ * Calcule le même Cortège que `calculerCortege`, mais garde les rangs d'un appel à l'autre :
+ * à chaque image, seules les positions à l'heure courante sont recalculées. Les rangs sont
+ * refaits quand un avatar entre, ou quand les entrées, les propres, les retraits ou le départ
  * changent (listes comparées élément par élément : une liste recréée au même contenu suffit).
  */
 export class CortegeMemorise {
-  #placement: PlacementDuCortege | null = null;
+  #rangs: RangsDuCortege | null = null;
   #cle: { manifId: string; depart: string; entrees: readonly unknown[]; propres: readonly unknown[]; retraits: readonly unknown[] } | null = null;
 
   calculer(entrees: EntreesDuCortege): Cortege {
-    return positionnerCortege(this.placement(entrees), entrees.manif, entrees.maintenant);
+    return positionnerCortege(this.rangs(entrees), entrees.manif, entrees.maintenant);
   }
 
-  placement(entrees: EntreesDuCortege): PlacementDuCortege {
+  /** Rangs valables pour ces entrées (les mêmes qu'à l'appel précédent s'il n'y a rien à refaire). */
+  rangs(entrees: EntreesDuCortege): RangsDuCortege {
     const { manif, propres = [], retraits = [], maintenant } = entrees;
     const t = maintenant.getTime();
     const cle = this.#cle;
     if (
-      this.#placement &&
+      this.#rangs &&
       cle &&
-      t >= this.#placement.valableDesMs &&
-      t < this.#placement.valableJusquAMs &&
+      t >= this.#rangs.valableDesMs &&
+      t < this.#rangs.valableJusquAMs &&
       cle.manifId === manif.id &&
       cle.depart === manif.depart &&
       memesElements(cle.entrees, entrees.entrees) &&
       memesElements(cle.propres, propres) &&
       memesElements(cle.retraits, retraits)
     ) {
-      return this.#placement;
+      return this.#rangs;
     }
-    this.#placement = placerCortege(entrees);
+    this.#rangs = rangerCortege(entrees);
     this.#cle = { manifId: manif.id, depart: manif.depart, entrees: [...entrees.entrees], propres: [...propres], retraits: [...retraits] };
-    return this.#placement;
+    return this.#rangs;
   }
 }
 
@@ -161,14 +163,14 @@ function memesElements(a: readonly unknown[], b: readonly unknown[]): boolean {
   return true;
 }
 
-/** Places des avatars entrés à l'heure `maintenant`, dans l'ordre d'entrée (ADR 0004). */
-export function placerCortege({ manif, entrees, propres = [], retraits = [], maintenant }: EntreesDuCortege): PlacementDuCortege {
+/** Rangs des avatars entrés à l'heure `maintenant`, dans l'ordre d'entrée (ADR 0004). */
+function rangerCortege({ manif, entrees, propres = [], retraits = [], maintenant }: EntreesDuCortege): RangsDuCortege {
   const depart = Date.parse(manif.depart);
   const t = maintenant.getTime();
   const idsPropres = new Set(propres.filter((e) => e.m === manif.id).map((e) => e.a));
   const retires = new Set(retraits);
 
-  // Fenêtre où le placement vaut : entre la dernière entrée passée et la prochaine à venir.
+  // Fenêtre où ces rangs valent : entre la dernière entrée passée et la prochaine à venir.
   // Les avatars propres et retirés n'en dépendent pas (toujours là, ou jamais).
   let valableDesMs = -Infinity;
   let valableJusquAMs = Infinity;
@@ -200,27 +202,27 @@ export function placerCortege({ manif, entrees, propres = [], retraits = [], mai
   // derrière la queue, pas au point de départ. Une place ne dépend que des entrées
   // précédentes : elle ne bouge pas quand d'autres arrivent après.
   const grille = new PlacesDuCortege();
-  const places: PlaceDAvatar[] = [];
+  const avatars: RangDAvatar[] = [];
   for (const entreeMs of [...groupes.keys()].sort((a, b) => a - b)) {
     const groupe = groupes.get(entreeMs)!.sort((a, b) => a.hachage - b.hachage || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     for (const marcheur of groupe) {
       const { rang, colonne, case_ } = grille.prendre(marcheur.hachage);
-      places.push({
+      avatars.push({
         id: marcheur.id,
         apparence: marcheur.apparence,
         pancarte: marcheur.pancarte,
         propre: idsPropres.has(marcheur.id),
         rang,
         decalageRueM: (colonne - (COLONNES_FOULE - 1) / 2) * PAS_FOULE_M,
-        place: placeSurLaPlace(case_),
+        placeDArrivee: placeSurLaPlace(case_),
       });
     }
   }
-  return { places, valableDesMs, valableJusquAMs };
+  return { avatars, valableDesMs, valableJusquAMs };
 }
 
-/** Positions des avatars placés, à l'heure `maintenant` : peu coûteux, à refaire à chaque image. */
-export function positionnerCortege(placement: PlacementDuCortege, manif: ManifPubliee, maintenant: Date): Cortege {
+/** Positions des avatars rangés, à l'heure `maintenant` : peu coûteux, à refaire à chaque image. */
+function positionnerCortege(rangs: RangsDuCortege, manif: ManifPubliee, maintenant: Date): Cortege {
   const depart = Date.parse(manif.depart);
   const t = maintenant.getTime();
 
@@ -233,11 +235,11 @@ export function positionnerCortege(placement: PlacementDuCortege, manif: ManifPu
   const avanceeM = Math.max(0, t - depart) * VITESSE_M_PAR_MS;
   const rassembles = terminee || danse;
 
-  const avatars: AvatarDuCortege[] = placement.places.map((p) => {
+  const avatars: AvatarDuCortege[] = rangs.avatars.map((p) => {
     const position = positionDansLaFoule(
       rassembles ? Infinity : avanceeM - p.rang * PAS_FOULE_M,
       p.decalageRueM,
-      p.place,
+      p.placeDArrivee,
       manif.longueurM,
     );
     return {
