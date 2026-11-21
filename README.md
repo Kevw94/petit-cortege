@@ -56,3 +56,5 @@ Deux seams seulement (voir la spec) :
 2. **Le Cortège**, fonction pure sans Phaser ni réseau (`client/src/cortege/`), qui lit ces fixtures.
 
 Si un test serveur change le format publié, les fixtures changent aussi : les committer avec.
+
+La CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) lance typecheck, tests (contre un Postgres 16 de service) et build sur chaque PR et chaque push sur `main`, et échoue si des fixtures ne sont pas commitées.
