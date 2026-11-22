@@ -10,10 +10,30 @@
  *
  * Les données (partition, chants, réglages d'ambiance) viennent des modules purs voisins.
  */
-import { frequenceMidi } from './alea';
+import { aleaDepuis, combinerGraines, frequenceMidi, type Alea } from './alea';
 import { reponseRue } from './acoustique';
+import { balancementDouble, creerBatucada, presenceBatucada, TEMPO_MARCHE, TEMPS_PAR_MESURE } from './batucada';
 import { bruitRose } from './bruit';
+import { programmeChant } from './chants';
 import { fouleLointaine } from './foule-lointaine';
+import {
+  creerPercussions,
+  jouerAtterrissage,
+  jouerClameur,
+  jouerDeclencheur,
+  jouerMainsFoule,
+  jouerPose,
+  rafale as rafaleDe,
+  type OptionsRafale,
+} from './frappes';
+import { TEMPO_DANSE_PAR_S } from '../cortege/marche';
+import {
+  instantDuTempsDeDanse,
+  MARCHEURS_MAX,
+  marcheursProches,
+  posesDePied,
+  premierTempsDeDanse,
+} from './rythme-foule';
 import type { ReglagesAmbiance } from './ambiance';
 import type { EvenementChant, ProgrammeChant, Voyelle } from './chants';
 import { creerBrouhahaVoix } from './moteur-voix';
@@ -38,6 +58,8 @@ export interface MoteurSon {
    * caler l'affichage, ou `null` si aucun son ne sort (coupé, pas encore de geste…).
    */
   jouerChant(programme: ProgrammeChant): number | null;
+  /** La photo finale est prise : déclencheur, puis la foule crie et applaudit (hors scène). */
+  jouerPhoto(): void;
 }
 
 /** Volume général, modéré. */
@@ -167,6 +189,15 @@ export function creerMoteurSon(actifAuDepart: boolean): MoteurSon {
       jouerProgrammeChant(bus, courante, programme, bus.ctx.currentTime + delai);
       courante.baisserPourChant?.(bus.ctx.currentTime + delai, programme.duree);
       return delai + (bus.ctx.outputLatency || bus.ctx.baseLatency || 0);
+    },
+    jouerPhoto() {
+      if (!doitJouer() || !bus || bus.ctx.state !== 'running') return;
+      // Sur le bus général : la clameur continue pendant que la scène passe à l'image finale.
+      const t = bus.ctx.currentTime + 0.02;
+      const alea = aleaDepuis(Math.floor(Math.random() * 2 ** 31));
+      jouerDeclencheur(bus.ctx, bus.bruit, bus.maitre, t);
+      jouerClameur(bus.ctx, bus.maitre, t + 0.3, 1.4, alea);
+      jouerApplaudissements(bus, bus.maitre, t + 0.45, 1);
     },
   };
 }
@@ -360,7 +391,14 @@ const BAISSE_AMBIANCE_CHANT = 0.55;
 /** Niveau du bruit de foule (souffle continu) : la rumeur de voix porte maintenant l'essentiel. */
 const NIVEAU_BROUHAHA = 0.25;
 
+/** Pas des voisins (talon + semelle). */
+const VOLUME_PAS = 0.07;
+/** Niveau du groupe de percussions quand `percussions` vaut 1 et qu'il est tout près. */
+const VOLUME_BATUCADA = 0.8;
+
 const REGLAGES_PAR_DEFAUT: ReglagesAmbiance = {
+  allure: 'arret',
+  chantsLointainsParMinute: 0,
   foule: 0.2,
   brouhaha: 0.25,
   coupureHz: 800,
@@ -508,16 +546,51 @@ function sceneManif(b: Bus, lireReglages: () => ReglagesAmbiance | null): Scene 
     });
   }, DELAI_FOULE_MS);
 
+  // Batucada : un groupe qui va et vient pendant la marche, tout près pendant la danse.
+  const graineScene = Math.floor(Math.random() * 2 ** 31);
+  const alea = aleaDepuis(combinerGraines(graineScene, 2));
+  const groupe = ctx.createGain();
+  const groupeAssourdi = ctx.createBiquadFilter();
+  groupeAssourdi.type = 'lowpass';
+  groupeAssourdi.frequency.value = 600;
+  groupeAssourdi.Q.value = 0;
+  const groupeNiveau = ctx.createGain();
+  groupeNiveau.gain.value = 0;
+  const groupeEnvoi = ctx.createGain();
+  groupeEnvoi.gain.value = 0.7;
+  groupe.connect(groupeAssourdi);
+  const groupePan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+  if (groupePan) {
+    groupeAssourdi.connect(groupePan);
+    groupePan.connect(groupeNiveau);
+  } else groupeAssourdi.connect(groupeNiveau);
+  groupeNiveau.connect(ambiance.sortie);
+  groupeNiveau.connect(groupeEnvoi);
+  groupeEnvoi.connect(ambiance.envoi);
+  const percussions = creerPercussions(ctx, b.bruit, groupe);
+  sources.push(...percussions.sources);
+  noeuds.push(...percussions.noeuds, groupe, groupeAssourdi, groupeNiveau, groupeEnvoi);
+  if (groupePan) noeuds.push(groupePan);
+  const batucadaMarche = creerBatucada(graineScene);
+  const batucadaDanse = creerBatucada(combinerGraines(graineScene, 1), { breaks: false });
+  let mesureMarche = 0;
+  let debutMesureMarche = ctx.currentTime + 0.5;
+  /** Prochain temps (entier, début de mesure) de la danse à programmer. */
+  let tempsDanse: number | null = null;
+  const reglerGroupe = (niveau: number, presence: number, pan: number, maintenant: number) => {
+    groupeNiveau.gain.setTargetAtTime(niveau * VOLUME_BATUCADA, maintenant, 0.8);
+    groupeAssourdi.frequency.setTargetAtTime(500 + 5500 * presence ** 2, maintenant, 0.8);
+    groupeEnvoi.gain.setTargetAtTime(0.9 - 0.6 * presence, maintenant, 0.8);
+    groupePan?.pan.setTargetAtTime(pan, maintenant, 2);
+  };
+
+  const marcheurs = marcheursProches(graineScene);
+  let horizonPas = ctx.currentTime;
   let reglagesAppliques: ReglagesAmbiance | null = null;
   let prochainPas = ctx.currentTime + 0.3;
   let prochainEvenement = ctx.currentTime + 4 + Math.random() * 6;
-  // Percussions lointaines : un motif de huit croches générique, qui va et vient.
-  const MOTIF = [1, 0, 0, 1, 0, 0, 1, 0] as const;
-  const CROCHE = 60 / 96 / 2;
-  let prochaineCroche = ctx.currentTime + 1;
-  let croche = 0;
-  let mesuresRestantes = 4;
-  let joue = false;
+  let prochainChantLointain = ctx.currentTime + 15 + 25 * Math.random();
+  let numeroChantLointain = Math.floor(Math.random() * 1000);
 
   const programmer = () => {
     const r = lireReglages() ?? REGLAGES_PAR_DEFAUT;
@@ -534,29 +607,93 @@ function sceneManif(b: Bus, lireReglages: () => ReglagesAmbiance | null): Scene 
     const horizon = maintenant + AVANCE_S;
     voix.programmer(maintenant, horizon);
     if (prochainPas < maintenant - 1) prochainPas = maintenant;
-    if (prochaineCroche < maintenant - 1) prochaineCroche = maintenant + 0.1;
+    if (horizonPas < maintenant - 1) horizonPas = maintenant;
     if (prochainEvenement < maintenant - 1) prochainEvenement = maintenant + 2;
-    // Pas : processus de Poisson, frottements sourds et discrets.
-    while (r.pasParSeconde > 0 && prochainPas < horizon) {
-      jouerPas(b, evenements, prochainPas);
-      prochainPas += -Math.log(1 - Math.random()) / r.pasParSeconde;
-    }
-    if (r.pasParSeconde <= 0) prochainPas = horizon;
-    while (prochaineCroche < horizon) {
-      if (croche === 0 && --mesuresRestantes <= 0) {
-        joue = !joue && r.percussions > 0;
-        mesuresRestantes = joue ? 4 + Math.floor(Math.random() * 5) : 2 + Math.floor(Math.random() * 4);
+    if (prochainChantLointain < maintenant - 1) prochainChantLointain = maintenant + 5;
+
+    // Pieds : on piétine en attendant (au hasard), on marche (pas cadencés des voisins).
+    if (r.allure === 'marche') {
+      const n = Math.min(MARCHEURS_MAX, Math.max(1, Math.round(r.pasParSeconde / 2)));
+      for (const m of marcheurs.slice(0, n)) {
+        for (const t of posesDePied(m, horizonPas, horizon)) jouerPose(ctx, b.bruit, evenements, t, m, VOLUME_PAS);
       }
-      if (joue && MOTIF[croche] && Math.random() > 0.12) {
-        jouerTambour(b, evenements, prochaineCroche + (Math.random() - 0.5) * 0.02, r.percussions * 0.5, true);
+      prochainPas = horizon;
+    } else {
+      while (r.pasParSeconde > 0 && prochainPas < horizon) {
+        jouerPas(b, evenements, prochainPas);
+        prochainPas += -Math.log(1 - Math.random()) / r.pasParSeconde;
       }
-      croche = (croche + 1) % MOTIF.length;
-      prochaineCroche += CROCHE;
+      if (r.pasParSeconde <= 0) prochainPas = horizon;
     }
+    horizonPas = horizon;
+
+    if (r.allure === 'danse') {
+      // Danse finale : la batucada joue tout près, calée sur l'animation (les surdos
+      // frappent quand la foule retombe) ; la foule saute sur chaque temps et tape dans
+      // ses mains sur les temps 2 et 4.
+      const versContexte = horlogeAnimation(ctx);
+      const noire = 1 / TEMPO_DANSE_PAR_S;
+      if (tempsDanse === null || versContexte(instantDuTempsDeDanse(tempsDanse)) < maintenant - 0.5) {
+        const k = premierTempsDeDanse(performance.now() / 1000 + 0.2);
+        tempsDanse = k + ((TEMPS_PAR_MESURE - (k % TEMPS_PAR_MESURE)) % TEMPS_PAR_MESURE);
+      }
+      const ampleur = 0.4 + 0.6 * r.foule;
+      while (versContexte(instantDuTempsDeDanse(tempsDanse)) < horizon) {
+        const t0 = versContexte(instantDuTempsDeDanse(tempsDanse));
+        for (const f of batucadaDanse.mesure(tempsDanse / TEMPS_PAR_MESURE).frappes) {
+          percussions.frapper(f, t0 + (f.temps + balancementDouble(f.temps)) * noire);
+        }
+        for (let k = 0; k < TEMPS_PAR_MESURE; k++) {
+          jouerAtterrissage(ctx, b.bruit, evenements, t0 + k * noire, ampleur);
+          if (k % 2 === 1) jouerMainsFoule(ctx, b.bruit, evenements, t0 + k * noire, ampleur, alea);
+        }
+        tempsDanse += TEMPS_PAR_MESURE;
+      }
+      reglerGroupe(r.percussions, 1, 0.1, maintenant);
+    } else {
+      // Marche : le groupe remonte le cortège, passe, s'éloigne, se tait un moment.
+      tempsDanse = null;
+      const presence = r.percussions > 0 ? presenceBatucada(maintenant, graineScene) : 0;
+      const noire = 60 / TEMPO_MARCHE;
+      if (debutMesureMarche < maintenant - 1) debutMesureMarche = maintenant + 0.1;
+      while (debutMesureMarche < horizon) {
+        if (presence > 0.01) {
+          for (const f of batucadaMarche.mesure(mesureMarche).frappes) {
+            percussions.frapper(f, debutMesureMarche + (f.temps + balancementDouble(f.temps)) * noire);
+          }
+        }
+        mesureMarche++;
+        debutMesureMarche += TEMPS_PAR_MESURE * noire;
+      }
+      // Il passe d'un côté à l'autre pendant qu'il remonte le cortège.
+      const pan = 0.6 * Math.sin((maintenant + graineScene) / 37);
+      reglerGroupe(r.percussions * presence, presence, pan, maintenant);
+    }
+
+    // Événements : sifflets, applaudissements, clameurs (« ouais ! » sans paroles).
     while (prochainEvenement < horizon) {
-      if (Math.random() < 0.35) jouerSifflet(b, evenements, prochainEvenement);
-      else jouerApplaudissements(b, evenements, prochainEvenement, 0.5 + 0.5 * r.brouhaha);
+      const x = Math.random();
+      if (r.allure === 'danse' && x < 0.55) {
+        jouerClameur(ctx, evenements, prochainEvenement, 0.8 + 0.4 * r.foule, alea);
+        jouerApplaudissements(b, evenements, prochainEvenement + 0.3, 0.6 + 0.4 * r.brouhaha);
+      } else if (x < 0.3) jouerSifflet(b, evenements, prochainEvenement);
+      else if (x < 0.7) jouerApplaudissements(b, evenements, prochainEvenement, 0.5 + 0.5 * r.brouhaha);
+      else {
+        jouerClameur(ctx, evenements, prochainEvenement, 0.4 + 0.6 * r.foule, alea);
+        jouerApplaudissements(b, evenements, prochainEvenement + 0.4, 0.4 + 0.4 * r.brouhaha);
+      }
       prochainEvenement += Math.max(3, (-Math.log(1 - Math.random()) * 60) / Math.max(0.1, r.evenementsParMinute));
+    }
+
+    // Au loin, un groupe scande un appel-réponse sans paroles (comme le chant local, assourdi).
+    while (prochainChantLointain < horizon) {
+      if (r.chantsLointainsParMinute > 0) {
+        jouerChantLointain(b, ambiance, programmeChant(numeroChantLointain++), prochainChantLointain, alea);
+      }
+      prochainChantLointain += Math.max(
+        20,
+        (-Math.log(1 - Math.random()) * 60) / Math.max(0.05, r.chantsLointainsParMinute),
+      );
     }
   };
   programmer();
@@ -597,36 +734,24 @@ function sceneManif(b: Bus, lireReglages: () => ReglagesAmbiance | null): Scene 
   };
 }
 
-/** Courte rafale de bruit filtré, enveloppe percussive : base des pas, des mains, des tambours. */
-function rafale(
-  b: Bus,
-  sortie: AudioNode,
-  t: number,
-  {
-    type,
-    frequence,
-    q = 1,
-    duree,
-    volume,
-  }: { type: BiquadFilterType; frequence: number; q?: number; duree: number; volume: number },
-): void {
-  const { ctx } = b;
-  const source = ctx.createBufferSource();
-  source.buffer = b.bruit;
-  const filtre = ctx.createBiquadFilter();
-  filtre.type = type;
-  filtre.frequency.value = frequence;
-  filtre.Q.value = q;
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0, t);
-  g.gain.linearRampToValueAtTime(volume, t + 0.004);
-  g.gain.setTargetAtTime(0, t + 0.006, duree / 4);
-  source.connect(filtre);
-  filtre.connect(g);
-  g.connect(sortie);
-  source.start(t, Math.random() * (b.bruit.duration - 1));
-  source.stop(t + duree + 0.05);
-  source.onended = () => g.disconnect();
+/** Courte rafale de bruit filtré (voir `frappes.ts`). */
+function rafale(b: Bus, sortie: AudioNode, t: number, options: OptionsRafale): void {
+  rafaleDe(b.ctx, b.bruit, sortie, t, options);
+}
+
+/**
+ * Passe de l'horloge de l'animation (`performance.now()`, en secondes) à celle du
+ * contexte audio, latence de sortie comprise : un son programmé à l'instant rendu
+ * s'entend quand l'image correspondante s'affiche.
+ */
+function horlogeAnimation(ctx: AudioContext): (tempsS: number) => number {
+  const horodatage = ctx.getOutputTimestamp?.();
+  const { contextTime, performanceTime } = horodatage ?? {};
+  if (contextTime !== undefined && performanceTime !== undefined && performanceTime > 0) {
+    return (tempsS) => contextTime + tempsS - performanceTime / 1000;
+  }
+  const ecart = ctx.currentTime - performance.now() / 1000 - (ctx.outputLatency || ctx.baseLatency || 0);
+  return (tempsS) => tempsS + ecart;
 }
 
 function jouerPas(b: Bus, sortie: AudioNode, t: number): void {
@@ -758,6 +883,35 @@ function jouerProgrammeChant(b: Bus, scene: Sorties, programme: ProgrammeChant, 
   brancher(ctx, bus, scene, 0.3);
   for (const e of programme.evenements) jouerEvenementChant(b, bus, e, debut + e.t);
   setTimeout(() => bus.disconnect(), (programme.duree + 2) * 1000 + (debut - ctx.currentTime) * 1000);
+}
+
+/** Un groupe scande au loin : même appel-réponse que le chant local, assourdi, quelque part dans la rue. */
+function jouerChantLointain(b: Bus, scene: Sorties, programme: ProgrammeChant, debut: number, alea: Alea): void {
+  const { ctx } = b;
+  const bus = ctx.createGain();
+  bus.gain.value = 0.3;
+  const loin = ctx.createBiquadFilter();
+  loin.type = 'lowpass';
+  loin.frequency.value = 1100;
+  loin.Q.value = 0;
+  bus.connect(loin);
+  const noeuds: AudioNode[] = [bus, loin];
+  let sortie: AudioNode = loin;
+  if (ctx.createStereoPanner) {
+    const panneau = ctx.createStereoPanner();
+    panneau.pan.value = (alea() * 2 - 1) * 0.8;
+    loin.connect(panneau);
+    sortie = panneau;
+    noeuds.push(panneau);
+  }
+  brancher(ctx, sortie, scene, 0.8);
+  for (const e of programme.evenements) jouerEvenementChant(b, bus, e, debut + e.t);
+  setTimeout(
+    () => {
+      for (const n of noeuds) n.disconnect();
+    },
+    (programme.duree + 3) * 1000 + (debut - ctx.currentTime) * 1000,
+  );
 }
 
 function jouerEvenementChant(b: Bus, sortie: AudioNode, e: EvenementChant, t: number): void {

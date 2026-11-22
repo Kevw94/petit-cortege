@@ -240,7 +240,7 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
   const surCortege = (cortege: Cortege) => {
     const maintenantMs = Date.now();
     if (ambianceAJour(maintenantMs)) {
-      const phase = phaseAmbiance(cortege.etat, Date.parse(donnees.manif.depart), maintenantMs);
+      const phase = phaseAmbiance(cortege.etat, Date.parse(donnees.manif.depart), maintenantMs, cortege.danse);
       son.reglerAmbiance(reglagesAmbiance({ soutiens: cortege.avatars.length, phase }));
     }
     // Compteur : avatars du cortège à l'heure locale (publiés et entrés, plus les siens) ;
@@ -250,6 +250,7 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
       // finale (une seule fois). Le jeton de retrait est effacé par la lecture de la liste.
       if (!finAnnoncee) {
         flashPhoto();
+        son.jouerPhoto();
         void naviguer();
       }
       finAnnoncee = true;
