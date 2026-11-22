@@ -783,29 +783,23 @@ function jouerPas(b: Bus, sortie: AudioNode, t: number): void {
   });
 }
 
-/** Tambour : sinus grave qui chute en hauteur, plus un souffle ; `lointain` l'assourdit. */
-function jouerTambour(b: Bus, sortie: AudioNode, t: number, volume: number, lointain: boolean): void {
+/** Tambour du chant : sinus grave qui chute en hauteur, plus un souffle. */
+function jouerTambour(b: Bus, sortie: AudioNode, t: number, volume: number): void {
   const { ctx } = b;
   const o = ctx.createOscillator();
   o.type = 'sine';
-  o.frequency.setValueAtTime(lointain ? 120 : 150, t);
-  o.frequency.exponentialRampToValueAtTime(lointain ? 55 : 62, t + 0.25);
+  o.frequency.setValueAtTime(150, t);
+  o.frequency.exponentialRampToValueAtTime(62, t + 0.25);
   const g = ctx.createGain();
   g.gain.setValueAtTime(0, t);
   g.gain.linearRampToValueAtTime(volume, t + 0.005);
-  g.gain.setTargetAtTime(0, t + 0.01, lointain ? 0.12 : 0.09);
+  g.gain.setTargetAtTime(0, t + 0.01, 0.09);
   o.connect(g);
-  if (lointain) {
-    const assourdi = ctx.createBiquadFilter();
-    assourdi.type = 'lowpass';
-    assourdi.frequency.value = 380;
-    g.connect(assourdi);
-    assourdi.connect(sortie);
-    o.onended = () => assourdi.disconnect();
-  } else g.connect(sortie);
+  g.connect(sortie);
   o.start(t);
   o.stop(t + 0.6);
-  rafale(b, sortie, t, { type: 'lowpass', frequence: lointain ? 500 : 900, duree: 0.06, volume: volume * 0.5 });
+  o.onended = () => g.disconnect();
+  rafale(b, sortie, t, { type: 'lowpass', frequence: 900, duree: 0.06, volume: volume * 0.5 });
 }
 
 /** Sifflet lointain : sinus aigu en trille, très bas et filtré. */
@@ -941,7 +935,7 @@ function jouerChantLointain(b: Bus, scene: Sorties, programme: ProgrammeChant, d
 function jouerEvenementChant(b: Bus, sortie: AudioNode, e: EvenementChant, t: number): void {
   switch (e.type) {
     case 'tambour':
-      jouerTambour(b, sortie, t, 0.35 * e.force, false);
+      jouerTambour(b, sortie, t, 0.35 * e.force);
       return;
     case 'mains':
       // Plusieurs mains légèrement décalées.
