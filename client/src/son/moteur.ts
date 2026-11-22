@@ -391,6 +391,8 @@ const BAISSE_AMBIANCE_CHANT = 0.55;
 /** Niveau du bruit de foule (souffle continu) : la rumeur de voix porte maintenant l'essentiel. */
 const NIVEAU_BROUHAHA = 0.25;
 
+/** Niveau du bus des événements (pas, sifflets, applaudissements, clameurs). */
+const NIVEAU_EVENEMENTS = 0.7;
 /** Pas des voisins (talon + semelle). */
 const VOLUME_PAS = 0.07;
 /** Niveau du groupe de percussions quand `percussions` vaut 1 et qu'il est tout près. */
@@ -398,6 +400,7 @@ const VOLUME_BATUCADA = 0.8;
 
 const REGLAGES_PAR_DEFAUT: ReglagesAmbiance = {
   allure: 'arret',
+  proximite: 1,
   chantsLointainsParMinute: 0,
   foule: 0.2,
   brouhaha: 0.25,
@@ -472,7 +475,7 @@ function sceneManif(b: Bus, lireReglages: () => ReglagesAmbiance | null): Scene 
 
   // Bus des événements ponctuels (pas, percussions, sifflet, applaudissements).
   const evenements = ctx.createGain();
-  evenements.gain.value = 0.7;
+  evenements.gain.value = NIVEAU_EVENEMENTS;
   brancher(ctx, evenements, ambiance, 0.3);
   noeuds.push(evenements);
 
@@ -577,11 +580,22 @@ function sceneManif(b: Bus, lireReglages: () => ReglagesAmbiance | null): Scene 
   let debutMesureMarche = ctx.currentTime + 0.5;
   /** Prochain temps (entier, début de mesure) de la danse à programmer. */
   let tempsDanse: number | null = null;
+  /** Dernières valeurs appliquées au groupe : on ne reprogramme que ce qui a bougé. */
+  const groupeApplique = { niveau: -1, presence: -1, pan: -2 };
   const reglerGroupe = (niveau: number, presence: number, pan: number, maintenant: number) => {
-    groupeNiveau.gain.setTargetAtTime(niveau * VOLUME_BATUCADA, maintenant, 0.8);
-    groupeAssourdi.frequency.setTargetAtTime(500 + 5500 * presence ** 2, maintenant, 0.8);
-    groupeEnvoi.gain.setTargetAtTime(0.9 - 0.6 * presence, maintenant, 0.8);
-    groupePan?.pan.setTargetAtTime(pan, maintenant, 2);
+    if (Math.abs(niveau - groupeApplique.niveau) > 0.005) {
+      groupeNiveau.gain.setTargetAtTime(niveau * VOLUME_BATUCADA, maintenant, 0.8);
+      groupeApplique.niveau = niveau;
+    }
+    if (Math.abs(presence - groupeApplique.presence) > 0.005) {
+      groupeAssourdi.frequency.setTargetAtTime(500 + 5500 * presence ** 2, maintenant, 0.8);
+      groupeEnvoi.gain.setTargetAtTime(0.9 - 0.6 * presence, maintenant, 0.8);
+      groupeApplique.presence = presence;
+    }
+    if (groupePan && Math.abs(pan - groupeApplique.pan) > 0.02) {
+      groupePan.pan.setTargetAtTime(pan, maintenant, 2);
+      groupeApplique.pan = pan;
+    }
   };
 
   const marcheurs = marcheursProches(graineScene);
@@ -601,6 +615,8 @@ function sceneManif(b: Bus, lireReglages: () => ReglagesAmbiance | null): Scene 
       coupure.frequency.setTargetAtTime(r.coupureHz, maintenant, 1.5);
       foule.gain.setTargetAtTime(r.foule * NIVEAU_FOULE, maintenant, 1.5);
       fouleAssourdie.frequency.setTargetAtTime(r.coupureHz * 1.4, maintenant, 1.5);
+      // Sifflets, clameurs, pas : plus discrets vus de loin.
+      evenements.gain.setTargetAtTime(NIVEAU_EVENEMENTS * (0.35 + 0.65 * r.proximite), maintenant, 1.5);
       voix.regler(r);
       reglagesAppliques = r;
     }
@@ -613,7 +629,8 @@ function sceneManif(b: Bus, lireReglages: () => ReglagesAmbiance | null): Scene 
 
     // Pieds : on piétine en attendant (au hasard), on marche (pas cadencés des voisins).
     if (r.allure === 'marche') {
-      const n = Math.min(MARCHEURS_MAX, Math.max(1, Math.round(r.pasParSeconde / 2)));
+      // Autant de voisins qu'il faut pour la densité de pas ; aucun vu de loin.
+      const n = r.pasParSeconde > 0 ? Math.min(MARCHEURS_MAX, Math.max(1, Math.round(r.pasParSeconde / 2))) : 0;
       for (const m of marcheurs.slice(0, n)) {
         for (const t of posesDePied(m, horizonPas, horizon)) jouerPose(ctx, b.bruit, evenements, t, m, VOLUME_PAS);
       }
@@ -637,7 +654,8 @@ function sceneManif(b: Bus, lireReglages: () => ReglagesAmbiance | null): Scene 
         const k = premierTempsDeDanse(performance.now() / 1000 + 0.2);
         tempsDanse = k + ((TEMPS_PAR_MESURE - (k % TEMPS_PAR_MESURE)) % TEMPS_PAR_MESURE);
       }
-      const ampleur = 0.4 + 0.6 * r.foule;
+      // Sauts et mains de la foule : forts au milieu, lointains en vue d'ensemble.
+      const ampleur = (0.4 + 0.6 * r.foule) * (0.2 + 0.8 * r.proximite);
       while (versContexte(instantDuTempsDeDanse(tempsDanse)) < horizon) {
         const t0 = versContexte(instantDuTempsDeDanse(tempsDanse));
         for (const f of batucadaDanse.mesure(tempsDanse / TEMPS_PAR_MESURE).frappes) {
@@ -649,7 +667,8 @@ function sceneManif(b: Bus, lireReglages: () => ReglagesAmbiance | null): Scene 
         }
         tempsDanse += TEMPS_PAR_MESURE;
       }
-      reglerGroupe(r.percussions, 1, 0.1, maintenant);
+      // Tout près au milieu de la place ; assourdie vue de haut.
+      reglerGroupe(r.percussions, 0.4 + 0.6 * r.proximite, 0.1, maintenant);
     } else {
       // Marche : le groupe remonte le cortège, passe, s'éloigne, se tait un moment.
       tempsDanse = null;
@@ -667,7 +686,7 @@ function sceneManif(b: Bus, lireReglages: () => ReglagesAmbiance | null): Scene 
       }
       // Il passe d'un côté à l'autre pendant qu'il remonte le cortège.
       const pan = 0.6 * Math.sin((maintenant + graineScene) / 37);
-      reglerGroupe(r.percussions * presence, presence, pan, maintenant);
+      reglerGroupe(r.percussions * presence, presence * (0.4 + 0.6 * r.proximite), pan, maintenant);
     }
 
     // Événements : sifflets, applaudissements, clameurs (« ouais ! » sans paroles).

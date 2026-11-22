@@ -232,6 +232,8 @@ describe('ambiance de manif', () => {
       expect(loin.foule).toBeGreaterThan(0);
       expect(loin.brouhaha).toBeGreaterThan(pres.brouhaha * 0.7);
       expect(loin.allure).toBe(pres.allure);
+      expect(pres.proximite).toBe(1);
+      expect(loin.proximite).toBe(0);
       const mi = reglagesAmbiance({ soutiens: 2_000, phase, proximite: 0.5 });
       expect(mi.voix).toBeGreaterThan(loin.voix);
       expect(mi.voix).toBeLessThan(pres.voix);

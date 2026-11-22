@@ -27,6 +27,8 @@ export type AllureFoule = 'arret' | 'marche' | 'danse';
 
 export interface ReglagesAmbiance extends ReglagesVoix {
   allure: AllureFoule;
+  /** Proximité du point d'écoute, de 0 (vue d'ensemble) à 1 (dans la foule) : voir `proximiteDEcoute`. */
+  proximite: number;
   /** Volume de la foule lointaine (rumeur de dizaines de voix, `foule-lointaine.ts`), de 0 à 1. */
   foule: number;
   /** Volume du brouhaha (bruit filtré), de 0 à 1. */
@@ -97,6 +99,7 @@ export function reglagesAmbiance({
   if (p === 1) return r;
   return {
     ...r,
+    proximite: p,
     voix: r.voix * (0.2 + 0.8 * p),
     locuteurs: Math.round(r.locuteurs * (0.35 + 0.65 * p)),
     foule: r.foule * (0.5 + 0.5 * p),
@@ -114,6 +117,7 @@ function reglagesAuPlusPres(soutiens: number, phase: PhaseAmbiance): ReglagesAmb
       return {
         allure: 'arret',
         chantsLointainsParMinute: 0.3 * f,
+        proximite: 1,
         foule: 0.25 + 0.45 * f,
         brouhaha: 0.18 + 0.32 * f,
         coupureHz: 600 + 500 * f,
@@ -128,6 +132,7 @@ function reglagesAuPlusPres(soutiens: number, phase: PhaseAmbiance): ReglagesAmb
       return {
         allure: 'marche',
         chantsLointainsParMinute: 0.4 + 1.2 * f,
+        proximite: 1,
         foule: 0.3 + 0.6 * f,
         brouhaha: 0.3 + 0.55 * f,
         coupureHz: 800 + 900 * f,
@@ -144,6 +149,7 @@ function reglagesAuPlusPres(soutiens: number, phase: PhaseAmbiance): ReglagesAmb
       return {
         allure: 'danse',
         chantsLointainsParMinute: 0,
+        proximite: 1,
         foule: 0.35 + 0.55 * f,
         brouhaha: 0.35 + 0.5 * f,
         coupureHz: 900 + 900 * f,
@@ -157,6 +163,7 @@ function reglagesAuPlusPres(soutiens: number, phase: PhaseAmbiance): ReglagesAmb
       return {
         allure: 'arret',
         chantsLointainsParMinute: 0,
+        proximite: 1,
         foule: 0.15,
         brouhaha: 0.12,
         coupureHz: 600,
