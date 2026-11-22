@@ -38,7 +38,10 @@ npm run typecheck  # tsc strict dans chaque workspace
 npm run lint       # Biome : lint et vérification du formatage (biome.json)
 npm run format     # Biome : formate le code
 npm run build      # build du client
+npm run ecouter-son -- --phases=marche,danse --soutiens=3000   # ambiance d'une manif en WAV (var/son/)
 ```
+
+`ecouter-son` enregistre en temps réel, dans Chromium headless, ce qu'on entend dans la vue d'une manif pour chaque phase (avant le départ, marche, danse finale), sans attendre une vraie manif : pour régler le son à l'oreille (ADR 0008). Options : `--proximites=1,0.3` (point d'écoute, de la foule à la vue d'ensemble), `--duree=20`, `--chant=10` (lance un chant local à 10 s).
 
 Le lint signale les imports et variables inutilisés et les promesses non attendues (`noFloatingPromises`, règle encore expérimentale de Biome : elle voit les fonctions `async` du dépôt, `fetch` ou `.then()`, mais pas toujours celles des bibliothèques importées, comme `readFile` de `node:fs/promises`).
 
