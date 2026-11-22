@@ -6,7 +6,8 @@
     "dev": "tsx dev.ts",
     "seed": "tsx seed.ts",
     "typecheck": "tsc -p tsconfig.json",
-    "mesure-perf": "tsx mesure-perf.ts"
+    "mesure-perf": "tsx mesure-perf.ts",
+    "ecouter-son": "tsx ecouter-son.ts"
   },
   "dependencies": {
     "@petit-cortege/server": "*",

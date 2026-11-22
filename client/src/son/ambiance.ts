@@ -7,24 +7,42 @@
 import type { EtatManif } from '../cortege/cortege';
 import { LOCUTEURS_MAX, type ReglagesVoix } from './brouhaha-voix';
 
-export type PhaseAmbiance = 'avant' | 'marche' | 'fin';
+export type PhaseAmbiance = 'avant' | 'marche' | 'danse' | 'fin';
 
-export function phaseAmbiance(etat: EtatManif, departMs: number, maintenantMs: number): PhaseAmbiance {
+/**
+ * Phase de l'ambiance : avant le départ, en marche, pendant la danse finale (`danse` du
+ * Cortège : tout le monde est sur la place), une fois terminée.
+ */
+export function phaseAmbiance(etat: EtatManif, departMs: number, maintenantMs: number, danse = false): PhaseAmbiance {
   if (etat === 'terminee') return 'fin';
+  if (danse) return 'danse';
   return maintenantMs < departMs ? 'avant' : 'marche';
 }
 
+/**
+ * Ce que font les pieds de la foule : on attend en piétinant, on marche (pas cadencés des
+ * voisins), ou on saute en rythme (danse finale, calée sur l'animation).
+ */
+export type AllureFoule = 'arret' | 'marche' | 'danse';
+
 export interface ReglagesAmbiance extends ReglagesVoix {
+  allure: AllureFoule;
+  /** Proximité du point d'écoute, de 0 (vue d'ensemble) à 1 (dans la foule) : voir `proximiteDEcoute`. */
+  proximite: number;
+  /** Volume de la foule lointaine (rumeur de dizaines de voix, `foule-lointaine.ts`), de 0 à 1. */
+  foule: number;
   /** Volume du brouhaha (bruit filtré), de 0 à 1. */
   brouhaha: number;
   /** Fréquence de coupure du filtre du brouhaha (Hz) : plus de monde, plus de brillance. */
   coupureHz: number;
   /** Pas (frottements discrets) par seconde. */
   pasParSeconde: number;
-  /** Volume des percussions lointaines, de 0 à 1 (0 : aucune). */
+  /** Volume de la batucada, de 0 à 1 (0 : aucune). Pendant la marche, elle va et vient. */
   percussions: number;
-  /** Événements doux (sifflet lointain, applaudissements) par minute. */
+  /** Événements (sifflet, applaudissements, clameur) par minute. */
   evenementsParMinute: number;
+  /** Groupes qui scandent au loin (« hé / ho » sans paroles), par minute. */
+  chantsLointainsParMinute: number;
   // `voix` (niveau, 0 à 1) et `locuteurs` (nombre, 0 à LOCUTEURS_MAX) : conversations
   // inintelligibles du fond sonore, voir `brouhaha-voix.ts`.
 }
@@ -38,11 +56,69 @@ export function tailleRessentie(soutiens: number): number {
   return Math.min(1, Math.log10(1 + n) / Math.log10(1 + SOUTIENS_SATURATION));
 }
 
-export function reglagesAmbiance({ soutiens, phase }: { soutiens: number; phase: PhaseAmbiance }): ReglagesAmbiance {
+/**
+ * Où « écoute » le soutien : là où regarde la caméra. De près, au milieu des avatars, on
+ * entend ses voisins ; en vue d'ensemble, ou la caméra partie loin du parcours, la foule
+ * n'est plus qu'une rumeur lointaine.
+ */
+export interface PointDEcoute {
+  /** Distance de la caméra au point regardé (m) : ≈ 10 m tout près, plusieurs km en vue de haut. */
+  hauteurM: number;
+  /** Distance au sol entre le point regardé et l'avatar le plus proche (m) ; 0 sans avatar. */
+  ecartM: number;
+}
+
+/** En deçà, on est dans la foule ; au-delà de LOIN_M, on l'entend de loin. */
+export const ECOUTE_PRES_M = 45;
+export const ECOUTE_LOIN_M = 1_200;
+
+/** Proximité de la foule, de 0 (loin, ou vue de haut) à 1 (au milieu du cortège), en échelle log. */
+export function proximiteDEcoute({ hauteurM, ecartM }: PointDEcoute): number {
+  const d = Math.hypot(Math.max(0, hauteurM), Math.max(0, ecartM));
+  if (!Number.isFinite(d)) return Number.isNaN(d) ? 1 : 0;
+  const x = 1 - Math.log(Math.max(d, ECOUTE_PRES_M) / ECOUTE_PRES_M) / Math.log(ECOUTE_LOIN_M / ECOUTE_PRES_M);
+  return Math.min(1, Math.max(0, x));
+}
+
+/**
+ * Réglages selon la foule (soutiens), la phase et la proximité du point d'écoute (1 par
+ * défaut : au milieu du cortège). En s'éloignant, les voisins se taisent les premiers
+ * (voix proches, pas), puis la foule devient plus sourde ; le grondement reste.
+ */
+export function reglagesAmbiance({
+  soutiens,
+  phase,
+  proximite = 1,
+}: {
+  soutiens: number;
+  phase: PhaseAmbiance;
+  proximite?: number;
+}): ReglagesAmbiance {
+  const r = reglagesAuPlusPres(soutiens, phase);
+  const p = Number.isFinite(proximite) ? Math.min(1, Math.max(0, proximite)) : 1;
+  if (p === 1) return r;
+  return {
+    ...r,
+    proximite: p,
+    voix: r.voix * (0.2 + 0.8 * p),
+    locuteurs: Math.round(r.locuteurs * (0.35 + 0.65 * p)),
+    foule: r.foule * (0.5 + 0.5 * p),
+    brouhaha: r.brouhaha * (0.8 + 0.2 * p),
+    coupureHz: r.coupureHz * (0.5 + 0.5 * p),
+    pasParSeconde: r.pasParSeconde * p * p,
+    percussions: r.percussions * (0.35 + 0.65 * p),
+  };
+}
+
+function reglagesAuPlusPres(soutiens: number, phase: PhaseAmbiance): ReglagesAmbiance {
   const f = tailleRessentie(soutiens);
   switch (phase) {
     case 'avant':
       return {
+        allure: 'arret',
+        chantsLointainsParMinute: 0.3 * f,
+        proximite: 1,
+        foule: 0.25 + 0.45 * f,
         brouhaha: 0.18 + 0.32 * f,
         coupureHz: 600 + 500 * f,
         pasParSeconde: 0.3 + 0.9 * f,
@@ -54,6 +130,10 @@ export function reglagesAmbiance({ soutiens, phase }: { soutiens: number; phase:
       };
     case 'marche':
       return {
+        allure: 'marche',
+        chantsLointainsParMinute: 0.4 + 1.2 * f,
+        proximite: 1,
+        foule: 0.3 + 0.6 * f,
         brouhaha: 0.3 + 0.55 * f,
         coupureHz: 800 + 900 * f,
         pasParSeconde: 1.5 + 6.5 * f,
@@ -63,8 +143,28 @@ export function reglagesAmbiance({ soutiens, phase }: { soutiens: number; phase:
         voix: 0.3 + 0.5 * f,
         locuteurs: Math.min(LOCUTEURS_MAX, Math.round(1 + (LOCUTEURS_MAX - 1) * f)),
       };
+    case 'danse':
+      // Tout le cortège sur la place : la batucada joue tout près, la foule saute, tape
+      // dans ses mains et crie ; on parle moins.
+      return {
+        allure: 'danse',
+        chantsLointainsParMinute: 0,
+        proximite: 1,
+        foule: 0.35 + 0.55 * f,
+        brouhaha: 0.35 + 0.5 * f,
+        coupureHz: 900 + 900 * f,
+        pasParSeconde: 0,
+        percussions: 0.75 + 0.25 * f,
+        evenementsParMinute: 3 + 5 * f,
+        voix: 0.25 + 0.3 * f,
+        locuteurs: Math.min(LOCUTEURS_MAX, Math.round(1 + 4 * f)),
+      };
     case 'fin':
       return {
+        allure: 'arret',
+        chantsLointainsParMinute: 0,
+        proximite: 1,
+        foule: 0.15,
         brouhaha: 0.12,
         coupureHz: 600,
         pasParSeconde: 0,

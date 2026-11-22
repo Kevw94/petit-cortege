@@ -26,6 +26,8 @@ import { CELLULE_APPARENCE, HAUTEUR_TETE_PX } from './apparence/dessin';
 import { chargerCouchesApparence, CLE_APPARENCES, TextureApparences } from './apparence/texture';
 import { cadrerSur, deplacer, versEcran, zoomerAutour, type Cadrage, type PointM, type PointPx } from './cadrage';
 import { cadrerEnTroisiemePersonne, cibleDeSuivi, ECHELLE_SUIVI_PX_PAR_M, LISSAGE_SUIVI, suivre } from './camera';
+import { INTERVALLE_ECOUTE_MS, pointDEcouteDeDessus } from './ecoute';
+import type { PointDEcoute } from './son/ambiance';
 import { CortegeMemorise, type Cortege } from './cortege/cortege';
 import { composerFoule } from './cortege/foule';
 import {
@@ -58,6 +60,8 @@ export interface DonneesScene {
   surCortege: (cortege: Cortege) => void;
   /** Appelé quand la caméra passe du suivi (troisième personne) à la vue libre, ou l'inverse. */
   surModeCamera?: (suivi: boolean) => void;
+  /** Point d'écoute du son (où regarde la caméra), au plus deux fois par seconde. */
+  surEcoute?: (ecoute: PointDEcoute) => void;
 }
 
 const MARGE_PX = 32;
@@ -93,6 +97,7 @@ function projeteur(georef: Georeference) {
 
 export class SceneCortege extends Phaser.Scene {
   #donnees!: DonneesScene;
+  #derniereEcoute = -Infinity;
   /** Rangs gardés d'une image à l'autre : seules les positions sont recalculées. */
   readonly #cortege = new CortegeMemorise();
   #decor: DecorAffiche | null = null;
@@ -249,6 +254,11 @@ export class SceneCortege extends Phaser.Scene {
       visible: (avatar) => aLEcran(avatar, { ...ecran, ...tailleSprite }),
     });
     const dessines = foule.dessines;
+    // Point d'écoute du son : hauteur de la vue, écart du centre de l'écran à la foule.
+    if (this.#donnees.surEcoute && this.time.now - this.#derniereEcoute >= INTERVALLE_ECOUTE_MS) {
+      this.#derniereEcoute = this.time.now;
+      this.#donnees.surEcoute(pointDEcouteDeDessus(places, ecran, this.#cadrage!.echelle));
+    }
     // Marche : temps de la scène (secondes) ; rien ne bouge si le mouvement réduit est demandé.
     const tempsS = this.time.now / 1000;
     const animer = !this.#mouvementReduit.matches;

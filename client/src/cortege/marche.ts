@@ -125,7 +125,7 @@ export const INCLINAISON_DANSE_RAD = (9 * Math.PI) / 180;
 /** Déhanché latéral maximal en dansant (vue 2D) : un pixel et demi de l'atlas. */
 export const DECALAGE_DANSE_PX_ATLAS = 1.5;
 /** Part de la phase propre gardée en dansant : la foule danse presque ensemble, en légère vague. */
-const VARIETE_DANSE = 0.25;
+export const VARIETE_DANSE = 0.25;
 
 /**
  * Écrit dans `sortie` l'allure d'un avatar qui danse (danse finale sur la place) : un saut

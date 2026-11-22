@@ -27,6 +27,7 @@
     "format": "biome format --write .",
     "build": "npm run build --workspace=@petit-cortege/client",
     "mesure-perf": "npm run mesure-perf --workspace=@petit-cortege/scripts --",
+    "ecouter-son": "npm run ecouter-son --workspace=@petit-cortege/scripts --",
     "serveur": "tsx server/src/principal.ts",
     "charge": "tsx scripts/charge/charge.ts",
     "generer-apparence": "tsx scripts/generer-apparence.ts",

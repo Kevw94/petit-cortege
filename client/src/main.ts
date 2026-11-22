@@ -29,7 +29,7 @@ import {
 } from './vue3d/mode-vue';
 import { banniereCortege, carteManif } from './accueil';
 import { icone } from './icones';
-import { creerLimiteur, phaseAmbiance, reglagesAmbiance } from './son/ambiance';
+import { creerLimiteur, phaseAmbiance, proximiteDEcoute, reglagesAmbiance, type PointDEcoute } from './son/ambiance';
 import { brancherChant } from './son/interface-chant';
 import { installerSon } from './son/interface-son';
 import type { SceneSon } from './son/moteur';
@@ -235,13 +235,16 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
   let propresRetirables = propres.filter((e) => jetonDeRetrait(e.a, new Date()) !== undefined);
   let dernierTexte = '';
   let finAnnoncee = false;
-  // Ambiance sonore : réglée au plus une fois par seconde (le rappel arrive à chaque image).
+  // Ambiance sonore : réglée au plus une fois par seconde (le rappel arrive à chaque image),
+  // selon la foule, la phase et le point d'écoute (où regarde la caméra, donné par la vue).
   const ambianceAJour = creerLimiteur(1_000);
+  let ecoute: PointDEcoute | null = null;
   const surCortege = (cortege: Cortege) => {
     const maintenantMs = Date.now();
     if (ambianceAJour(maintenantMs)) {
-      const phase = phaseAmbiance(cortege.etat, Date.parse(donnees.manif.depart), maintenantMs);
-      son.reglerAmbiance(reglagesAmbiance({ soutiens: cortege.avatars.length, phase }));
+      const phase = phaseAmbiance(cortege.etat, Date.parse(donnees.manif.depart), maintenantMs, cortege.danse);
+      const proximite = ecoute ? proximiteDEcoute(ecoute) : 1;
+      son.reglerAmbiance(reglagesAmbiance({ soutiens: cortege.avatars.length, phase, proximite }));
     }
     // Compteur : avatars du cortège à l'heure locale (publiés et entrés, plus les siens) ;
     // c'est ce qui est dessiné. Le `compteur` de la liste des manifs sert à la liste.
@@ -250,6 +253,7 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
       // finale (une seule fois). Le jeton de retrait est effacé par la lecture de la liste.
       if (!finAnnoncee) {
         flashPhoto();
+        son.jouerPhoto();
         void naviguer();
       }
       finAnnoncee = true;
@@ -366,6 +370,9 @@ async function afficherManif(id: string, vue: Vue): Promise<void> {
     // Caméra à la troisième personne : « Suivre » n'apparaît que quand la vue est détachée.
     surModeCamera: (suivi) => {
       suivreEl.hidden = suivi;
+    },
+    surEcoute: (point) => {
+      ecoute = point;
     },
   };
   // Vue 3D (Three.js, chargé seulement ici) ou 2D (Phaser) : choix mémorisé sur l'appareil,
