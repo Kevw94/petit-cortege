@@ -418,8 +418,9 @@ function sceneManif(b: Bus, lireReglages: () => ReglagesAmbiance | null): Scene 
   const rue = ctx.createConvolver();
   const [gauche, droite] = reponseRue({ taux: ctx.sampleRate, graine: Math.floor(Math.random() * 2 ** 31) });
   const reponse = ctx.createBuffer(2, gauche.length, ctx.sampleRate);
-  reponse.copyToChannel(gauche, 0);
-  reponse.copyToChannel(droite, 1);
+  // getChannelData().set() plutôt que copyToChannel, absent des Safari d'avant 14.1.
+  reponse.getChannelData(0).set(gauche);
+  reponse.getChannelData(1).set(droite);
   rue.buffer = reponse;
   const retourRue = ctx.createGain();
   retourRue.gain.value = NIVEAU_RUE;
