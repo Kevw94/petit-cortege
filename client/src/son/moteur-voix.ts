@@ -71,16 +71,23 @@ interface Voix {
   libre: number;
 }
 
+const ondes = new WeakMap<BaseAudioContext, PeriodicWave>();
+
 /**
  * Onde glottale : harmoniques en 1/n^1,2 (un peu plus douce qu'une dent de scie, comme
- * une voix parlée sans effort), fondamental légèrement renforcé.
+ * une voix parlée sans effort), fondamental légèrement renforcé. Une par contexte.
  */
-function ondeGlottale(ctx: BaseAudioContext): PeriodicWave {
-  const n = 48;
-  const reel = new Float32Array(n);
-  const imag = new Float32Array(n);
-  for (let k = 1; k < n; k++) imag[k] = (k === 1 ? 1.3 : 1) / k ** 1.2;
-  return ctx.createPeriodicWave(reel, imag);
+export function ondeGlottale(ctx: BaseAudioContext): PeriodicWave {
+  let onde = ondes.get(ctx);
+  if (!onde) {
+    const n = 48;
+    const reel = new Float32Array(n);
+    const imag = new Float32Array(n);
+    for (let k = 1; k < n; k++) imag[k] = (k === 1 ? 1.3 : 1) / k ** 1.2;
+    onde = ctx.createPeriodicWave(reel, imag);
+    ondes.set(ctx, onde);
+  }
+  return onde;
 }
 
 /** Écart type du bruit `bruit` une fois passé dans un passe-bas à `coupureHz` (pour doser le jitter). */

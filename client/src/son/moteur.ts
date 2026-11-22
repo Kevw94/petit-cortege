@@ -36,7 +36,7 @@ import {
 } from './rythme-foule';
 import type { ReglagesAmbiance } from './ambiance';
 import type { EvenementChant, ProgrammeChant, Voyelle } from './chants';
-import { creerBrouhahaVoix } from './moteur-voix';
+import { creerBrouhahaVoix, ondeGlottale } from './moteur-voix';
 import { creerPartitionAccueil, MESURE_ACCUEIL_S, type NoteAccueil } from './partition-accueil';
 
 export type SceneSon = 'silence' | 'accueil' | 'manif';
@@ -890,11 +890,15 @@ function jouerApplaudissements(b: Bus, sortie: AudioNode, t: number, ampleur: nu
 /** Volume du chant lancé par le soutien : il passe devant l'ambiance (qui baisse pendant ce temps). */
 const VOLUME_CHANT = 1.25;
 
-/** Formants (Hz) des voyelles du chœur : des timbres, pas des mots. */
-const FORMANTS: Record<Voyelle, readonly [number, number]> = {
-  he: [420, 2050],
-  ho: [460, 820],
+/** Formants (Hz) des voyelles criées du chœur : des timbres, pas des mots (F1 monte quand on crie). */
+const FORMANTS_CRIES: Record<Voyelle, readonly [number, number, number]> = {
+  he: [600, 1900, 2650],
+  ho: [560, 950, 2500],
 };
+const RESONANCE_CHOEUR_DB = [10, 16, 14] as const;
+const VOIX_CHOEUR = 8;
+/** Niveau du mélange des voix avant le conduit : le chant ressort ≈ 3 dB au-dessus de l'ancien chœur. */
+const NIVEAU_CHOEUR = 0.08;
 
 function jouerProgrammeChant(b: Bus, scene: Sorties, programme: ProgrammeChant, debut: number): void {
   const { ctx } = b;
@@ -956,7 +960,12 @@ function jouerEvenementChant(b: Bus, sortie: AudioNode, e: EvenementChant, t: nu
   }
 }
 
-/** Chœur sans paroles : cinq voix en dents de scie, désaccordées, passées dans deux formants. */
+/**
+ * Chœur sans paroles : une foule qui crie « hé ! » ou « ho ! ». Huit voix (hommes, et
+ * femmes à l'octave), chacune un peu décalée et désaccordée, qui attaquent par en dessous
+ * et retombent en fin de syllabe, avec un souffle à l'attaque ; un même conduit vocal
+ * (formants en cascade, comme les voix d'ambiance) leur donne la voyelle.
+ */
 function jouerVoix(
   b: Bus,
   sortie: AudioNode,
@@ -968,7 +977,18 @@ function jouerVoix(
 ): void {
   const { ctx } = b;
   const melange = ctx.createGain();
-  melange.gain.value = 0.2;
+  melange.gain.value = NIVEAU_CHOEUR;
+  const conduit = FORMANTS_CRIES[voyelle].map((frequence, i) => {
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = frequence;
+    f.Q.value = RESONANCE_CHOEUR_DB[i]!;
+    return f;
+  });
+  const presence = ctx.createBiquadFilter();
+  presence.type = 'highshelf';
+  presence.frequency.value = 1200;
+  presence.gain.value = 8;
   const enveloppe = ctx.createGain();
   enveloppe.gain.setValueAtTime(0, t);
   enveloppe.gain.linearRampToValueAtTime(0.3 * force, t + 0.04);
@@ -976,39 +996,40 @@ function jouerVoix(
   enveloppe.gain.linearRampToValueAtTime(0, t + duree + 0.06);
   const adoucir = ctx.createBiquadFilter();
   adoucir.type = 'lowpass';
-  adoucir.frequency.value = 3000;
-  for (const [i, frequence] of FORMANTS[voyelle].entries()) {
-    const formant = ctx.createBiquadFilter();
-    formant.type = 'bandpass';
-    formant.frequency.value = frequence;
-    formant.Q.value = i === 0 ? 5 : 8;
-    const niveau = ctx.createGain();
-    niveau.gain.value = i === 0 ? 1 : 0.55;
-    melange.connect(formant);
-    formant.connect(niveau);
-    niveau.connect(enveloppe);
-  }
+  adoucir.frequency.value = 3500;
+  melange.connect(conduit[0]!);
+  conduit[0]!.connect(conduit[1]!);
+  conduit[1]!.connect(conduit[2]!);
+  conduit[2]!.connect(presence);
+  presence.connect(enveloppe);
   enveloppe.connect(adoucir);
   adoucir.connect(sortie);
+  // Souffle de l'attaque, dans le même conduit.
+  rafale(b, melange, t, { type: 'highpass', frequence: 600, q: 0.7, duree: 0.07, volume: 0.25 * force });
+  const onde = ondeGlottale(ctx);
   const f = frequenceMidi(note);
   const fin = t + duree + 0.1;
   let derniere: OscillatorNode | null = null;
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < VOIX_CHOEUR; i++) {
+    const hauteur = f * (i % 3 === 2 ? 2 : 1); // une voix sur trois à l'octave
+    const debut = t + Math.random() * 0.035; // les voix n'attaquent pas ensemble
     const o = ctx.createOscillator();
-    o.type = 'sawtooth';
-    const decalage = (Math.random() - 0.5) * 0.03; // les voix n'attaquent pas ensemble
-    o.frequency.setValueAtTime(f * (i === 4 ? 0.5 : 1), t + decalage);
-    o.detune.value = (Math.random() - 0.5) * 30;
-    // Petite chute de hauteur en fin de syllabe, comme une voix criée.
-    o.frequency.setTargetAtTime(f * (i === 4 ? 0.5 : 1) * 0.94, t + duree * 0.7, 0.05);
-    o.connect(melange);
-    o.start(Math.max(t, t + decalage));
+    o.setPeriodicWave(onde);
+    o.detune.value = (Math.random() - 0.5) * 40;
+    // Attaque par en dessous, puis petite chute en fin de syllabe, comme une voix criée.
+    o.frequency.setValueAtTime(hauteur * 0.93, debut);
+    o.frequency.linearRampToValueAtTime(hauteur, debut + 0.05);
+    o.frequency.setTargetAtTime(hauteur * 0.94, t + duree * 0.7, 0.05);
+    const g = ctx.createGain();
+    g.gain.value = 0.6 + 0.4 * Math.random();
+    o.connect(g);
+    g.connect(melange);
+    o.start(debut);
     o.stop(fin);
+    o.onended = () => g.disconnect();
     derniere = o;
   }
-  derniere!.onended = () => {
-    melange.disconnect();
-    enveloppe.disconnect();
-    adoucir.disconnect();
-  };
+  derniere!.addEventListener('ended', () => {
+    for (const n of [melange, ...conduit, presence, enveloppe, adoucir]) n.disconnect();
+  });
 }
