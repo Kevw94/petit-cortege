@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { aleaDepuis, frequenceMidi } from './alea';
-import { creerLimiteur, phaseAmbiance, reglagesAmbiance, tailleRessentie } from './ambiance';
+import {
+  creerLimiteur,
+  ECOUTE_LOIN_M,
+  ECOUTE_PRES_M,
+  phaseAmbiance,
+  proximiteDEcoute,
+  reglagesAmbiance,
+  tailleRessentie,
+} from './ambiance';
 import { MESURE_CHANT_S, MOTIFS_CHANT, programmeChant } from './chants';
 import {
   CLASSES_PENTATONIQUES,
@@ -171,10 +179,63 @@ describe('chants', () => {
 });
 
 describe('ambiance de manif', () => {
-  it('phase : avant le départ, en marche, après la fin', () => {
+  it('phase : avant le départ, en marche, pendant la danse finale, après la fin', () => {
     expect(phaseAmbiance('ouverte', 1_000, 500)).toBe('avant');
     expect(phaseAmbiance('ouverte', 1_000, 1_000)).toBe('marche');
+    expect(phaseAmbiance('ouverte', 1_000, 5_000, true)).toBe('danse');
     expect(phaseAmbiance('terminee', 1_000, 500)).toBe('fin');
+    expect(phaseAmbiance('terminee', 1_000, 5_000, true)).toBe('fin');
+  });
+
+  it('danse finale : la batucada tout près, la foule saute (pas de pas), plus de clameurs, pas de chant lointain', () => {
+    for (const soutiens of [3, 300, 30_000]) {
+      const danse = reglagesAmbiance({ soutiens, phase: 'danse' });
+      const marche = reglagesAmbiance({ soutiens, phase: 'marche' });
+      expect(danse.allure).toBe('danse');
+      expect(marche.allure).toBe('marche');
+      expect(danse.percussions).toBeGreaterThan(marche.percussions);
+      expect(danse.percussions).toBeLessThanOrEqual(1);
+      expect(danse.evenementsParMinute).toBeGreaterThan(marche.evenementsParMinute);
+      expect(danse.pasParSeconde).toBe(0);
+      expect(danse.chantsLointainsParMinute).toBe(0);
+    }
+    expect(reglagesAmbiance({ soutiens: 50, phase: 'avant' }).allure).toBe('arret');
+  });
+
+  it('point d’écoute : au milieu de la foule, 1 ; en vue de haut ou loin du parcours, 0', () => {
+    expect(proximiteDEcoute({ hauteurM: 28, ecartM: 0 })).toBe(1);
+    expect(proximiteDEcoute({ hauteurM: 9, ecartM: 10 })).toBe(1);
+    expect(proximiteDEcoute({ hauteurM: 3_000, ecartM: 0 })).toBe(0);
+    expect(proximiteDEcoute({ hauteurM: 30, ecartM: 2_000 })).toBe(0);
+    const mi = proximiteDEcoute({ hauteurM: Math.sqrt(ECOUTE_PRES_M * ECOUTE_LOIN_M), ecartM: 0 });
+    expect(mi).toBeCloseTo(0.5, 6);
+    // Croît quand on se rapproche, sans saut.
+    let precedent = -1;
+    for (let d = 5_000; d >= 5; d *= 0.9) {
+      const p = proximiteDEcoute({ hauteurM: d, ecartM: 0 });
+      expect(p).toBeGreaterThanOrEqual(precedent);
+      precedent = p;
+    }
+    expect(proximiteDEcoute({ hauteurM: Number.NaN, ecartM: 0 })).toBe(1);
+  });
+
+  it('en s’éloignant : les voisins se taisent d’abord (voix, pas), la foule devient sourde, le grondement reste', () => {
+    for (const phase of ['avant', 'marche', 'danse'] as const) {
+      const pres = reglagesAmbiance({ soutiens: 2_000, phase });
+      expect(reglagesAmbiance({ soutiens: 2_000, phase, proximite: 1 })).toEqual(pres);
+      const loin = reglagesAmbiance({ soutiens: 2_000, phase, proximite: 0 });
+      expect(loin.voix).toBeLessThan(pres.voix * 0.3);
+      expect(loin.locuteurs).toBeLessThan(pres.locuteurs);
+      expect(loin.pasParSeconde).toBe(0);
+      expect(loin.coupureHz).toBeLessThan(pres.coupureHz);
+      expect(loin.foule).toBeLessThan(pres.foule);
+      expect(loin.foule).toBeGreaterThan(0);
+      expect(loin.brouhaha).toBeGreaterThan(pres.brouhaha * 0.7);
+      expect(loin.allure).toBe(pres.allure);
+      const mi = reglagesAmbiance({ soutiens: 2_000, phase, proximite: 0.5 });
+      expect(mi.voix).toBeGreaterThan(loin.voix);
+      expect(mi.voix).toBeLessThan(pres.voix);
+    }
   });
 
   it('la taille ressentie croît avec les soutiens, de 0 à 1', () => {

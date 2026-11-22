@@ -54,7 +54,60 @@ export function tailleRessentie(soutiens: number): number {
   return Math.min(1, Math.log10(1 + n) / Math.log10(1 + SOUTIENS_SATURATION));
 }
 
-export function reglagesAmbiance({ soutiens, phase }: { soutiens: number; phase: PhaseAmbiance }): ReglagesAmbiance {
+/**
+ * Où « écoute » le soutien : là où regarde la caméra. De près, au milieu des avatars, on
+ * entend ses voisins ; en vue d'ensemble, ou la caméra partie loin du parcours, la foule
+ * n'est plus qu'une rumeur lointaine.
+ */
+export interface PointDEcoute {
+  /** Distance de la caméra au point regardé (m) : ≈ 10 m tout près, plusieurs km en vue de haut. */
+  hauteurM: number;
+  /** Distance au sol entre le point regardé et l'avatar le plus proche (m) ; 0 sans avatar. */
+  ecartM: number;
+}
+
+/** En deçà, on est dans la foule ; au-delà de LOIN_M, on l'entend de loin. */
+export const ECOUTE_PRES_M = 45;
+export const ECOUTE_LOIN_M = 1_200;
+
+/** Proximité de la foule, de 0 (loin, ou vue de haut) à 1 (au milieu du cortège), en échelle log. */
+export function proximiteDEcoute({ hauteurM, ecartM }: PointDEcoute): number {
+  const d = Math.hypot(Math.max(0, hauteurM), Math.max(0, ecartM));
+  if (!Number.isFinite(d)) return Number.isNaN(d) ? 1 : 0;
+  const x = 1 - Math.log(Math.max(d, ECOUTE_PRES_M) / ECOUTE_PRES_M) / Math.log(ECOUTE_LOIN_M / ECOUTE_PRES_M);
+  return Math.min(1, Math.max(0, x));
+}
+
+/**
+ * Réglages selon la foule (soutiens), la phase et la proximité du point d'écoute (1 par
+ * défaut : au milieu du cortège). En s'éloignant, les voisins se taisent les premiers
+ * (voix proches, pas), puis la foule devient plus sourde ; le grondement reste.
+ */
+export function reglagesAmbiance({
+  soutiens,
+  phase,
+  proximite = 1,
+}: {
+  soutiens: number;
+  phase: PhaseAmbiance;
+  proximite?: number;
+}): ReglagesAmbiance {
+  const r = reglagesAuPlusPres(soutiens, phase);
+  const p = Number.isFinite(proximite) ? Math.min(1, Math.max(0, proximite)) : 1;
+  if (p === 1) return r;
+  return {
+    ...r,
+    voix: r.voix * (0.2 + 0.8 * p),
+    locuteurs: Math.round(r.locuteurs * (0.35 + 0.65 * p)),
+    foule: r.foule * (0.5 + 0.5 * p),
+    brouhaha: r.brouhaha * (0.8 + 0.2 * p),
+    coupureHz: r.coupureHz * (0.5 + 0.5 * p),
+    pasParSeconde: r.pasParSeconde * p * p,
+    percussions: r.percussions * (0.35 + 0.65 * p),
+  };
+}
+
+function reglagesAuPlusPres(soutiens: number, phase: PhaseAmbiance): ReglagesAmbiance {
   const f = tailleRessentie(soutiens);
   switch (phase) {
     case 'avant':

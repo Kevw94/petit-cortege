@@ -36,6 +36,7 @@ import { chargerImagesTilesets } from '../decor/cuisson';
 import { PAQUET, TEINTE_MASSE, VARIANTES_PAQUET } from '../foule/paquets';
 import { tamponsDeMasse } from '../foule/tampons';
 import { CADRE_PANCARTE_M } from '../pancartes/canvas';
+import { ecartAuPlusProche, INTERVALLE_ECOUTE_MS } from '../ecoute';
 import type { DonneesScene } from '../scene-cortege';
 import type { VueCortege } from '../vue-cortege';
 import { boitesDeBatiments } from './batiments';
@@ -378,6 +379,7 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
   const mouvementReduit = requeteMouvementReduit();
 
   let dernier = performance.now();
+  let derniereEcoute = -Infinity;
   const image = () => {
     const maintenant = performance.now();
     const dt = Math.min((maintenant - dernier) / 1000, 0.1);
@@ -442,6 +444,11 @@ export async function creerVueCortege3D(parent: HTMLElement, donnees: DonneesSce
 
     // Foule : mêmes avatars que la vue 2D ; masse au-delà du seuil de densité ou du budget.
     const places = cortege.avatars.map((a) => ({ ...a, sol: placeur.placer(a.distanceM, a.decalageM) }));
+    // Point d'écoute du son : distance de la caméra au point regardé, écart de ce point à la foule.
+    if (donnees.surEcoute && maintenant - derniereEcoute >= INTERVALLE_ECOUTE_MS) {
+      derniereEcoute = maintenant;
+      donnees.surEcoute({ hauteurM: parametres.distance, ecartM: ecartAuPlusProche(places, (a) => a.sol, regard) });
+    }
     const foule = composerFoule(places, {
       repereM: cortege.avanceeM,
       budget: BUDGET_AVATARS_DESSINES,
