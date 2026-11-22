@@ -15,6 +15,8 @@ export function phaseAmbiance(etat: EtatManif, departMs: number, maintenantMs: n
 }
 
 export interface ReglagesAmbiance extends ReglagesVoix {
+  /** Volume de la foule lointaine (rumeur de dizaines de voix, `foule-lointaine.ts`), de 0 à 1. */
+  foule: number;
   /** Volume du brouhaha (bruit filtré), de 0 à 1. */
   brouhaha: number;
   /** Fréquence de coupure du filtre du brouhaha (Hz) : plus de monde, plus de brillance. */
@@ -43,6 +45,7 @@ export function reglagesAmbiance({ soutiens, phase }: { soutiens: number; phase:
   switch (phase) {
     case 'avant':
       return {
+        foule: 0.25 + 0.45 * f,
         brouhaha: 0.18 + 0.32 * f,
         coupureHz: 600 + 500 * f,
         pasParSeconde: 0.3 + 0.9 * f,
@@ -54,6 +57,7 @@ export function reglagesAmbiance({ soutiens, phase }: { soutiens: number; phase:
       };
     case 'marche':
       return {
+        foule: 0.3 + 0.6 * f,
         brouhaha: 0.3 + 0.55 * f,
         coupureHz: 800 + 900 * f,
         pasParSeconde: 1.5 + 6.5 * f,
@@ -65,6 +69,7 @@ export function reglagesAmbiance({ soutiens, phase }: { soutiens: number; phase:
       };
     case 'fin':
       return {
+        foule: 0.15,
         brouhaha: 0.12,
         coupureHz: 600,
         pasParSeconde: 0,

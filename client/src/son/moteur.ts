@@ -11,6 +11,9 @@
  * Les données (partition, chants, réglages d'ambiance) viennent des modules purs voisins.
  */
 import { frequenceMidi } from './alea';
+import { reponseRue } from './acoustique';
+import { bruitRose } from './bruit';
+import { fouleLointaine } from './foule-lointaine';
 import type { ReglagesAmbiance } from './ambiance';
 import type { EvenementChant, ProgrammeChant, Voyelle } from './chants';
 import { creerBrouhahaVoix } from './moteur-voix';
@@ -200,47 +203,16 @@ function construireBus(ctx: AudioContext): Bus {
   return { ctx, maitre, reverb, bruit: bruitRose(ctx, 4) };
 }
 
-/** Bruit rose (filtre de Paul Kellet), généré une fois : la matière du brouhaha et des percussions. */
-function bruitRose(ctx: AudioContext, secondes: number): AudioBuffer {
-  const tampon = ctx.createBuffer(1, Math.floor(ctx.sampleRate * secondes), ctx.sampleRate);
-  const d = tampon.getChannelData(0);
-  let b0 = 0,
-    b1 = 0,
-    b2 = 0,
-    b3 = 0,
-    b4 = 0,
-    b5 = 0,
-    b6 = 0;
-  for (let i = 0; i < d.length; i++) {
-    const blanc = Math.random() * 2 - 1;
-    b0 = 0.99886 * b0 + blanc * 0.0555179;
-    b1 = 0.99332 * b1 + blanc * 0.0750759;
-    b2 = 0.969 * b2 + blanc * 0.153852;
-    b3 = 0.8665 * b3 + blanc * 0.3104856;
-    b4 = 0.55 * b4 + blanc * 0.5329522;
-    b5 = -0.7616 * b5 - blanc * 0.016898;
-    d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + blanc * 0.5362) * 0.11;
-    b6 = blanc * 0.115926;
-  }
-  // Raccord sans clic quand le tampon boucle : fondu sur les bords.
-  const bord = Math.min(2000, d.length >> 2);
-  for (let i = 0; i < bord; i++) {
-    d[i]! *= i / bord;
-    d[d.length - 1 - i]! *= i / bord;
-  }
-  return tampon;
-}
-
 /**
  * Sorties d'une scène (direct et envoi vers la réverbération), qui montent en fondu ;
  * `fermer` les redescend ensemble (la réverbération s'éteint sans coupure), puis libère.
  */
-function sortiesDeScene(b: Bus): Sorties & { fermer(liberer: () => void): void } {
+function sortiesDeScene(b: Bus, reverb: AudioNode = b.reverb): Sorties & { fermer(liberer: () => void): void } {
   const { ctx } = b;
   const sortie = ctx.createGain();
   const envoi = ctx.createGain();
   sortie.connect(b.maitre);
-  envoi.connect(b.reverb);
+  envoi.connect(reverb);
   for (const g of [sortie, envoi]) {
     g.gain.setValueAtTime(0.0001, ctx.currentTime);
     g.gain.linearRampToValueAtTime(1, ctx.currentTime + FONDU_ENTREE_S);
@@ -374,7 +346,22 @@ function jouerNoteAccueil(ctx: AudioContext, sortie: AudioNode, note: NoteAccuei
 // ---------------------------------------------------------------------------
 // Ambiance de manif
 
+/** Coupure des voix proches (presque tout le spectre) et lointaines (assourdies par la distance). */
+const VOIX_PROCHES_HZ = 6000;
+const VOIX_LOINTAINES_HZ = 2000;
+
+/** Niveau du retour de la réverbération de rue (la réponse est normalisée par le navigateur). */
+const NIVEAU_RUE = 0.55;
+/** Niveau de la foule lointaine (tampon à 0,1 efficace) quand `foule` vaut 1. */
+const NIVEAU_FOULE = 0.2;
+const DELAI_FOULE_MS = 1_500;
+/** Pendant un chant, toute l'ambiance baisse (les voix plus encore) : le sien passe devant. */
+const BAISSE_AMBIANCE_CHANT = 0.55;
+/** Niveau du bruit de foule (souffle continu) : la rumeur de voix porte maintenant l'essentiel. */
+const NIVEAU_BROUHAHA = 0.25;
+
 const REGLAGES_PAR_DEFAUT: ReglagesAmbiance = {
+  foule: 0.2,
   brouhaha: 0.25,
   coupureHz: 800,
   pasParSeconde: 0.5,
@@ -386,9 +373,25 @@ const REGLAGES_PAR_DEFAUT: ReglagesAmbiance = {
 
 function sceneManif(b: Bus, lireReglages: () => ReglagesAmbiance | null): Scene {
   const { ctx } = b;
-  const sorties = sortiesDeScene(b);
+  // Acoustique de rue : réverbération à convolution (réponse synthétique, `acoustique.ts`).
+  const rue = ctx.createConvolver();
+  const [gauche, droite] = reponseRue({ taux: ctx.sampleRate, graine: Math.floor(Math.random() * 2 ** 31) });
+  const reponse = ctx.createBuffer(2, gauche.length, ctx.sampleRate);
+  reponse.copyToChannel(gauche, 0);
+  reponse.copyToChannel(droite, 1);
+  rue.buffer = reponse;
+  const retourRue = ctx.createGain();
+  retourRue.gain.value = NIVEAU_RUE;
+  rue.connect(retourRue);
+  retourRue.connect(b.maitre);
+  const sorties = sortiesDeScene(b, rue);
+  // L'ambiance passe par ses propres sorties : elle baisse pendant un chant, pas le chant.
+  const ambiance: Sorties = { sortie: ctx.createGain(), envoi: ctx.createGain() };
+  ambiance.sortie.connect(sorties.sortie);
+  ambiance.envoi.connect(sorties.envoi);
   const sources: AudioScheduledSourceNode[] = [];
-  const noeuds: AudioNode[] = [];
+  const noeuds: AudioNode[] = [ambiance.sortie, ambiance.envoi];
+  let arretee = false;
 
   // Brouhaha : bruit rose en trois bandes (comme des formants de voix mêlées), chacune
   // modulée lentement par son propre oscillateur basse fréquence.
@@ -398,7 +401,7 @@ function sceneManif(b: Bus, lireReglages: () => ReglagesAmbiance | null): Scene 
   const volumeBrouhaha = ctx.createGain();
   volumeBrouhaha.gain.value = 0;
   coupure.connect(volumeBrouhaha);
-  brancher(ctx, volumeBrouhaha, sorties, 0.25);
+  brancher(ctx, volumeBrouhaha, ambiance, 0.25);
   noeuds.push(coupure, volumeBrouhaha);
   for (const [centre, q, vitesse, part] of [
     [380, 0.9, 0.07, 1],
@@ -431,16 +434,79 @@ function sceneManif(b: Bus, lireReglages: () => ReglagesAmbiance | null): Scene 
 
   // Bus des événements ponctuels (pas, percussions, sifflet, applaudissements).
   const evenements = ctx.createGain();
-  brancher(ctx, evenements, sorties, 0.35);
+  evenements.gain.value = 0.7;
+  brancher(ctx, evenements, ambiance, 0.3);
   noeuds.push(evenements);
 
-  // Conversations inintelligibles, sous le reste (ADR 0008) : une voix de fond par locuteur.
-  const sortieVoix = ctx.createGain();
-  brancher(ctx, sortieVoix, sorties, 0.5);
-  noeuds.push(sortieVoix);
-  const voix = creerBrouhahaVoix(ctx, b.bruit, sortieVoix, Math.floor(Math.random() * 2 ** 31));
+  // Conversations inintelligibles, sous le reste (ADR 0008) : une voix par locuteur. Les
+  // voisins sont nets et peu réverbérés ; les voix plus loin, assourdies et noyées dans la rue.
+  const plans = (
+    [
+      [VOIX_PROCHES_HZ, 0.18],
+      [VOIX_LOINTAINES_HZ, 0.6],
+    ] as const
+  ).map(([coupureHz, envoi]) => {
+    const entree = ctx.createGain();
+    const eloigner = ctx.createBiquadFilter();
+    eloigner.type = 'lowpass';
+    eloigner.frequency.value = coupureHz;
+    eloigner.Q.value = 0;
+    entree.connect(eloigner);
+    brancher(ctx, eloigner, ambiance, envoi);
+    noeuds.push(entree, eloigner);
+    return entree;
+  });
+  const voix = creerBrouhahaVoix(
+    ctx,
+    b.bruit,
+    { proche: plans[0]!, lointain: plans[1]! },
+    Math.floor(Math.random() * 2 ** 31),
+  );
   sources.push(...voix.sources);
   noeuds.push(...voix.noeuds);
+
+  // Foule lointaine : des dizaines de voix rendues hors ligne, jouées en boucle (deux
+  // lectures décalées, l'une un peu plus lente et plus grave : deux foules différentes).
+  const foule = ctx.createGain();
+  foule.gain.value = 0;
+  const fouleAssourdie = ctx.createBiquadFilter();
+  fouleAssourdie.type = 'lowpass';
+  fouleAssourdie.frequency.value = REGLAGES_PAR_DEFAUT.coupureHz * 1.4;
+  foule.connect(fouleAssourdie);
+  brancher(ctx, fouleAssourdie, ambiance, 0.6);
+  noeuds.push(foule, fouleAssourdie);
+  // Rendu un peu après l'entrée dans la vue : la vue 3D se charge d'abord.
+  const minuterieFoule = setTimeout(() => {
+    void fouleLointaine().then((tampon) => {
+      if (!tampon || arretee) return;
+      // Entrée en fondu : la rumeur monte doucement, quel que soit le temps qu'a pris le rendu.
+      const entreeFoule = ctx.createGain();
+      entreeFoule.gain.setValueAtTime(0, ctx.currentTime);
+      entreeFoule.gain.linearRampToValueAtTime(1, ctx.currentTime + 4);
+      entreeFoule.connect(foule);
+      noeuds.push(entreeFoule);
+      for (const [vitesse, pan] of [
+        [1, -0.4],
+        [0.94, 0.4],
+      ] as const) {
+        const lecture = ctx.createBufferSource();
+        lecture.buffer = tampon;
+        lecture.loop = true;
+        lecture.playbackRate.value = vitesse;
+        let place: AudioNode;
+        if (ctx.createStereoPanner) {
+          const panneau = ctx.createStereoPanner();
+          panneau.pan.value = pan;
+          place = panneau;
+        } else place = ctx.createGain(); // anciens Safari : pas de panoramique
+        lecture.connect(place);
+        place.connect(entreeFoule);
+        lecture.start(ctx.currentTime + 0.05, Math.random() * tampon.duration);
+        sources.push(lecture);
+        noeuds.push(place);
+      }
+    });
+  }, DELAI_FOULE_MS);
 
   let reglagesAppliques: ReglagesAmbiance | null = null;
   let prochainPas = ctx.currentTime + 0.3;
@@ -458,8 +524,10 @@ function sceneManif(b: Bus, lireReglages: () => ReglagesAmbiance | null): Scene 
     const maintenant = ctx.currentTime;
     if (r !== reglagesAppliques) {
       // Transitions lentes (constante de temps ≈ 1,5 s) : la foule enfle sans à-coup.
-      volumeBrouhaha.gain.setTargetAtTime(r.brouhaha * 0.5, maintenant, 1.5);
+      volumeBrouhaha.gain.setTargetAtTime(r.brouhaha * NIVEAU_BROUHAHA, maintenant, 1.5);
       coupure.frequency.setTargetAtTime(r.coupureHz, maintenant, 1.5);
+      foule.gain.setTargetAtTime(r.foule * NIVEAU_FOULE, maintenant, 1.5);
+      fouleAssourdie.frequency.setTargetAtTime(r.coupureHz * 1.4, maintenant, 1.5);
       voix.regler(r);
       reglagesAppliques = r;
     }
@@ -497,10 +565,24 @@ function sceneManif(b: Bus, lireReglages: () => ReglagesAmbiance | null): Scene 
     nom: 'manif',
     sortie: sorties.sortie,
     envoi: sorties.envoi,
-    baisserPourChant: voix.baisserPourChant,
+    baisserPourChant(debut, duree) {
+      voix.baisserPourChant(debut, duree);
+      for (const g of [ambiance.sortie, ambiance.envoi]) {
+        g.gain.cancelScheduledValues(debut);
+        g.gain.setTargetAtTime(BAISSE_AMBIANCE_CHANT, debut, 0.15);
+        g.gain.setTargetAtTime(1, debut + duree + 0.2, 0.6);
+      }
+    },
     arreter() {
+      arretee = true;
       clearInterval(minuterie);
+      clearTimeout(minuterieFoule);
       sorties.fermer(() => {
+        // La réverbération s'éteint d'elle-même, puis on la libère.
+        setTimeout(() => {
+          rue.disconnect();
+          retourRue.disconnect();
+        }, 1_800);
         for (const s of sources) {
           try {
             s.stop();
@@ -660,6 +742,9 @@ function jouerApplaudissements(b: Bus, sortie: AudioNode, t: number, ampleur: nu
 // ---------------------------------------------------------------------------
 // Chant (local, sans paroles)
 
+/** Volume du chant lancé par le soutien : il passe devant l'ambiance (qui baisse pendant ce temps). */
+const VOLUME_CHANT = 1.25;
+
 /** Formants (Hz) des voyelles du chœur : des timbres, pas des mots. */
 const FORMANTS: Record<Voyelle, readonly [number, number]> = {
   he: [420, 2050],
@@ -669,7 +754,7 @@ const FORMANTS: Record<Voyelle, readonly [number, number]> = {
 function jouerProgrammeChant(b: Bus, scene: Sorties, programme: ProgrammeChant, debut: number): void {
   const { ctx } = b;
   const bus = ctx.createGain();
-  bus.gain.value = 0.9;
+  bus.gain.value = VOLUME_CHANT;
   brancher(ctx, bus, scene, 0.3);
   for (const e of programme.evenements) jouerEvenementChant(b, bus, e, debut + e.t);
   setTimeout(() => bus.disconnect(), (programme.duree + 2) * 1000 + (debut - ctx.currentTime) * 1000);

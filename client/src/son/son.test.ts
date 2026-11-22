@@ -186,10 +186,11 @@ describe('ambiance de manif', () => {
     expect(tailleRessentie(1_000_000)).toBe(1);
   });
 
-  it('plus de soutiens : brouhaha plus fort et plus de pas', () => {
+  it('plus de soutiens : rumeur de foule et brouhaha plus forts, plus de pas', () => {
     for (const phase of ['avant', 'marche'] as const) {
       const peu = reglagesAmbiance({ soutiens: 5, phase });
       const beaucoup = reglagesAmbiance({ soutiens: 3_000, phase });
+      expect(beaucoup.foule).toBeGreaterThan(peu.foule);
       expect(beaucoup.brouhaha).toBeGreaterThan(peu.brouhaha);
       expect(beaucoup.pasParSeconde).toBeGreaterThan(peu.pasParSeconde);
       expect(beaucoup.coupureHz).toBeGreaterThan(peu.coupureHz);
@@ -212,7 +213,7 @@ describe('ambiance de manif', () => {
     for (const phase of ['avant', 'marche', 'fin'] as const) {
       for (const soutiens of [0, 1, 10_000_000]) {
         const r = reglagesAmbiance({ soutiens, phase });
-        for (const v of [r.brouhaha, r.percussions]) expect(v >= 0 && v <= 1).toBe(true);
+        for (const v of [r.foule, r.brouhaha, r.percussions]) expect(v >= 0 && v <= 1).toBe(true);
       }
     }
   });
